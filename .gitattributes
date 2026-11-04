@@ -1,0 +1,3 @@
+# Fingerprints and proofs must keep their exact bytes
+prove/** -text
+*.ots binary
