@@ -1,0 +1,77 @@
+// Smoke test of the page in a simulated browser (jsdom).
+// Needs jsdom, installed anywhere:  npm install jsdom   (then JSDOM_PATH=<that folder>/node_modules/jsdom)
+// Run:  node tests/test_pagina.js
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const assert = require('assert');
+const { JSDOM } = require(process.env.JSDOM_PATH || 'jsdom');
+
+const html = fs.readFileSync(path.join(__dirname, '..', 'Casellino.html'), 'utf8');
+const blobs = [];
+const dom = new JSDOM(html, {
+  url: 'http://localhost/#esempio',
+  runScripts: 'dangerously',
+  pretendToBeVisual: true,
+  beforeParse(win) {
+    win.matchMedia = function () { return { matches: false, addEventListener() {} }; };
+    win.TextEncoder = require('util').TextEncoder; // real browsers have it, jsdom does not
+    win.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+    win.HTMLDialogElement.prototype.close = function () { this.open = false; };
+    win.URL.createObjectURL = function (b) { blobs.push(b); return 'blob:x'; };
+    win.URL.revokeObjectURL = function () {};
+    win.HTMLAnchorElement.prototype.click = function () {};
+    win.HTMLElement.prototype.scrollIntoView = function () {};
+  },
+});
+const win = dom.window;
+const doc = win.document;
+const wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+const text = function (sel) { return doc.querySelector(sel).textContent; };
+
+function caretAt(ta, needle, offset) {
+  const pos = ta.value.indexOf(needle) + (offset || 0);
+  assert.ok(pos >= 0, 'non trovo ' + needle);
+  ta.setSelectionRange(pos, pos);
+  ta.dispatchEvent(new win.Event('click'));
+}
+
+(async function () {
+  await wait(300);
+  const ta = doc.querySelector('textarea.route-text');
+  assert.ok(ta.value.indexOf('VIA DEI TIGLI') >= 0, 'esempio caricato');
+  assert.strictEqual(doc.querySelectorAll('#strips .fila').length, 4, 'quattro file');
+  assert.deepStrictEqual([...doc.querySelectorAll('#strips .strip-head b')].slice(0, 2).map(function (b) { return b.textContent; }),
+    ['Casello', 'Ala B'], 'in ogni fila prima il casello, poi l\'ala a destra');
+
+  caretAt(ta, 'VIA DEL CANALE: 2/4, 6/8', 'VIA DEL CANALE: 2/4, '.length + 1);
+  await wait(150);
+  assert.ok(/Sei qui: Fila 1 · Casello · casella 64 di 91/.test(text('.now-title')), text('.now-title'));
+  // the pigeonhole "6/8": one cell split by a diagonal line, 6 upper-left and 8 lower-right
+  assert.deepStrictEqual([...doc.querySelectorAll('.now .here-cell')].map(function (c) { return c.querySelector('.d1').textContent + '|' + c.querySelector('.d2').textContent; }), ['6|8'], 'casella segnata, divisa in obliquo');
+
+  caretAt(ta, 'VIA DELLE ROSE: 13..21', 'VIA DELLE ROSE: 1'.length);
+  await wait(150);
+  assert.ok(/Sei qui: Fila 1 · Ala B · casella 1 di 33/.test(text('.now-title')), text('.now-title'));
+  assert.ok(/VIA DELLE ROSE 13, Borgo Esempio/.test(text('.here')), text('.here'));
+
+  doc.querySelector('#strips .cell.top').dispatchEvent(new win.Event('click'));
+  await wait(50);
+  assert.strictEqual(doc.getElementById('selection-card').hidden, false, 'scheda della casella');
+  assert.ok(/VIA DEI TIGLI/.test(text('#selection')), text('#selection'));
+
+  const before = text('.route .used');
+  ta.value = 'VIA NUOVA: 1, 2, 3\n' + ta.value;
+  ta.dispatchEvent(new win.Event('input'));
+  await wait(900); // the route updates after 150 ms, the side panel after another 250 ms
+  assert.notStrictEqual(text('.route .used'), before, 'il conto cambia scrivendo');
+  assert.ok(/VIA NUOVA/.test(text('#streets')), 'la via nuova compare nell\'elenco');
+
+  doc.getElementById('btn-excel').dispatchEvent(new win.Event('click'));
+  const toastText = doc.querySelector('.toast') ? doc.querySelector('.toast').textContent : '';
+  assert.ok(blobs.length === 1 && blobs[0].size > 5000, 'Excel creato: ' + blobs.length + ' ' + toastText);
+
+  assert.ok(/Versione \d+\.\d+\.\d+/.test(text('#version')), 'versione nel menu');
+  console.log('Pagina: tutte le prove superate');
+  win.close();
+})().catch(function (e) { console.error('FAIL ' + e.message); process.exitCode = 1; win.close(); });

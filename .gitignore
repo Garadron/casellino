@@ -1,0 +1,12 @@
+# Garadron's work data (streets, house numbers, photos): never on GitHub
+dati/
+
+# Secrets and local environments
+.env
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+
+# Office lock files
+~$*

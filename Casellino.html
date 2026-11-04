@@ -1,0 +1,2453 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Casellino</title>
+<meta name="description" content="Scrivi il giro con vie e civici e crea il file Excel delle strisce da stampare per le caselle.">
+<meta name="theme-color" content="#2c6db3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Casellino">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>window.CASELLINO_VERSION = '0.5.0';</script>
+<style>
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --text: #1c2229;
+  --muted: #5b6672;
+  --line: #dde2e8;
+  --accent: #2c6db3;
+  --accent-ink: #ffffff;
+  --accent-soft: #e6eef8;
+  --warn: #9a5200;
+  --warn-soft: #fff4e0;
+  --bad: #b3261e;
+  --ok: #2e7d32;
+  --paper: #ffffff;
+  --paper-line: #c9d0d8;
+  --radius: 10px;
+  --slot: 30px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171b;
+    --panel: #1d2127;
+    --text: #e7ebf0;
+    --muted: #9ba6b2;
+    --line: #333a43;
+    --accent: #6ea8ea;
+    --accent-ink: #0f1a26;
+    --accent-soft: #22303f;
+    --warn: #f0b35c;
+    --warn-soft: #3a2c16;
+    --bad: #f28b82;
+    --ok: #81c995;
+    --paper: #f7f7f5;
+    --paper-line: #b9c0c8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171b;
+  --panel: #1d2127;
+  --text: #e7ebf0;
+  --muted: #9ba6b2;
+  --line: #333a43;
+  --accent: #6ea8ea;
+  --accent-ink: #0f1a26;
+  --accent-soft: #22303f;
+  --warn: #f0b35c;
+  --warn-soft: #3a2c16;
+  --bad: #f28b82;
+  --ok: #81c995;
+  --paper: #f7f7f5;
+  --paper-line: #b9c0c8;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+h1, h2, h3 { margin: 0; line-height: 1.2; }
+h2 { font-size: 15px; margin-bottom: 8px; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--accent-soft); padding: 1px 4px; border-radius: 4px; }
+.small { font-size: 13px; }
+.muted { color: var(--muted); }
+button, input, textarea, select { font: inherit; color: inherit; }
+button {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  min-height: 36px;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button.link { border: 0; background: none; color: var(--accent); padding: 0; min-height: 0; text-decoration: underline; }
+button.danger { color: var(--bad); }
+input[type="text"], input:not([type]), textarea, select {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 7px 9px;
+  min-width: 0;
+}
+input:focus-visible, textarea:focus-visible, button:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+a { color: var(--accent); }
+
+/* top bar */
+.bar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; gap: 10px; align-items: center; }
+.brand h1 { font-size: 18px; }
+.logo {
+  width: 30px; height: 30px; border-radius: 7px; flex: none;
+  background:
+    linear-gradient(90deg, transparent 9px, var(--panel) 9px, var(--panel) 11px, transparent 11px, transparent 19px, var(--panel) 19px, var(--panel) 21px, transparent 21px),
+    linear-gradient(180deg, #9dc3e6 0 50%, #ffe699 50% 100%);
+  border: 1px solid var(--line);
+}
+.saved { margin: 0; font-size: 12px; color: var(--muted); }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.menu { position: relative; }
+.menu summary {
+  list-style: none; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; min-height: 36px;
+  background: var(--panel);
+}
+.menu summary::-webkit-details-marker { display: none; }
+.menu-list {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 30;
+  display: flex; flex-direction: column; gap: 2px; min-width: 210px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+}
+.menu-list button { border: 0; text-align: left; }
+.menu-list button:hover { background: var(--accent-soft); }
+
+/* layout */
+.layout {
+  display: grid; gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  padding: 16px;
+  max-width: 1500px; margin: 0 auto;
+}
+.side { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 92px); overflow-y: auto; }
+.editor { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.project { display: flex; flex-wrap: wrap; gap: 12px; }
+.project label, .subzone label { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--muted); }
+.project input { width: 180px; }
+
+/* sub-zone tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.subzone { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+.subzone .modules-pick { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--text); }
+.subzone .modules-pick label { flex-direction: row; align-items: center; gap: 6px; color: var(--text); font-size: 14px; }
+.subzone .grow { flex: 1; }
+.subzone input.name { width: 90px; }
+.subzone input.town { width: 200px; }
+.banner { background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+
+/* the route editor */
+.row-head { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+.row-head h2 { margin: 0; font-size: 16px; }
+.hint { margin: 0 0 8px; }
+textarea.route-text {
+  width: 100%; resize: vertical; min-height: 160px;
+  font: 14px/1.5 ui-monospace, Consolas, "Cascadia Mono", monospace;
+}
+.now { margin-top: 10px; padding: 10px; border-radius: 8px; background: var(--accent-soft); }
+.now-title { font-size: 14px; font-weight: 600; }
+.now .strip-wrap { margin-top: 6px; }
+.cell.here-cell { outline: 3px solid #d93025; outline-offset: -3px; z-index: 3; }
+
+/* all strips, row by row */
+.fila { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.fila:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+.fila h3 { font-size: 15px; margin-bottom: 4px; }
+.strip-head { display: flex; gap: 10px; align-items: baseline; font-size: 13px; margin-top: 6px; }
+.strip-head .used.full { color: var(--ok); }
+p.bad { color: var(--bad); font-size: 14px; }
+.actions-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+a.btn {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 7px 12px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); text-decoration: none;
+}
+.version { margin: 6px 8px 2px; }
+.dlg h3 { font-size: 15px; margin-top: 4px; }
+.meter { flex: 1; min-width: 120px; max-width: 260px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--ok); }
+.meter.full i { background: var(--warn); }
+.meter.over i { background: var(--bad); }
+.used { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.used.over { color: var(--bad); font-weight: 600; }
+.warnings { margin: 4px 0 0; padding: 0; list-style: none; font-size: 13px; }
+.warnings button.link { color: inherit; text-align: left; }
+.warnings li { color: var(--bad); }
+.warnings li.soft { color: var(--warn); }
+.suggest { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.suggest button { font-size: 12px; padding: 3px 8px; min-height: 0; border-radius: 12px; }
+.here { font-size: 13px; color: var(--muted); margin-top: 4px; min-height: 19px; }
+
+/* the paper strip */
+.strip-wrap { overflow-x: auto; margin-top: 8px; padding-bottom: 6px; }
+.strip {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n), var(--slot));
+  grid-template-rows: 32px 22px;
+  width: calc(var(--n) * var(--slot));
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(to right, var(--paper-line) 1px, transparent 1px),
+    linear-gradient(to bottom, transparent 31px, var(--paper-line) 31px, var(--paper-line) 32px, transparent 32px);
+  background-size: var(--slot) 100%, 100% 100%;
+  border: 1px solid #8a939d;
+  color: #111;
+}
+.cell {
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; white-space: nowrap;
+  border-right: 1px solid rgba(0,0,0,.28);
+  font: 700 12px/1 Arial, system-ui, sans-serif;
+  padding: 0 1px; cursor: pointer; color: #111;
+}
+.cell.top { grid-row: 1; border-bottom: 1px solid rgba(0,0,0,.28); }
+.cell.top.long { font-size: 9px; white-space: normal; text-align: center; line-height: 1.05; }
+/* two numbers in one pigeonhole, split by a diagonal line */
+.cell.top.diag {
+  position: relative; display: block; padding: 0;
+  background-image: linear-gradient(to top right, transparent calc(50% - 1px), rgba(0,0,0,.6) 50%, transparent calc(50% + 1px));
+}
+.cell.top.diag .d1, .cell.top.diag .d2 { position: absolute; font-size: 10px; line-height: 1; }
+.cell.top.diag .d1 { top: 2px; left: 2px; }
+.cell.top.diag .d2 { bottom: 2px; right: 2px; }
+.cell.run { grid-row: 2; font-size: 10px; letter-spacing: .02em; }
+.cell.run.tight { font-size: 7px; letter-spacing: 0; justify-content: flex-start; }
+.cell.unsure { box-shadow: inset 0 0 0 2px #d93025; }
+.cell.sel { outline: 3px solid var(--accent); outline-offset: -3px; z-index: 2; }
+.cut { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #6b7480; pointer-events: none; }
+.boundary { position: absolute; top: -10px; bottom: -4px; width: 0; border-left: 3px solid #d93025; pointer-events: none; }
+.boundary span { position: absolute; top: -6px; left: 3px; background: #d93025; color: #fff; font: 700 10px/1 system-ui; padding: 2px 4px; border-radius: 3px; white-space: nowrap; }
+
+/* side panel */
+.map-box { border-radius: 8px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; text-align: center; padding: 0; }
+.map-box iframe { width: 100%; height: 100%; border: 0; display: block; }
+.where { margin: 0 0 8px; font-size: 14px; }
+.streets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.streets li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.streets .sw { width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(0,0,0,.25); flex: none; position: relative; }
+.streets .sw select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.streets .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.streets .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.streets .flag { color: var(--warn); font-size: 12px; }
+.streets .town-head { margin-top: 8px; font-weight: 600; font-size: 13px; color: var(--muted); }
+.count { font-weight: 400; color: var(--muted); font-size: 13px; }
+.town-list-line { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; margin-bottom: 6px; }
+.dups { margin: 0; padding-left: 18px; font-size: 13px; }
+.dups li { margin-bottom: 4px; }
+.sel-info p { margin: 0 0 6px; font-size: 14px; }
+
+/* dialogs */
+dialog { border: 1px solid var(--line); border-radius: 12px; padding: 0; background: var(--panel); color: var(--text); width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+dialog::backdrop { background: rgba(0,0,0,.4); }
+.dlg { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.dlg h2 { font-size: 18px; }
+.dlg p { margin: 0; }
+.dlg textarea { width: 100%; font: 13px/1.45 ui-monospace, Consolas, monospace; }
+.dlg menu { display: flex; justify-content: flex-end; gap: 8px; margin: 6px 0 0; padding: 0; }
+table.help { border-collapse: collapse; font-size: 14px; }
+table.help td { border-top: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+table.help td:first-child { white-space: nowrap; }
+
+.foot { text-align: center; font-size: 12px; color: var(--muted); padding: 8px 16px 24px; }
+.toast {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 50;
+  background: #1c2229; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25); max-width: calc(100vw - 32px);
+}
+
+@media (max-width: 980px) {
+  .layout { grid-template-columns: minmax(0, 1fr); padding: 12px 16px; }
+  .side { position: static; max-height: none; overflow: visible; }
+  .bar { position: static; }
+}
+@media (max-width: 560px) {
+  :root { --slot: 27px; }
+  /* 16px or more: iPhone does not zoom the page when a box is touched */
+  textarea.route-text, input, select, .dlg textarea { font-size: 16px; }
+  .project input { width: 100%; }
+  .project label { flex: 1 1 140px; }
+  .subzone input.town { width: 100%; }
+  .subzone label.grow-m { flex: 1 1 160px; }
+  table.help td:first-child { white-space: normal; }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <h1>Casellino</h1>
+      <p class="saved" id="saved">Non ancora salvato</p>
+    </div>
+  </div>
+  <nav class="actions">
+    <button type="button" id="btn-open">Apri</button>
+    <button type="button" id="btn-save">Salva file</button>
+    <button type="button" class="primary" id="btn-excel">Crea Excel</button>
+    <details class="menu">
+      <summary>Altro</summary>
+      <div class="menu-list">
+        <button type="button" id="btn-new">Comincia da capo</button>
+        <button type="button" id="btn-import">Importa testo</button>
+        <button type="button" id="btn-export-text">Scarica come testo</button>
+        <button type="button" id="btn-example">Carica l'esempio</button>
+        <button type="button" id="btn-help">Come si scrive</button>
+        <p class="small muted version" id="version"></p>
+        <p class="small muted version">© 2026 Emmanuel Surace · uso gratuito non commerciale</p>
+      </div>
+    </details>
+    <input type="file" id="file-input" accept=".json,.txt,application/json,text/plain" hidden>
+  </nav>
+</header>
+
+<main class="layout">
+  <section class="editor" aria-label="Il giro">
+    <div class="card project">
+      <label>Zona <input id="zone" autocomplete="off" placeholder="es. 9"></label>
+      <label>Titolare <input id="owner" autocomplete="off" placeholder="il tuo nome"></label>
+    </div>
+
+    <div class="tabs" id="tabs" role="tablist"></div>
+
+    <div class="card subzone" id="subzone"></div>
+
+    <div class="card route" id="route"></div>
+
+    <div class="card">
+      <h2>Le strisce, come si leggono: da sinistra a destra, dall'alto in basso</h2>
+      <div id="strips"></div>
+    </div>
+  </section>
+
+  <aside class="side" aria-label="Mappa e vie">
+    <div class="card">
+      <h2>Mappa</h2>
+      <p class="where" id="map-where">Tocca una casella o scrivi una via per vederla sulla mappa.</p>
+      <div class="map-box" id="map-box"></div>
+      <p class="small"><a id="map-link" href="#" target="_blank" rel="noopener" hidden>Apri in Google Maps</a></p>
+      <p class="small muted">Alla mappa vanno solo via, civico e comune: mai i nomi delle persone.</p>
+    </div>
+    <div class="card" id="selection-card" hidden>
+      <h2>Casella scelta</h2>
+      <div id="selection"></div>
+    </div>
+    <div class="card">
+      <h2>Vie <span class="count" id="streets-count"></span></h2>
+      <div id="town-lists"></div>
+      <ul class="streets" id="streets"></ul>
+    </div>
+    <div class="card" id="dups-card" hidden>
+      <h2>Civici scritti due volte</h2>
+      <ul class="dups" id="dups"></ul>
+    </div>
+  </aside>
+</main>
+
+<footer class="foot">Casellino · © 2026 Emmanuel Surace (Garadron) · uso gratuito, non commerciale · i tuoi dati restano su questo dispositivo</footer>
+
+<dialog id="dlg-help">
+  <form method="dialog" class="dlg">
+    <h2>Come si scrive</h2>
+    <p>Il casello si legge come un libro: <b>da sinistra a destra e dall'alto in basso</b>. Si scrive il giro dall'inizio alla fine, una via per riga: il programma riempie la fila 1 di ogni modulo (Ala A, Casello, Ala B), poi la fila 2, e così via. Per spostare una via basta spostare la sua riga.</p>
+    <table class="help">
+      <tr><td><code>VIA DEI TIGLI: 1, 3, 5</code></td><td>tre caselle, una per civico</td></tr>
+      <tr><td><code>2/4</code></td><td>una casella divisa in obliquo: 2 in alto a sinistra, 4 in basso a destra</td></tr>
+      <tr><td><code>61\59</code> o <code>67-69</code></td><td>una casella con due civici uno accanto all'altro</td></tr>
+      <tr><td><code>1..15</code></td><td>1, 3, 5 … 15 (resta sullo stesso lato della via)</td></tr>
+      <tr><td><code>14..2</code></td><td>14, 12 … 2 (all'indietro)</td></tr>
+      <tr><td><code>1..6</code></td><td>1, 2, 3, 4, 5, 6 (tutti)</td></tr>
+      <tr><td><code>1-15 dispari</code>, <code>2-20 pari</code></td><td>come sopra, scritto a parole</td></tr>
+      <tr><td><code>20G..20M</code></td><td>20G, 20H, 20I, 20L, 20M (senza J e K)</td></tr>
+      <tr><td><code>35A (2)</code></td><td>una casella larga due</td></tr>
+      <tr><td><code>OFFICINA ROSSI (2)</code> o <code>(3)</code></td><td>un'azienda o una cascina con tanta posta: casella larga due o tre</td></tr>
+      <tr><td><code>vuota</code></td><td>una casella vuota della via</td></tr>
+      <tr><td><code>vuote 3</code> (riga da sola)</td><td>tre caselle vuote, senza via</td></tr>
+      <tr><td><code>CASCINA ALTA (2)</code> (riga senza due punti)</td><td>una casella con il nome scritto sotto</td></tr>
+      <tr><td><code>FINE STRISCIA</code></td><td>il resto della striscia resta vuoto: si continua sulla striscia dopo (a destra, o la fila sotto)</td></tr>
+      <tr><td><code>FINE FILA</code></td><td>il resto della fila resta vuoto: si continua all'inizio della fila sotto</td></tr>
+      <tr><td><code>STRISCIA VUOTA</code></td><td>salta una striscia intera</td></tr>
+      <tr><td><code>COMUNE: Villa Esempio</code></td><td>da qui in poi le vie sono di un altro comune</td></tr>
+      <tr><td><code>CONFINE: 9B</code></td><td>segna dove comincia un'altra sottozona (non si stampa)</td></tr>
+      <tr><td><code># nota</code></td><td>una riga di appunti, non si stampa</td></tr>
+      <tr><td><code>?</code></td><td>da controllare: la casella resta segnata in rosso</td></tr>
+    </table>
+    <p><b>La regola delle strisce</b>: nella riga sotto c'è solo il nome della via (o piazza, cascina…), steso su tutte le sue caselle; nelle caselle di sopra ci sono solo i civici. Una casella che appartiene a un'altra via, in mezzo a una via, si scrive su una riga sua (per esempio <code>VIA DEI GELSI: 37</code>): prende il suo colore e il suo nome sotto.</p>
+    <p>Di solito nelle vie i dispari sono da un lato e i pari dall'altro, tutti e due a salire (<code>1..15</code> e <code>2..16</code>); nelle piazze i numeri vanno in fila, uno dopo l'altro (<code>1-12 tutti</code>).</p>
+    <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie.</p>
+    <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
+    <h3>Sul telefono</h3>
+    <p>Apri la pagina dal suo indirizzo internet. Su iPhone: Condividi → «Aggiungi alla schermata Home». Su Android: menu ⋮ → «Installa app». Poi si apre come un'app e funziona anche senza internet (la mappa no). Ogni tanto usa «Salva file»: è la copia sicura del tuo lavoro.</p>
+    <menu><button value="ok" class="primary">Ho capito</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-import">
+  <form method="dialog" class="dlg" id="form-import">
+    <h2>Importa testo</h2>
+    <p>Incolla qui un lavoro scritto come testo (per esempio quello scaricato con «Scarica come testo»). Sostituisce quello aperto.</p>
+    <textarea id="import-text" rows="14" spellcheck="false"></textarea>
+    <menu>
+      <button value="cancel" formnovalidate>Annulla</button>
+      <button value="ok" class="primary">Importa</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-list">
+  <form method="dialog" class="dlg" id="form-list">
+    <h2>Elenco delle vie di <span id="list-town"></span></h2>
+    <p>Un nome per riga: vie, vicoli, piazze, cascine, contrade… Serve per scrivere più in fretta e per accorgersi dei nomi scritti male.</p>
+    <p><button type="button" id="btn-osm">Scarica l'elenco da OpenStreetMap</button> <span class="small muted" id="osm-status"></span></p>
+    <textarea id="list-text" rows="14" spellcheck="false"></textarea>
+    <menu>
+      <button value="cancel" formnovalidate>Annulla</button>
+      <button value="ok" class="primary">Salva l'elenco</button>
+    </menu>
+  </form>
+</dialog>
+
+<script>
+/*
+ * Casellino - core logic (no DOM).
+ * © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
+ *
+ * A sub-zone is written as one "route" text, from the first pigeonhole to the last.
+ * The sorting frame is always read like a page of a book: left to right, top to bottom.
+ * So the route fills row 1 of every module from left to right (Ala A, Casello, Ala B),
+ * then row 2, and so on. Each (row, module) pair is one printed paper strip.
+ *
+ * Works in the browser (window.CasellinoCore) and in Node (module.exports).
+ */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.CasellinoCore = api;
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // Modules of a sorting frame, left to right, with their number of slots.
+  // The numbers come from the official blank template and must not change.
+  const MODULES = ['alaA', 'casello', 'alaB'];
+  const MODULE_SLOTS = { alaA: 33, casello: 91, alaB: 33 };
+  const MODULE_NAMES = { alaA: 'Ala A', casello: 'Casello', alaB: 'Ala B' };
+  const ROWS_PER_MODULE = 4;
+  // Landscape A4 holds 23 slot columns of 1.244 cm on paper, but printers keep a small
+  // margin and Excel then fits 22 (seen in a real export). The workbook sets a page break
+  // every 22 slots, so the cut is always in the same place.
+  const SLOTS_PER_PAGE = 22;
+  const MAX_RANGE_ITEMS = 300;
+  // Italian house-number letters skip J, K, W, X, Y (e.g. 20I, 20L, 20M).
+  const IT_LETTERS = 'ABCDEFGHILMNOPQRSTUVZ';
+  const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  // Print-friendly light colours; text stays black on all of them.
+  const PALETTE = [
+    { name: 'azzurro', hex: '9DC3E6' },
+    { name: 'verde', hex: 'A9D08E' },
+    { name: 'giallo', hex: 'FFE699' },
+    { name: 'rosa', hex: 'F4B6C2' },
+    { name: 'arancione', hex: 'F8CBAD' },
+    { name: 'lilla', hex: 'CDB8E8' },
+    { name: 'verde acqua', hex: '9FDCD0' },
+    { name: 'sabbia', hex: 'E2D3B5' },
+    { name: 'celeste', hex: 'C9E4F5' },
+    { name: 'verde chiaro', hex: 'D4EDBC' },
+    { name: 'rosso', hex: 'F1948A' },
+    { name: 'grigio', hex: 'D9D9D9' },
+    { name: 'bianco', hex: 'FFFFFF' },
+  ];
+
+  function norm(text) {
+    return String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+
+  function streetKey(street, town) {
+    return norm(street) + '|' + norm(town);
+  }
+
+  function newSubzone(name, town) {
+    return {
+      id: 'sz' + Math.random().toString(36).slice(2, 9),
+      name: name || '',
+      town: town || '',
+      modules: { alaA: false, casello: true, alaB: true },
+      route: '',
+    };
+  }
+
+  function newProject() {
+    return {
+      app: 'casellino',
+      version: 2,
+      zone: '',
+      owner: '',
+      subzones: [newSubzone('', '')],
+      streets: {},      // streetKey -> { color: 'RRGGBB' }
+      streetLists: {},  // norm(town) -> [street names] (official list, optional)
+    };
+  }
+
+  // Files written before v0.5.0 used an older word for the big module: any key starting
+  // with "casell" means "casello".
+  function renameBigModule(obj) {
+    const out = {};
+    if (!obj || typeof obj !== 'object') return out;
+    Object.keys(obj).forEach(function (k) { out[/^casell/i.test(k) ? 'casello' : k] = obj[k]; });
+    return out;
+  }
+
+  // Makes an object loaded from a file safe to use (missing fields, wrong types).
+  // Files of version 1 had one text per strip ("rows"): they become one route.
+  function sanitizeProject(p) {
+    const out = newProject();
+    if (!p || typeof p !== 'object') return out;
+    out.zone = String(p.zone || '');
+    out.owner = String(p.owner || '');
+    if (Array.isArray(p.subzones) && p.subzones.length) {
+      out.subzones = p.subzones.map(function (s) {
+        const sz = newSubzone(String(s && s.name || ''), String(s && s.town || ''));
+        if (s && s.id) sz.id = String(s.id);
+        const mods = renameBigModule(s && s.modules);
+        MODULES.forEach(function (m) {
+          if (typeof mods[m] === 'boolean') sz.modules[m] = mods[m];
+        });
+        if (s && typeof s.route === 'string') sz.route = s.route;
+        else if (s && s.rows) sz.route = rowsToRoute(renameBigModule(s.rows), sz.modules, sz.town);
+        return sz;
+      });
+    }
+    if (p.streets && typeof p.streets === 'object') {
+      Object.keys(p.streets).forEach(function (k) {
+        const c = p.streets[k] && String(p.streets[k].color || '').replace('#', '').toUpperCase();
+        if (/^[0-9A-F]{6}$/.test(c)) out.streets[k] = { color: c };
+      });
+    }
+    if (p.streetLists && typeof p.streetLists === 'object') {
+      Object.keys(p.streetLists).forEach(function (k) {
+        if (Array.isArray(p.streetLists[k])) out.streetLists[norm(k)] = p.streetLists[k].map(String);
+      });
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------- parsing
+
+  function expandNumberRange(a, b, step) {
+    const out = [];
+    const dir = a <= b ? 1 : -1;
+    for (let n = a; dir > 0 ? n <= b : n >= b; n += dir * step) {
+      out.push(String(n));
+      if (out.length > MAX_RANGE_ITEMS) return null;
+    }
+    return out;
+  }
+
+  function expandLetters(num, from, to) {
+    const f = from.toUpperCase(), t = to.toUpperCase();
+    const alphabet = IT_LETTERS.indexOf(f) >= 0 && IT_LETTERS.indexOf(t) >= 0 ? IT_LETTERS : ALL_LETTERS;
+    const i = alphabet.indexOf(f), j = alphabet.indexOf(t);
+    if (i < 0 || j < 0) return null;
+    const out = [];
+    const dir = i <= j ? 1 : -1;
+    for (let k = i; dir > 0 ? k <= j : k >= j; k += dir) out.push(num + alphabet[k]);
+    return out;
+  }
+
+  // One comma-separated token -> list of pigeonholes, or { error }.
+  function parseToken(token) {
+    let t = token.trim();
+    let span = 1;
+    const spanMatch = /\(\s*(\d{1,2})\s*\)\s*$/.exec(t);
+    if (spanMatch) {
+      span = parseInt(spanMatch[1], 10);
+      if (span < 1) return { error: 'una casella non può essere larga 0' };
+      t = t.slice(0, spanMatch.index).trim();
+    }
+    // second: a second number in the same pigeonhole, split by a diagonal line ("2/4")
+    const cell = function (top, second) { return { top: top, second: second || '', span: span }; };
+
+    if (t === '' || /^(vuota|vuoto|_)$/i.test(t)) return { cells: [cell('')] };
+
+    let m = /^(\d+)\s*\.\.\s*(\d+)$/.exec(t);
+    if (m) {
+      const a = +m[1], b = +m[2];
+      const list = expandNumberRange(a, b, a % 2 === b % 2 ? 2 : 1);
+      if (!list) return { error: '«' + t + '» fa troppi numeri' };
+      return { cells: list.map(function (n) { return cell(n); }) };
+    }
+    m = /^(\d+)\s*-\s*(\d+)\s+(pari|dispari|tutti)$/i.exec(t);
+    if (m) {
+      let a = +m[1];
+      const b = +m[2], kind = m[3].toLowerCase();
+      const dir = a <= b ? 1 : -1;
+      if (kind === 'pari' && a % 2 !== 0) a += dir;
+      if (kind === 'dispari' && a % 2 === 0) a += dir;
+      const list = expandNumberRange(a, b, kind === 'tutti' ? 1 : 2);
+      if (!list) return { error: '«' + t + '» fa troppi numeri' };
+      return { cells: list.map(function (n) { return cell(n); }) };
+    }
+    m = /^(\d+)\s*([A-Za-z])\s*\.\.\s*(\d+)?\s*([A-Za-z])$/.exec(t);
+    if (m && (!m[3] || m[3] === m[1])) {
+      const list = expandLetters(m[1], m[2], m[4]);
+      if (list) return { cells: list.map(function (n) { return cell(n); }) };
+    }
+
+    const parts = t.split('/');
+    if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
+      return { cells: [cell(parts[0].trim(), parts[1].trim())] };
+    }
+    return { cells: [cell(t)] };
+  }
+
+  const BREAKS = [
+    [/^fine\s+striscia\.?$/i, 'strip'],
+    [/^fine\s+fila\.?$/i, 'row'],
+    [/^striscia\s+vuota\.?$/i, 'skip'],
+  ];
+
+  /*
+   * Parses a route text. Returns { items, warnings }; items are, in order:
+   *   { kind:'cell', street, town, key, top, second, span, line, tok }
+   *   { kind:'boundary', label, line }          (CONFINE: 2B, not printed)
+   *   { kind:'break', mode:'strip'|'row'|'skip', line }
+   */
+  function parseRoute(text, baseTown) {
+    const items = [];
+    const warnings = [];
+    let town = baseTown || '';
+    const lines = String(text || '').split(/\r?\n/);
+    lines.forEach(function (raw, lineIndex) {
+      const line = raw.trim();
+      if (!line || line[0] === '#') return;
+      let m = /^comune\s*:(.*)$/i.exec(line);
+      if (m) { town = m[1].trim() || baseTown || ''; return; }
+      m = /^confine\s*:?(.*)$/i.exec(line);
+      if (m) { items.push({ kind: 'boundary', label: m[1].trim(), line: lineIndex }); return; }
+      const br = BREAKS.find(function (b) { return b[0].test(line); });
+      if (br) { items.push({ kind: 'break', mode: br[1], line: lineIndex }); return; }
+      m = /^vuot[ae](?:\s+(\d{1,3}))?$/i.exec(line);
+      if (m) {
+        const n = m[1] ? parseInt(m[1], 10) : 1;
+        for (let i = 0; i < n; i++) {
+          items.push({ kind: 'cell', street: '', town: town, key: '', top: '', second: '', span: 1, line: lineIndex, tok: 0 });
+        }
+        return;
+      }
+      const colon = line.indexOf(':');
+      if (colon < 0) {
+        // A name alone takes one pigeonhole with the name on the street line (e.g. a farmhouse).
+        let name = line, span = 1;
+        const sm = /\(\s*(\d{1,2})\s*\)\s*$/.exec(name);
+        if (sm) { span = Math.max(1, parseInt(sm[1], 10)); name = name.slice(0, sm.index).trim(); }
+        items.push({ kind: 'cell', street: name, town: town, key: streetKey(name, town), top: '', second: '', span: span, line: lineIndex, tok: 0 });
+        return;
+      }
+      const street = line.slice(0, colon).trim();
+      const rest = line.slice(colon + 1);
+      if (!street) warnings.push({ line: lineIndex, text: 'Riga ' + (lineIndex + 1) + ': manca il nome della via prima dei due punti.' });
+      const tokens = rest.split(',');
+      if (tokens.length > 1 && tokens[tokens.length - 1].trim() === '') tokens.pop();
+      tokens.forEach(function (tok, tokIndex) {
+        const r = parseToken(tok);
+        if (r.error) {
+          warnings.push({ line: lineIndex, text: 'Riga ' + (lineIndex + 1) + ': ' + r.error + '.' });
+          return;
+        }
+        r.cells.forEach(function (c) {
+          items.push({ kind: 'cell', street: street, town: town, key: street ? streetKey(street, town) : '', top: c.top, second: c.second, span: c.span, line: lineIndex, tok: tokIndex });
+        });
+      });
+    });
+    return { items: items, warnings: warnings };
+  }
+
+  // The strips of a sub-zone in reading order: row 1 left to right, then row 2...
+  function stripOrder(sz) {
+    const out = [];
+    for (let i = 0; i < ROWS_PER_MODULE; i++) {
+      MODULES.forEach(function (m) {
+        if (sz.modules[m]) out.push({ m: m, i: i, capacity: MODULE_SLOTS[m], cells: [], boundaries: [], used: 0 });
+      });
+    }
+    return out;
+  }
+
+  /*
+   * Fills the strips with the route items, in reading order.
+   * A pigeonhole that does not fit at the end of a strip moves whole to the next one.
+   * Returns { strips, overflow, notes }.
+   */
+  function layoutRoute(items, strips) {
+    let p = 0, pos = 0;
+    const overflow = [];
+    const notes = [];
+    function next() { p++; pos = 0; }
+    function rowStart() { return pos === 0 && (p === 0 || p >= strips.length || strips[p].i !== strips[p - 1].i); }
+    items.forEach(function (it) {
+      if (it.kind === 'boundary') {
+        if (p < strips.length) strips[p].boundaries.push({ label: it.label, at: pos, line: it.line });
+        return;
+      }
+      if (it.kind === 'break') {
+        if (it.mode === 'strip') { if (pos > 0) next(); }
+        else if (it.mode === 'row') {
+          if (!rowStart() && p < strips.length) {
+            const row = strips[p].i;
+            while (p < strips.length && strips[p].i === row) p++;
+            pos = 0;
+          }
+        } else if (it.mode === 'skip') { if (pos > 0) next(); next(); }
+        return;
+      }
+      if (p >= strips.length) { overflow.push(it); return; }
+      if (it.span > strips[p].capacity) {
+        notes.push({ line: it.line, text: 'Riga ' + (it.line + 1) + ': una casella larga ' + it.span + ' non entra in nessuna striscia.' });
+        return;
+      }
+      if (pos + it.span > strips[p].capacity) {
+        notes.push({ line: it.line, soft: true, text: 'Riga ' + (it.line + 1) + ': «' + (it.top || it.street) + '» non entrava alla fine della striscia ed è passata alla striscia dopo.' });
+        next();
+        if (p >= strips.length) { overflow.push(it); return; }
+      }
+      const s = strips[p];
+      s.cells.push(Object.assign({}, it, { m: s.m, i: s.i, start: pos, end: pos + it.span - 1 }));
+      pos += it.span;
+      s.used = pos;
+      if (pos === s.capacity) next();
+    });
+    strips.forEach(function (s) { s.runs = streetRuns(s.cells, s.capacity); });
+    return { strips: strips, overflow: overflow, notes: notes };
+  }
+
+  /*
+   * Street-name runs on the lower line: consecutive pigeonholes of the same street.
+   * The lower line only ever holds street names; numbers stay in the pigeonholes above. Runs are cut at page edges so that every
+   * printed piece of strip still shows the street name.
+   */
+  function streetRuns(cells, capacity) {
+    const runs = [];
+    let cur = null;
+    cells.forEach(function (c) {
+      if (c.start >= capacity) { cur = null; return; }
+      const free = !!c.key;
+      const sameRun = cur && free && cur.key === c.key && cur.end + 1 === c.start &&
+        Math.floor(c.start / SLOTS_PER_PAGE) === Math.floor(cur.start / SLOTS_PER_PAGE) &&
+        Math.floor(c.end / SLOTS_PER_PAGE) === Math.floor(cur.start / SLOTS_PER_PAGE);
+      if (sameRun) { cur.end = c.end; return; }
+      if (free) {
+        cur = { key: c.key, street: c.street, town: c.town, start: c.start, end: Math.min(c.end, capacity - 1) };
+        runs.push(cur);
+      } else cur = null;
+    });
+    return runs;
+  }
+
+  function emptyLayout(m) {
+    return { m: m, cells: [], boundaries: [], runs: [], used: 0, capacity: MODULE_SLOTS[m] };
+  }
+
+  /*
+   * Lays out a sub-zone. Returns
+   *   { strips, overflow, warnings, used, capacity, [module][row] = { layout } }
+   */
+  function analyseSubzone(sz) {
+    const parsed = parseRoute(sz.route, sz.town);
+    const res = layoutRoute(parsed.items, stripOrder(sz));
+    const out = { strips: res.strips, overflow: res.overflow, warnings: parsed.warnings.concat(res.notes) };
+    out.capacity = res.strips.reduce(function (a, s) { return a + s.capacity; }, 0);
+    out.used = res.strips.reduce(function (a, s) { return a + s.used; }, 0) +
+      res.overflow.reduce(function (a, c) { return a + c.span; }, 0);
+    if (res.overflow.length) {
+      out.warnings.unshift({ line: res.overflow[0].line, text: 'Il giro è più lungo dei moduli: ' + res.overflow.length +
+        (res.overflow.length === 1 ? ' casella non entra' : ' caselle non entrano') + ' (dalla riga ' + (res.overflow[0].line + 1) + ').' });
+    }
+    MODULES.forEach(function (m) {
+      out[m] = [];
+      for (let i = 0; i < ROWS_PER_MODULE; i++) {
+        const s = res.strips.find(function (x) { return x.m === m && x.i === i; });
+        out[m].push({ layout: s || emptyLayout(m) });
+      }
+    });
+    return out;
+  }
+
+  function allCells(a) {
+    const cells = [];
+    a.strips.forEach(function (s) { s.cells.forEach(function (c) { cells.push(c); }); });
+    return cells.concat(a.overflow);
+  }
+
+  function placeName(sz, c) {
+    if (c.m === undefined) return (sz.name ? sz.name + ', ' : '') + 'fuori dai moduli';
+    return (sz.name ? sz.name + ', ' : '') + 'fila ' + (c.i + 1) + ' ' + MODULE_NAMES[c.m] + ' casella ' + (c.start + 1);
+  }
+
+  // Same house number of the same street written more than once in the project.
+  function findDuplicates(project) {
+    const seen = {};
+    const dups = [];
+    project.subzones.forEach(function (sz) {
+      allCells(analyseSubzone(sz)).forEach(function (c) {
+        [c.top, c.second].forEach(function (n) {
+          if (!c.key || !/^\d+\s*[A-Z]?$/i.test(n)) return;
+          const k = c.key + '|' + norm(n).replace(/\s/g, '');
+          (seen[k] = seen[k] || []).push(placeName(sz, c));
+        });
+      });
+    });
+    Object.keys(seen).forEach(function (k) {
+      if (seen[k].length > 1) {
+        const parts = k.split('|');
+        dups.push({ street: parts[0], number: parts[2], town: parts[1], where: seen[k] });
+      }
+    });
+    return dups;
+  }
+
+  // ---------------------------------------------------------------- old files (one text per strip)
+
+  // Joins the texts of the strips in reading order. A strip that was not full ends with
+  // FINE STRISCIA, an empty one becomes STRISCIA VUOTA, so every pigeonhole keeps its place.
+  function rowsToRoute(rows, modules, baseTown) {
+    const out = [];
+    let town = baseTown || '';
+    let pendingEmpty = 0;
+    for (let i = 0; i < ROWS_PER_MODULE; i++) {
+      MODULES.forEach(function (m) {
+        if (!modules[m]) return;
+        const text = String(rows && rows[m] && rows[m][i] || '').replace(/^\s+|\s+$/g, '');
+        const hasCells = parseRoute(text, town).items.some(function (it) { return it.kind === 'cell'; });
+        if (!hasCells) {
+          pendingEmpty++;
+          if (text) { out.push(text); }
+          return;
+        }
+        for (; pendingEmpty > 0; pendingEmpty--) out.push('STRISCIA VUOTA');
+        if (norm(town) !== norm(baseTown)) out.push('COMUNE: ' + baseTown);
+        town = baseTown;
+        out.push('# ---- fila ' + (i + 1) + ', ' + MODULE_NAMES[m] + ' ----');
+        out.push(text);
+        text.split(/\r?\n/).forEach(function (l) {
+          const mm = /^\s*comune\s*:(.*)$/i.exec(l);
+          if (mm) town = mm[1].trim() || baseTown;
+        });
+        const strip = [{ m: m, i: i, capacity: MODULE_SLOTS[m], cells: [], boundaries: [], used: 0 }];
+        const lay = layoutRoute(parseRoute(text, baseTown).items, strip);
+        if (lay.strips[0].used < MODULE_SLOTS[m] && !lay.overflow.length) out.push('FINE STRISCIA');
+      });
+    }
+    return out.join('\n');
+  }
+
+  // ---------------------------------------------------------------- colours
+
+  function paletteName(hex) {
+    const p = PALETTE.find(function (c) { return c.hex === String(hex).toUpperCase(); });
+    return p ? p.name : '#' + hex;
+  }
+
+  /*
+   * Gives every street without a colour one that differs from the streets next to it.
+   * Colours are stored in project.streets so they never change by themselves.
+   * Returns true if something was assigned.
+   */
+  function assignColors(project) {
+    const neighbours = {};
+    const order = [];
+    project.subzones.forEach(function (sz) {
+      const a = analyseSubzone(sz);
+      a.strips.concat([{ cells: a.overflow }]).forEach(function (s) {
+        let prev = null;
+        s.cells.forEach(function (c) {
+          if (!c.key) { prev = null; return; }
+          if (!neighbours[c.key]) { neighbours[c.key] = {}; order.push(c.key); }
+          if (prev && prev !== c.key) { neighbours[c.key][prev] = 1; neighbours[prev][c.key] = 1; }
+          prev = c.key;
+        });
+      });
+    });
+    const usage = {};
+    Object.keys(project.streets).forEach(function (k) {
+      const col = project.streets[k].color;
+      usage[col] = (usage[col] || 0) + 1;
+    });
+    let changed = false;
+    const choices = PALETTE.filter(function (c) { return c.name !== 'bianco'; });
+    order.forEach(function (key) {
+      if (project.streets[key]) return;
+      const taken = {};
+      Object.keys(neighbours[key]).forEach(function (n) { if (project.streets[n]) taken[project.streets[n].color] = 1; });
+      const free = choices.filter(function (c) { return !taken[c.hex]; });
+      const pool = free.length ? free : choices;
+      pool.sort(function (x, y) { return (usage[x.hex] || 0) - (usage[y.hex] || 0) || choices.indexOf(x) - choices.indexOf(y); });
+      project.streets[key] = { color: pool[0].hex };
+      usage[pool[0].hex] = (usage[pool[0].hex] || 0) + 1;
+      changed = true;
+    });
+    return changed;
+  }
+
+  function colorOf(project, key) {
+    return key && project.streets[key] ? project.streets[key].color : 'FFFFFF';
+  }
+
+  // ---------------------------------------------------------------- map
+
+  const ABBREVIATIONS = [
+    [/^C\.?\s*NA\b\.?/i, 'Cascina'], [/^CNA\b\.?/i, 'Cascina'], [/^V\.\s*LE\b/i, 'Viale'],
+    [/^P\.\s*Z?ZA\b/i, 'Piazza'], [/^V\.\s+/i, 'Via '], [/^LOC\.\s*/i, 'Località '],
+    [/\bF\.\s*LLI\b/i, 'Fratelli'],
+  ];
+
+  // Only street, number and town go to the map: never names of people or companies.
+  function mapQuery(street, top, town) {
+    let s = String(street || '').replace(/\?/g, '').replace(/\(.*?\)/g, '').trim();
+    if (!s) return '';
+    ABBREVIATIONS.forEach(function (a) { s = s.replace(a[0], a[1]); });
+    const m = /^(\d+)(\s*[A-Z](?![A-Z]))?/i.exec(String(top || '').trim());
+    const number = m ? (m[1] + (m[2] ? m[2].trim() : '')) : '';
+    return (s + (number ? ' ' + number : '') + (town ? ', ' + town : '')).replace(/\s+/g, ' ').trim();
+  }
+
+  // ---------------------------------------------------------------- text format
+
+  const MODULE_WORDS = { alaA: 'ala A', casello: 'casello', alaB: 'ala B' };
+
+  function projectToText(project) {
+    const out = [];
+    out.push('# Casellino: file di testo. Si riapre con il programma (Apri, oppure Altro → Importa testo).');
+    out.push('ZONA: ' + project.zone);
+    out.push('TITOLARE: ' + project.owner);
+    project.subzones.forEach(function (sz) {
+      out.push('');
+      out.push('== SOTTOZONA ' + sz.name + ' ==');
+      out.push('COMUNE: ' + sz.town);
+      out.push('MODULI: ' + MODULES.filter(function (m) { return sz.modules[m]; }).map(function (m) { return MODULE_WORDS[m]; }).join(', '));
+      out.push('-- GIRO --');
+      const t = sz.route.replace(/\s+$/, '');
+      if (t) out.push(t);
+    });
+    const keys = Object.keys(project.streets);
+    if (keys.length) {
+      out.push('');
+      out.push('== COLORI ==');
+      keys.forEach(function (k) {
+        const p = k.split('|');
+        out.push(p[0] + ' (' + p[1] + '): ' + paletteName(project.streets[k].color));
+      });
+    }
+    return out.join('\n') + '\n';
+  }
+
+  /*
+   * Reads the text format. Accepts the route ("-- GIRO --" followed by the lines) and the
+   * old format with one section per strip ("-- CASELLO · FILA 1 --"), which is converted.
+   */
+  function textToProject(text) {
+    const p = newProject();
+    p.subzones = [];
+    let sz = null, mode = 'settings', inColors = false, townSet = false;
+    let oldRows = null, oldMod = null, oldRow = -1;
+    function finish() {
+      if (!sz) return;
+      if (oldRows) {
+        const conv = rowsToRoute(oldRows, sz.modules, sz.town);
+        sz.route = sz.route ? sz.route + '\n' + conv : conv;
+      }
+      sz.route = sz.route.replace(/^\n+|\n+$/g, '');
+      if (!MODULES.some(function (m) { return sz.modules[m]; })) sz.modules.casello = true;
+    }
+    String(text || '').split(/\r?\n/).forEach(function (raw) {
+      const line = raw.replace(/\s+$/, '');
+      const t = line.trim();
+      let m = /^==\s*(.*?)\s*==$/.exec(t);
+      if (m) {
+        finish();
+        if (/^colori$/i.test(m[1])) { inColors = true; sz = null; return; }
+        inColors = false;
+        sz = newSubzone(m[1].replace(/^sottozona\s*/i, '').trim(), '');
+        sz.modules = { alaA: false, casello: false, alaB: false };
+        mode = 'settings'; townSet = false; oldRows = null; oldMod = null;
+        p.subzones.push(sz);
+        return;
+      }
+      if (inColors) {
+        m = /^(.*?)\s*\((.*)\)\s*:\s*(.+)$/.exec(t);
+        if (m) {
+          const name = m[3].trim().toLowerCase();
+          const pal = PALETTE.find(function (c) { return c.name === name; });
+          const hex = pal ? pal.hex : name.replace('#', '').toUpperCase();
+          if (/^[0-9A-F]{6}$/.test(hex)) p.streets[streetKey(m[1], m[2])] = { color: hex };
+        }
+        return;
+      }
+      if (!sz) {
+        m = /^zona\s*:(.*)$/i.exec(t); if (m) { p.zone = m[1].trim(); return; }
+        m = /^titolare\s*:(.*)$/i.exec(t); if (m) { p.owner = m[1].trim(); return; }
+        return;
+      }
+      if (/^--\s*giro\s*-*$/i.test(t)) { mode = 'route'; return; }
+      m = /^--\s*(ALA\s*A|ALETTA\s*A|ALA\s*B|ALETTA\s*B|CASELL\w*)\s*[·,.\-]?\s*FILA\s*(\d)\s*-*$/i.exec(t);
+      if (m) {
+        const w = m[1].toUpperCase().replace(/\s+/g, '');
+        oldMod = /^CASELL/.test(w) ? 'casello' : (/A$/.test(w) ? 'alaA' : 'alaB');
+        oldRow = Math.min(ROWS_PER_MODULE, Math.max(1, parseInt(m[2], 10))) - 1;
+        sz.modules[oldMod] = true;
+        if (!oldRows) oldRows = { alaA: ['', '', '', ''], casello: ['', '', '', ''], alaB: ['', '', '', ''] };
+        mode = 'old';
+        return;
+      }
+      if (mode === 'old') {
+        oldRows[oldMod][oldRow] += (oldRows[oldMod][oldRow] ? '\n' : '') + line;
+        return;
+      }
+      if (mode === 'settings') {
+        m = /^comune\s*:(.*)$/i.exec(t); if (m && !townSet) { sz.town = m[1].trim(); townSet = true; return; }
+        m = /^moduli\s*:(.*)$/i.exec(t);
+        if (m) {
+          const w = m[1].toLowerCase();
+          sz.modules.alaA = /\b(?:ala|aletta)\s*a\b/.test(w);
+          sz.modules.alaB = /\b(?:ala|aletta)\s*b\b/.test(w);
+          sz.modules.casello = /casell/.test(w);
+          return;
+        }
+        if (!t) return;
+        mode = 'route';
+      }
+      sz.route += (sz.route ? '\n' : '') + line;
+    });
+    finish();
+    if (!p.subzones.length) p.subzones.push(newSubzone('', ''));
+    return p;
+  }
+
+  // Classifies a street name by its first word (via, vicolo, piazza, cascina...).
+  const STREET_TYPES = [
+    ['VIA', 'via'], ['V.', 'via'], ['VIALE', 'viale'], ['V.LE', 'viale'], ['VICOLO', 'vicolo'], ['VIC.', 'vicolo'],
+    ['PIAZZA', 'piazza'], ['P.ZA', 'piazza'], ['P.ZZA', 'piazza'], ['PIAZZALE', 'piazzale'], ['LARGO', 'largo'],
+    ['CORSO', 'corso'], ['STRADA', 'strada'], ['CASCINA', 'cascina'], ['C.NA', 'cascina'], ['CNA', 'cascina'],
+    ['CONTRADA', 'contrada'], ['LOCALITA', 'località'], ['LOCALITÀ', 'località'], ['LOC.', 'località'],
+    ['FRAZIONE', 'frazione'], ['BORGO', 'borgo'], ['SALITA', 'salita'], ['RIONE', 'rione'],
+    ['VIALETTO', 'vialetto'], ['TRAVERSA', 'traversa'], ['CALLE', 'calle'], ['BORGATA', 'borgata'],
+  ];
+
+  function streetType(name) {
+    const first = norm(name).split(' ')[0];
+    const t = STREET_TYPES.find(function (x) { return x[0] === first; });
+    return t ? t[1] : 'altro';
+  }
+
+  return {
+    MODULES: MODULES,
+    MODULE_SLOTS: MODULE_SLOTS,
+    MODULE_NAMES: MODULE_NAMES,
+    ROWS_PER_MODULE: ROWS_PER_MODULE,
+    SLOTS_PER_PAGE: SLOTS_PER_PAGE,
+    PALETTE: PALETTE,
+    norm: norm,
+    streetKey: streetKey,
+    newProject: newProject,
+    newSubzone: newSubzone,
+    sanitizeProject: sanitizeProject,
+    parseToken: parseToken,
+    parseRoute: parseRoute,
+    stripOrder: stripOrder,
+    layoutRoute: layoutRoute,
+    streetRuns: streetRuns,
+    analyseSubzone: analyseSubzone,
+    allCells: allCells,
+    findDuplicates: findDuplicates,
+    rowsToRoute: rowsToRoute,
+    assignColors: assignColors,
+    colorOf: colorOf,
+    paletteName: paletteName,
+    mapQuery: mapQuery,
+    projectToText: projectToText,
+    textToProject: textToProject,
+    streetType: streetType,
+  };
+});
+</script>
+<script>
+/*
+ * Casellino - writes the printable .xlsx strips.
+ * © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
+ * The sheet geometry (column widths, row heights, margins, paper, default font)
+ * is copied number by number from the blank template, so that the printed
+ * strip matches the pigeonholes. Do not change GEOMETRY without re-measuring the template.
+ */
+(function (root, factory) {
+  const api = factory(root.CasellinoCore || (typeof require === 'function' ? require('./core.js') : null));
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.CasellinoXlsx = api;
+})(typeof self !== 'undefined' ? self : this, function (Core) {
+  'use strict';
+
+  const GEOMETRY = {
+    // <cols> of the template, unchanged: [min, max, width, customWidth]
+    cols: [
+      [1, 1, '4.28515625', true], [2, 34, '6.7109375', true], [35, 35, '3.85546875', true],
+      [36, 36, '2.42578125', true], [37, 37, '4.42578125', true], [38, 63, '6.7109375', true],
+      [64, 128, '6.7109375', true], [129, 129, '4.42578125', true], [130, 130, '2', true],
+      [131, 131, '4.42578125', true], [132, 164, '6.7109375', true], [165, 165, '4.42578125', true],
+      [166, 199, '6.7109375', true], [200, 16384, '6.7109375', false],
+    ],
+    defaultColWidth: '6.7109375',
+    defaultRowHeight: '18',
+    rowHeights: (function () {
+      const h = { 1: '18', 2: '18', 3: '15', 12: '15', 49: '19.9', 51: '19.9' };
+      for (let r = 4; r <= 47; r++) if (r !== 12) h[r] = r % 2 === 0 ? '28.35' : '19.9';
+      return h;
+    })(),
+    margins: { left: '0', right: '0', top: '0.19685039370078741', bottom: '0.19685039370078741', header: '0', footer: '0' },
+    paperSize: 9,           // A4
+    orientation: 'landscape',
+    defaultFont: '<font><sz val="10"/><name val="Arial"/></font>', // decides the width of a column unit
+    dimension: 'A1:GQ51',
+  };
+
+  // Where each module sits in the sheet (1-based column numbers).
+  const LAYOUT = {
+    alaA: { first: 2, labelLeft: 1, labelRight: 35, word: 'Ala A', labelFont: 10 },
+    casello: { first: 38, labelLeft: 37, labelRight: 129, word: 'Fila', labelFont: 12 },
+    alaB: { first: 132, labelLeft: 131, labelRight: 165, word: 'Ala B', labelFont: 10 },
+  };
+  const NUMBER_ROWS = [3, 12];
+  const topRowOf = function (i) { return 4 + 2 * i; };     // civico line of row i (0-based)
+  const bottomRowOf = function (i) { return 5 + 2 * i; };  // street line of row i
+
+  function colName(n) {
+    let s = '';
+    while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+    return s;
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ------------------------------------------------------------------ styles
+
+  function StyleBook() {
+    this.fonts = [GEOMETRY.defaultFont];
+    this.fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'];
+    this.borders = ['<border><left/><right/><top/><bottom/><diagonal/></border>'];
+    this.xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'];
+    this.index = {};
+  }
+  StyleBook.prototype.add = function (list, xml) {
+    const found = list.indexOf(xml);
+    if (found >= 0) return found;
+    list.push(xml);
+    return list.length - 1;
+  };
+  StyleBook.prototype.font = function (size, bold, color) {
+    return this.add(this.fonts, '<font>' + (bold ? '<b/>' : '') + '<sz val="' + size + '"/>' +
+      (color ? '<color rgb="FF' + color + '"/>' : '') + '<name val="Arial"/><family val="2"/></font>');
+  };
+  StyleBook.prototype.fill = function (hex) {
+    if (!hex || hex === 'FFFFFF') return 0;
+    return this.add(this.fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF' + hex +
+      '"/><bgColor indexed="64"/></patternFill></fill>');
+  };
+  StyleBook.prototype.border = function (b) {
+    const side = function (name, style) {
+      return style ? '<' + name + ' style="' + style + '"><color indexed="64"/></' + name + '>' : '<' + name + '/>';
+    };
+    // b.d: a diagonal line from bottom-left to top-right (two numbers in one pigeonhole)
+    return this.add(this.borders, '<border' + (b.d ? ' diagonalUp="1"' : '') + '>' + side('left', b.l) +
+      side('right', b.r) + side('top', b.t) + side('bottom', b.b) + side('diagonal', b.d ? 'thin' : null) + '</border>');
+  };
+  // s = { size, bold, color, fill, border:{l,r,t,b}, text, wrap, shrink, rot, h }
+  StyleBook.prototype.xf = function (s) {
+    const fontId = this.font(s.size || 10, !!s.bold, s.color);
+    const fillId = this.fill(s.fill);
+    const borderId = this.border(s.border || {});
+    const numFmt = s.text ? 49 : 0;
+    let al = ' horizontal="' + (s.h || 'center') + '" vertical="center"';
+    if (s.rot) al += ' textRotation="' + s.rot + '"';
+    if (s.wrap) al += ' wrapText="1"';
+    if (s.shrink) al += ' shrinkToFit="1"';
+    const xml = '<xf numFmtId="' + numFmt + '" fontId="' + fontId + '" fillId="' + fillId + '" borderId="' +
+      borderId + '" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">' +
+      '<alignment' + al + '/></xf>';
+    return this.add(this.xfs, xml);
+  };
+  StyleBook.prototype.xml = function () {
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<fonts count="' + this.fonts.length + '">' + this.fonts.join('') + '</fonts>' +
+      '<fills count="' + this.fills.length + '">' + this.fills.join('') + '</fills>' +
+      '<borders count="' + this.borders.length + '">' + this.borders.join('') + '</borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+      '<cellXfs count="' + this.xfs.length + '">' + this.xfs.join('') + '</cellXfs>' +
+      '<cellStyles count="1"><cellStyle name="Normale" xfId="0" builtinId="0"/></cellStyles>' +
+      '</styleSheet>';
+  };
+
+  function StringTable() { this.list = []; this.map = {}; }
+  StringTable.prototype.id = function (s) {
+    if (!(s in this.map)) { this.map[s] = this.list.length; this.list.push(s); }
+    return this.map[s];
+  };
+  StringTable.prototype.xml = function () {
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + this.list.length +
+      '" uniqueCount="' + this.list.length + '">' +
+      this.list.map(function (s) { return '<si><t xml:space="preserve">' + esc(s) + '</t></si>'; }).join('') + '</sst>';
+  };
+
+  // ------------------------------------------------------------------ one sheet
+
+  // Big bold digits for house numbers; smaller wrapped text for names.
+  function topTextStyle(text) {
+    const t = String(text);
+    if (t.length <= 6 || !/\s/.test(t)) return { size: 20, shrink: true };
+    return { size: 11, wrap: true };
+  }
+
+  /*
+   * Two numbers in one pigeonhole, split by a diagonal line: the first in the upper-left
+   * corner, the second in the lower-right one. Excel has one alignment per cell, so the
+   * second line is pushed right with spaces (widths of Arial bold, at 96 dpi).
+   */
+  const SLOT_PX = 47; // width of one slot column in pixels (6.7109375 characters of Arial 10)
+  function textPx(s, size) {
+    const em = size * 96 / 72;
+    let w = 0;
+    for (const ch of String(s)) {
+      if (/[0-9]/.test(ch)) w += 0.556 * em;
+      else if (ch === ' ') w += 0.278 * em;
+      else if (/[A-Z]/.test(ch)) w += 0.722 * em;
+      else if (/[a-z]/.test(ch)) w += 0.6 * em;
+      else w += 0.333 * em;
+    }
+    return w;
+  }
+  function diagonalText(first, second, span) {
+    const longest = Math.max(String(first).length, String(second).length);
+    const size = longest <= 2 ? 12 : (longest <= 3 ? 11 : 9); // two lines of 12 pt fill the 1 cm row
+    const free = SLOT_PX * span - 8 - textPx(second, size);
+    const spaces = Math.max(1, Math.round(free / textPx(' ', size)));
+    return { text: first + '\n' + ' '.repeat(spaces) + second, size: size };
+  }
+
+  function SheetBuilder(styles, strings) {
+    this.styles = styles;
+    this.strings = strings;
+    this.cells = {};   // row -> col -> { s, v, t }
+    this.merges = [];
+  }
+  SheetBuilder.prototype.put = function (row, col, value, style) {
+    if (!this.cells[row]) this.cells[row] = {};
+    const c = { s: this.styles.xf(style) };
+    if (value !== '' && value !== null && value !== undefined) {
+      const v = String(value);
+      if (/^[1-9]\d{0,8}$/.test(v)) { c.t = 'n'; c.v = v; }
+      else { c.t = 's'; c.v = this.strings.id(v); }
+    }
+    this.cells[row][col] = c;
+  };
+  // Writes value in the first cell, styles the whole block, merges if needed.
+  SheetBuilder.prototype.block = function (row1, col1, row2, col2, value, style) {
+    for (let r = row1; r <= row2; r++) {
+      for (let c = col1; c <= col2; c++) {
+        const edge = Object.assign({}, style.border || {});
+        if (c !== col1) delete edge.l;
+        if (c !== col2) delete edge.r;
+        if (r !== row1) delete edge.t;
+        if (r !== row2) delete edge.b;
+        this.put(r, c, r === row1 && c === col1 ? value : '', Object.assign({}, style, { border: edge }));
+      }
+    }
+    if (row1 !== row2 || col1 !== col2) this.merges.push(colName(col1) + row1 + ':' + colName(col2) + row2);
+  };
+  // Manual page breaks every SLOTS_PER_PAGE slots inside each module (column numbers, 1-based,
+  // of the last column on a page).
+  function pageBreaks(sz) {
+    const out = [];
+    Core.MODULES.forEach(function (m) {
+      if (!sz.modules[m]) return;
+      for (let s = Core.SLOTS_PER_PAGE; s < Core.MODULE_SLOTS[m]; s += Core.SLOTS_PER_PAGE) {
+        out.push(LAYOUT[m].first + s - 1);
+      }
+    });
+    return out;
+  }
+
+  SheetBuilder.prototype.xml = function (printSelected, breaks) {
+    const g = GEOMETRY;
+    let x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheetPr><pageSetUpPr autoPageBreaks="0"/></sheetPr>' +
+      '<dimension ref="' + g.dimension + '"/>' +
+      '<sheetViews><sheetView' + (printSelected ? ' tabSelected="1"' : '') +
+      ' zoomScaleNormal="100" workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews>' +
+      '<sheetFormatPr defaultColWidth="' + g.defaultColWidth + '" defaultRowHeight="' + g.defaultRowHeight +
+      '" customHeight="1"/><cols>';
+    g.cols.forEach(function (c) {
+      x += '<col min="' + c[0] + '" max="' + c[1] + '" width="' + c[2] + '"' + (c[3] ? ' customWidth="1"' : '') + '/>';
+    });
+    x += '</cols><sheetData>';
+    const rows = {};
+    Object.keys(g.rowHeights).forEach(function (r) { rows[r] = true; });
+    Object.keys(this.cells).forEach(function (r) { rows[r] = true; });
+    const self = this;
+    Object.keys(rows).map(Number).sort(function (a, b) { return a - b; }).forEach(function (r) {
+      const ht = g.rowHeights[r];
+      x += '<row r="' + r + '"' + (ht ? ' ht="' + ht + '" customHeight="1"' : '') + '>';
+      const rowCells = self.cells[r] || {};
+      Object.keys(rowCells).map(Number).sort(function (a, b) { return a - b; }).forEach(function (c) {
+        const cell = rowCells[c];
+        x += '<c r="' + colName(c) + r + '" s="' + cell.s + '"' + (cell.t === 's' ? ' t="s"' : '') + '>' +
+          (cell.v !== undefined ? '<v>' + cell.v + '</v>' : '') + '</c>';
+      });
+      x += '</row>';
+    });
+    x += '</sheetData>';
+    if (this.merges.length) {
+      x += '<mergeCells count="' + this.merges.length + '">' +
+        this.merges.map(function (m) { return '<mergeCell ref="' + m + '"/>'; }).join('') + '</mergeCells>';
+    }
+    const mg = g.margins;
+    x += '<pageMargins left="' + mg.left + '" right="' + mg.right + '" top="' + mg.top + '" bottom="' + mg.bottom +
+      '" header="' + mg.header + '" footer="' + mg.footer + '"/>' +
+      '<pageSetup paperSize="' + g.paperSize + '" orientation="' + g.orientation + '"/>' +
+      '<headerFooter alignWithMargins="0"/>';
+    if (breaks && breaks.length) {
+      x += '<colBreaks count="' + breaks.length + '" manualBreakCount="' + breaks.length + '">' +
+        breaks.map(function (b) { return '<brk id="' + b + '" max="1048575" man="1"/>'; }).join('') + '</colBreaks>';
+    }
+    x += '</worksheet>';
+    return x;
+  };
+
+  function buildSheet(project, sz, styles, strings, selected) {
+    const sb = new SheetBuilder(styles, strings);
+    const analysis = Core.analyseSubzone(sz);
+    const head = { size: 14, bold: true, h: 'left' };
+
+    sb.put(1, 38, 'Zona', head);
+    sb.put(1, 39, [project.zone, sz.name].filter(Boolean).join(' · ') || '', head);
+    sb.block(1, 41, 1, 44, 'Titolare', head);
+    sb.block(1, 45, 1, 47, project.owner || '', head);
+
+    Core.MODULES.forEach(function (m) {
+      if (!sz.modules[m]) return;
+      const L = LAYOUT[m];
+      const slots = Core.MODULE_SLOTS[m];
+      const last = L.first + slots - 1;
+
+      NUMBER_ROWS.forEach(function (r) {
+        for (let s = 0; s < slots; s++) {
+          sb.put(r, L.first + s, String(s + 1), { size: 8, bold: true, border: { l: 'dotted', r: 'dotted' } });
+        }
+      });
+
+      for (let i = 0; i < Core.ROWS_PER_MODULE; i++) {
+        const top = topRowOf(i), bottom = bottomRowOf(i);
+        const label = { size: L.labelFont, bold: true, color: 'FFFFFF', fill: '7F7F7F', wrap: true,
+          border: { l: 'medium', r: 'medium', t: 'medium', b: 'medium' } };
+        sb.block(top, L.labelLeft, bottom, L.labelLeft, (i + 1) + ' ' + L.word, Object.assign({ rot: 90 }, label));
+        sb.block(top, L.labelRight, bottom, L.labelRight, (i + 1) + ' ' + L.word, Object.assign({ rot: 180 }, label));
+
+        const lay = analysis[m][i].layout;
+        const edges = function (start, end) {
+          return { l: L.first + start === L.first ? 'medium' : 'thin', r: L.first + end === last ? 'medium' : 'thin' };
+        };
+        const usedTop = {}, usedBottom = {};
+
+        lay.cells.forEach(function (c) {
+          if (c.start >= slots) return;
+          const end = Math.min(c.end, slots - 1);
+          const color = Core.colorOf(project, c.key);
+          const e = edges(c.start, end);
+          if (c.second) {
+            const d = diagonalText(c.top, c.second, end - c.start + 1);
+            sb.block(top, L.first + c.start, top, L.first + end, d.text,
+              { bold: true, text: true, fill: color, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: true } });
+          } else {
+            sb.block(top, L.first + c.start, top, L.first + end, c.top,
+              Object.assign({ bold: true, text: true, fill: color, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
+          }
+          for (let s = c.start; s <= end; s++) usedTop[s] = true;
+        });
+        lay.runs.forEach(function (run) {
+          const e = edges(run.start, run.end);
+          sb.block(bottom, L.first + run.start, bottom, L.first + run.end, run.street,
+            { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
+          for (let s = run.start; s <= run.end; s++) usedBottom[s] = true;
+        });
+        // Slots left empty, and pigeonholes with no street, get a plain lower line.
+        for (let s = 0; s < slots; s++) {
+          const e = edges(s, s);
+          if (!usedTop[s]) sb.put(top, L.first + s, '', { size: 20, bold: true, text: true, shrink: true, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } });
+          if (!usedBottom[s]) {
+            sb.put(bottom, L.first + s, '', { size: 16, bold: true, text: true, shrink: true,
+              border: { l: s === 0 ? 'medium' : null, r: s === slots - 1 ? 'medium' : null, b: 'medium' } });
+          }
+        }
+      }
+    });
+    return sb.xml(selected, pageBreaks(sz));
+  }
+
+  // ------------------------------------------------------------------ workbook
+
+  function sheetNames(project) {
+    const used = {};
+    return project.subzones.map(function (sz, i) {
+      let n = String(sz.name || '').replace(/[\[\]:*?\/\\]/g, ' ').replace(/^'+|'+$/g, '').trim().slice(0, 31) || ('Sottozona ' + (i + 1));
+      let k = n, j = 2;
+      while (used[k.toUpperCase()]) { k = n.slice(0, 28) + ' ' + j++; }
+      used[k.toUpperCase()] = true;
+      return k;
+    });
+  }
+
+  function printArea(name, sz) {
+    const q = "'" + name.replace(/'/g, "''") + "'!";
+    return Core.MODULES.filter(function (m) { return sz.modules[m]; }).map(function (m) {
+      const L = LAYOUT[m];
+      return q + '$' + colName(L.first) + '$4:$' + colName(L.first + Core.MODULE_SLOTS[m] - 1) + '$11';
+    }).join(',');
+  }
+
+  function buildWorkbookFiles(project) {
+    Core.assignColors(project);
+    const styles = new StyleBook();
+    const strings = new StringTable();
+    const names = sheetNames(project);
+    const files = [];
+    project.subzones.forEach(function (sz, i) {
+      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: buildSheet(project, sz, styles, strings, i === 0) });
+    });
+    let wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<bookViews><workbookView activeTab="0"/></bookViews><sheets>';
+    names.forEach(function (n, i) { wb += '<sheet name="' + esc(n) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; });
+    wb += '</sheets><definedNames>';
+    project.subzones.forEach(function (sz, i) {
+      const area = printArea(names[i], sz);
+      if (area) wb += '<definedName name="_xlnm.Print_Area" localSheetId="' + i + '">' + esc(area) + '</definedName>';
+    });
+    wb += '</definedNames></workbook>';
+    const n = project.subzones.length;
+    let rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+    for (let i = 0; i < n; i++) {
+      rels += '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>';
+    }
+    rels += '<Relationship Id="rId' + (n + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      '<Relationship Id="rId' + (n + 2) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>' +
+      '</Relationships>';
+    let types = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>';
+    for (let i = 0; i < n; i++) {
+      types += '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+    }
+    types += '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+      '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' +
+      '</Types>';
+    const rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+      '</Relationships>';
+    return [
+      { name: '[Content_Types].xml', data: types },
+      { name: '_rels/.rels', data: rootRels },
+      { name: 'xl/workbook.xml', data: wb },
+      { name: 'xl/_rels/workbook.xml.rels', data: rels },
+      { name: 'xl/styles.xml', data: styles.xml() },
+      { name: 'xl/sharedStrings.xml', data: strings.xml() },
+    ].concat(files);
+  }
+
+  // ------------------------------------------------------------------ zip (stored, no compression)
+
+  const CRC_TABLE = (function () {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function zip(files, date) {
+    const enc = new TextEncoder();
+    const d = date || new Date();
+    const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+    files.forEach(function (f) {
+      const name = enc.encode(f.name);
+      const data = typeof f.data === 'string' ? enc.encode(f.data) : f.data;
+      const crc = crc32(data);
+      const local = new DataView(new ArrayBuffer(30));
+      local.setUint32(0, 0x04034b50, true); local.setUint16(4, 20, true); local.setUint16(6, 0x0800, true);
+      local.setUint16(8, 0, true); local.setUint16(10, dosTime, true); local.setUint16(12, dosDate, true);
+      local.setUint32(14, crc, true); local.setUint32(18, data.length, true); local.setUint32(22, data.length, true);
+      local.setUint16(26, name.length, true); local.setUint16(28, 0, true);
+      chunks.push(new Uint8Array(local.buffer), name, data);
+      const cd = new DataView(new ArrayBuffer(46));
+      cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true);
+      cd.setUint16(8, 0x0800, true); cd.setUint16(10, 0, true); cd.setUint16(12, dosTime, true);
+      cd.setUint16(14, dosDate, true); cd.setUint32(16, crc, true); cd.setUint32(20, data.length, true);
+      cd.setUint32(24, data.length, true); cd.setUint16(28, name.length, true); cd.setUint16(30, 0, true);
+      cd.setUint16(32, 0, true); cd.setUint16(34, 0, true); cd.setUint16(36, 0, true);
+      cd.setUint32(38, 0, true); cd.setUint32(42, offset, true);
+      central.push(new Uint8Array(cd.buffer), name);
+      offset += 30 + name.length + data.length;
+    });
+    let cdSize = 0;
+    central.forEach(function (c) { cdSize += c.length; });
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(4, 0, true); end.setUint16(6, 0, true);
+    end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, offset, true); end.setUint16(20, 0, true);
+    const all = chunks.concat(central, [new Uint8Array(end.buffer)]);
+    let total = 0;
+    all.forEach(function (c) { total += c.length; });
+    const out = new Uint8Array(total);
+    let p = 0;
+    all.forEach(function (c) { out.set(c, p); p += c.length; });
+    return out;
+  }
+
+  function buildXlsx(project, date) {
+    return zip(buildWorkbookFiles(project), date);
+  }
+
+  return { GEOMETRY: GEOMETRY, LAYOUT: LAYOUT, colName: colName, buildWorkbookFiles: buildWorkbookFiles, buildXlsx: buildXlsx, crc32: crc32, zip: zip };
+});
+</script>
+<script>
+/*
+ * © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
+ * Example project with invented streets and town, used by the "Esempio" button and by tests.
+ * Never put real streets or names here (the repository must not contain work data).
+ */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.CasellinoExample = api;
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  return [
+    '# Esempio con vie e comune inventati',
+    'ZONA: 9',
+    'TITOLARE: Mario Esempio',
+    '',
+    '== SOTTOZONA 9A ==',
+    'COMUNE: Borgo Esempio',
+    'MODULI: casello, ala B',
+    '-- GIRO --',
+    '# Il giro dall\'inizio alla fine: riempie fila 1 del casello, poi fila 1 dell\'ala, poi fila 2...',
+    'VIA DEI TIGLI: 1..15, 14..2',
+    'VIA DELLE ROSE: 1/3, 5/7, 9, 11 (2), 2..12',
+    'PIAZZA DEL POZZO: 1, 2, 3, MUNICIPIO (2)',
+    'VICOLO STRETTO: 1-9 dispari',
+    'VIA DEI MULINI: 20A..20E, 22/24, 26, 28',
+    'CASCINA BELVEDERE (2)',
+    'VIA DEI TIGLI: 17..31, 16..30',
+    'VIA DEL CANALE: 2/4, 6/8, 10, 1, 3, 5A\\5B, 7, 9..19',
+    'FINE STRISCIA',
+    '# qui si passa all\'ala, a destra, sempre nella fila 1',
+    'VIA DELLE ROSE: 13..21, 14..24',
+    'FINE FILA',
+    'VIA GARIBALDINI: 1..39',
+    'CONTRADA DEL SOLE: 1, 2, 3',
+    'VIA GARIBALDINI: 2..40',
+    'vuota',
+    'LARGO DEL MERCATO: 1/2, 3/4, 5',
+    'FINE STRISCIA',
+    'CASCINA ALTA',
+    'CASCINA BASSA',
+    'FINE FILA',
+    'VIA DEI PESCATORI: 1-29 dispari, 2-24 pari',
+    'FINE FILA',
+    'VIA DEL BOSCO: 1..9',
+    'CONFINE: 9B',
+    'COMUNE: Villa Esempio',
+    'VIA DELLA STAZIONE: 1, 2, 3, 4',
+    '',
+  ].join('\n');
+});
+</script>
+<script>
+/*
+ * Casellino - page behaviour.
+ * © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
+ * Each sub-zone has one route text (the source of truth). The strips, colours and
+ * side panels are recomputed from it. The frame is read like a book: left to right,
+ * top to bottom.
+ */
+(function () {
+  'use strict';
+  const C = window.CasellinoCore;
+  const X = window.CasellinoXlsx;
+  const EXAMPLE = window.CasellinoExample;
+  const STORE_KEY = 'casellino.progetto';
+
+  const state = {
+    project: null,
+    current: 0,          // index of the open sub-zone
+    analysis: null,      // analyseSubzone() of the open sub-zone
+    selected: null,      // { p: strip index, idx: cell index } chosen by tapping
+    caret: null,         // { p, idx } of the pigeonhole under the text cursor
+    els: {},
+    mapQuery: '',
+  };
+
+  // ------------------------------------------------------------ helpers
+
+  function $(id) { return document.getElementById(id); }
+
+  function h(tag, attrs) {
+    const el = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        const v = attrs[k];
+        if (v === null || v === undefined || v === false) return;
+        if (k === 'text') el.textContent = v;
+        else if (k === 'class') el.className = v;
+        else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), v);
+        else el.setAttribute(k, v === true ? '' : v);
+      });
+    }
+    for (let i = 2; i < arguments.length; i++) {
+      const kid = arguments[i];
+      if (kid === null || kid === undefined || kid === false) continue;
+      el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+
+  function debounce(fn, ms) {
+    let t = null;
+    return function () {
+      const args = arguments;
+      clearTimeout(t);
+      t = setTimeout(function () { fn.apply(null, args); }, ms);
+    };
+  }
+
+  function toast(text) {
+    const old = document.querySelector('.toast');
+    if (old) old.remove();
+    const el = h('div', { class: 'toast', role: 'status' }, text);
+    document.body.append(el);
+    setTimeout(function () { el.remove(); }, 4000);
+  }
+
+  function download(name, data, type) {
+    const blob = new Blob([data], { type: type });
+    const url = URL.createObjectURL(blob);
+    const a = h('a', { href: url, download: name });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function fileBaseName() {
+    const p = state.project;
+    const z = (p.zone || p.subzones.map(function (s) { return s.name; }).filter(Boolean).join('-') || 'senza nome');
+    return 'Casellino zona ' + String(z).replace(/[\\/:*?"<>|]/g, ' ').trim();
+  }
+
+  function sz() { return state.project.subzones[state.current]; }
+
+  function stripTitle(s) { return 'Fila ' + (s.i + 1) + ' · ' + C.MODULE_NAMES[s.m]; }
+
+  const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+  // ------------------------------------------------------------ storage
+
+  function storeLoad() {
+    try {
+      let raw = localStorage.getItem(STORE_KEY);
+      if (!raw) {
+        // work saved by versions before v0.5.0, under an older name
+        for (let i = 0; i < localStorage.length && !raw; i++) {
+          const k = localStorage.key(i);
+          if (/^casell.*\.progetto\.v1$/.test(k)) raw = localStorage.getItem(k);
+        }
+      }
+      return raw ? C.sanitizeProject(JSON.parse(raw)) : null;
+    } catch (e) { return null; }
+  }
+
+  const storeSave = debounce(function () {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state.project));
+      const d = new Date();
+      $('saved').textContent = 'Salvato su questo dispositivo alle ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      $('saved').textContent = 'Non riesco a salvare su questo dispositivo: usa «Salva file»';
+    }
+  }, 400);
+
+  function changed() {
+    C.assignColors(state.project);
+    storeSave();
+  }
+
+  // ------------------------------------------------------------ top fields and tabs
+
+  function renderProjectFields() {
+    $('zone').value = state.project.zone;
+    $('owner').value = state.project.owner;
+  }
+
+  function openSubzone(i) {
+    state.current = i;
+    state.selected = null;
+    state.caret = null;
+    renderTabs();
+    renderSubzone();
+    refreshSide();
+  }
+
+  function renderTabs() {
+    const tabs = $('tabs');
+    tabs.textContent = '';
+    state.project.subzones.forEach(function (s, i) {
+      tabs.append(h('button', {
+        type: 'button', role: 'tab', 'aria-selected': i === state.current ? 'true' : 'false',
+        onclick: function () { openSubzone(i); },
+      }, 'Sottozona ' + (s.name || i + 1)));
+    });
+    tabs.append(h('button', {
+      type: 'button',
+      onclick: function () {
+        const last = state.project.subzones[state.project.subzones.length - 1];
+        const s = C.newSubzone('', last ? last.town : '');
+        if (last) s.modules = Object.assign({}, last.modules);
+        state.project.subzones.push(s);
+        changed();
+        openSubzone(state.project.subzones.length - 1);
+        const name = document.querySelector('#subzone input.name');
+        if (name) name.focus();
+      },
+    }, '+ Sottozona'));
+  }
+
+  function renderSubzone() {
+    const s = sz();
+    const box = $('subzone');
+    box.textContent = '';
+    const name = h('input', { class: 'name', value: s.name, placeholder: 'es. 2A', autocomplete: 'off' });
+    name.addEventListener('input', function () { s.name = name.value; changed(); renderTabs(); });
+    const town = h('input', { class: 'town', value: s.town, placeholder: 'es. Borgo Esempio', autocomplete: 'off' });
+    town.addEventListener('input', function () { s.town = town.value; changed(); refreshRoute(); refreshSide(); });
+    const pick = h('div', { class: 'modules-pick', role: 'group', 'aria-label': 'Moduli' });
+    const labels = { alaA: 'Ala A (a sinistra)', casello: 'Casello', alaB: 'Ala B (a destra)' };
+    C.MODULES.forEach(function (m) {
+      const cb = h('input', { type: 'checkbox', checked: s.modules[m] });
+      cb.addEventListener('change', function () {
+        s.modules[m] = cb.checked;
+        changed(); refreshRoute(); refreshSide();
+      });
+      pick.append(h('label', null, cb, labels[m] + ' · ' + C.MODULE_SLOTS[m]));
+    });
+    box.append(
+      h('label', null, 'Sottozona', name),
+      h('label', { class: 'grow-m' }, 'Comune', town),
+      h('div', { class: 'grow' }, h('div', { class: 'small muted', style: 'margin-bottom:3px' }, 'Moduli, da sinistra a destra'), pick)
+    );
+    if (state.project.subzones.length > 1) {
+      box.append(h('button', {
+        type: 'button', class: 'danger',
+        onclick: function () {
+          if (!confirm('Elimino la sottozona ' + (s.name || state.current + 1) + ' con tutto il suo giro?')) return;
+          state.project.subzones.splice(state.current, 1);
+          changed();
+          openSubzone(Math.max(0, state.current - 1));
+        },
+      }, 'Elimina sottozona'));
+    }
+    renderRouteEditor();
+  }
+
+  // ------------------------------------------------------------ the route editor
+
+  function renderRouteEditor() {
+    const s = sz();
+    const box = $('route');
+    box.textContent = '';
+    const ta = h('textarea', {
+      class: 'route-text', spellcheck: 'false', autocapitalize: 'characters', autocomplete: 'off',
+      'aria-label': 'Il giro della sottozona',
+      placeholder: 'VIA DEI TIGLI: 1..15, 14..2\nVIA DELLE ROSE: 1/3, 5, 7 (2)\nCASCINA ALTA',
+    });
+    ta.value = s.route;
+    const els = {
+      ta: ta,
+      used: h('span', { class: 'used' }),
+      meter: h('div', { class: 'meter' }, h('i')),
+      warnings: h('ul', { class: 'warnings' }),
+      here: h('div', { class: 'here' }),
+      suggest: h('div', { class: 'suggest' }),
+      nowTitle: h('div', { class: 'now-title' }),
+      nowWrap: h('div', { class: 'strip-wrap' }),
+      strips: $('strips'),
+    };
+    state.els = els;
+
+    const onType = debounce(function () { refreshRoute(); refreshSide(); }, 150);
+    ta.addEventListener('input', function () {
+      s.route = ta.value;
+      fitTextarea(ta);
+      changed();
+      onType();
+      caretChangedLater();
+    });
+    ['click', 'keyup', 'focus'].forEach(function (ev) { ta.addEventListener(ev, caretChangedLater); });
+
+    const empty = !state.project.subzones.some(function (x) { return x.route.trim(); });
+    box.append(
+      h('div', { class: 'row-head' }, h('h2', null, 'Il giro' + (s.name ? ' della ' + s.name : '')), els.meter, els.used),
+      h('p', { class: 'small muted hint' },
+        'Scrivi il giro dall\'inizio alla fine, una via per riga. Le caselle si riempiono come le righe di un libro: ' +
+        'da sinistra a destra e dall\'alto in basso (fila 1 di ogni modulo, poi fila 2…). ',
+        h('button', { type: 'button', class: 'link', onclick: function () { $('dlg-help').showModal(); } }, 'Come si scrive'),
+        empty ? ' · ' : null,
+        empty ? h('button', { type: 'button', class: 'link', onclick: loadExample }, 'Guarda un esempio') : null),
+      ta, els.suggest, els.here, els.warnings,
+      h('div', { class: 'now' }, els.nowTitle, els.nowWrap));
+    fitTextarea(ta);
+    refreshRoute();
+  }
+
+  // Grows with the text, wrapped lines included, up to most of the screen, then scrolls.
+  function fitTextarea(ta) {
+    ta.style.height = 'auto';
+    const max = Math.max(240, Math.round(window.innerHeight * 0.6));
+    ta.style.height = Math.min(ta.scrollHeight + 4, max) + 'px';
+  }
+
+  function refreshRoute() {
+    const els = state.els;
+    if (!els.ta) return;
+    const a = C.analyseSubzone(sz());
+    state.analysis = a;
+    const over = a.used > a.capacity;
+    els.used.textContent = a.used + ' / ' + a.capacity + ' caselle';
+    els.used.classList.toggle('over', over);
+    els.meter.classList.toggle('over', over);
+    els.meter.classList.toggle('full', a.used === a.capacity);
+    els.meter.firstChild.style.width = (a.capacity ? Math.min(100, a.used / a.capacity * 100) : 0) + '%';
+
+    els.warnings.textContent = '';
+    a.warnings.slice(0, 12).forEach(function (w) {
+      els.warnings.append(h('li', { class: w.soft ? 'soft' : '' },
+        w.line >= 0 ? h('button', { type: 'button', class: 'link', onclick: function () { goToLine(w.line); } }, w.text) : w.text));
+    });
+    if (a.warnings.length > 12) els.warnings.append(h('li', { class: 'soft' }, 'e altri ' + (a.warnings.length - 12) + ' avvisi'));
+    const unsure = C.allCells(a).filter(function (c) { return /\?/.test(c.top + c.second + c.street); }).length;
+    if (unsure) els.warnings.append(h('li', { class: 'soft' }, unsure + (unsure === 1 ? ' casella da controllare' : ' caselle da controllare') + ' (hanno un «?», sono segnate in rosso).'));
+
+    renderAllStrips(a);
+    renderNow();
+  }
+
+  function renderAllStrips(a) {
+    const box = state.els.strips;
+    box.textContent = '';
+    if (!a.strips.length) {
+      box.append(h('p', { class: 'muted' }, 'Accendi almeno un modulo (Casello o Ala) per vedere le strisce.'));
+      return;
+    }
+    for (let i = 0; i < C.ROWS_PER_MODULE; i++) {
+      const row = a.strips.map(function (s, p) { return { s: s, p: p }; }).filter(function (x) { return x.s.i === i; });
+      if (!row.length) continue;
+      const sec = h('section', { class: 'fila' }, h('h3', null, 'Fila ' + (i + 1)));
+      row.forEach(function (x) {
+        const strip = h('div', { class: 'strip', style: '--n:' + x.s.capacity });
+        renderStrip(strip, x.s, x.p);
+        sec.append(h('div', { class: 'strip-head' },
+          h('b', null, C.MODULE_NAMES[x.s.m]),
+          h('span', { class: 'used' + (x.s.used === x.s.capacity ? ' full' : '') }, x.s.used + ' / ' + x.s.capacity)),
+        h('div', { class: 'strip-wrap' }, strip));
+      });
+      box.append(sec);
+    }
+    if (a.overflow.length) {
+      box.append(h('p', { class: 'bad' }, 'Non entrano nei moduli: ' + a.overflow.map(function (c) {
+        return (c.street ? c.street + ' ' : '') + (c.top || '');
+      }).join(', ')));
+    }
+  }
+
+  function renderStrip(el, s, p, focusIdx) {
+    const proj = state.project;
+    el.textContent = '';
+    const sel = state.selected && state.selected.p === p ? state.selected.idx : -1;
+    s.cells.forEach(function (c, idx) {
+      const bg = '#' + C.colorOf(proj, c.key);
+      const unsure = /\?/.test(c.top + c.second + c.street);
+      const tip = (c.street || 'senza via') + (c.top ? ' · ' + c.top : '') + (c.second ? ' / ' + c.second : '') +
+        ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') + ' · riga ' + (c.line + 1) + ' del giro';
+      const pick = function () { select(p, idx); };
+      const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '');
+      const longText = c.top.length > 4 * c.span;
+      const inside = c.second
+        ? [h('span', { class: 'd1' }, c.top), h('span', { class: 'd2' }, c.second)]
+        : [c.top];
+      el.append(h.apply(null, ['div', {
+        class: 'cell top' + (c.second ? ' diag' : '') + (longText && !c.second ? ' long' : '') + (unsure ? ' unsure' : '') + mark,
+        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';background-color:' + bg, title: tip, onclick: pick,
+        'data-idx': idx,
+      }].concat(inside)));
+    });
+    s.runs.forEach(function (r) {
+      const idx = s.cells.findIndex(function (c) { return c.start === r.start; });
+      const tight = r.street.length * 6.5 > (r.end - r.start + 1) * 30;
+      el.append(h('div', {
+        class: 'cell run' + (tight ? ' tight' : ''), title: r.street + (r.town ? ' · ' + r.town : ''),
+        style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key),
+        onclick: function () { select(p, idx); },
+      }, r.street));
+    });
+    for (let k = C.SLOTS_PER_PAGE; k < s.capacity; k += C.SLOTS_PER_PAGE) {
+      el.append(h('div', { class: 'cut', style: 'left:calc(' + k + ' * var(--slot) - 1px)', title: 'Qui finisce un foglio A4' }));
+    }
+    s.boundaries.forEach(function (b) {
+      el.append(h('div', { class: 'boundary', style: 'left:calc(' + b.at + ' * var(--slot) - 1px)' }, h('span', null, b.label || 'confine')));
+    });
+  }
+
+  // The strip where the text cursor is, with its pigeonhole highlighted.
+  function renderNow() {
+    const els = state.els;
+    const a = state.analysis;
+    els.nowWrap.textContent = '';
+    const target = state.caret || state.selected;
+    if (!a || !target || !a.strips[target.p]) {
+      els.nowTitle.textContent = a && a.strips.length ? 'Tocca una riga del giro o una casella: qui vedi la sua striscia.' : '';
+      return;
+    }
+    const s = a.strips[target.p];
+    const c = s.cells[target.idx];
+    els.nowTitle.textContent = 'Sei qui: ' + stripTitle(s) + (c ? ' · casella ' + (c.start + 1) + ' di ' + s.capacity +
+      ' · foglio ' + (Math.floor(c.start / C.SLOTS_PER_PAGE) + 1) : '');
+    const strip = h('div', { class: 'strip', style: '--n:' + s.capacity });
+    renderStrip(strip, s, target.p, target.idx);
+    els.nowWrap.append(strip);
+    const cell = strip.querySelector('[data-idx="' + target.idx + '"]');
+    if (cell) {
+      requestAnimationFrame(function () {
+        els.nowWrap.scrollLeft = Math.max(0, cell.offsetLeft - els.nowWrap.clientWidth / 2 + cell.offsetWidth / 2);
+      });
+    }
+  }
+
+  // ------------------------------------------------------------ caret, suggestions, map
+
+  function caretContext(ta, baseTown) {
+    const pos = ta.selectionStart || 0;
+    const text = ta.value;
+    const lineStart = text.lastIndexOf('\n', pos - 1) + 1;
+    let lineEnd = text.indexOf('\n', pos);
+    if (lineEnd < 0) lineEnd = text.length;
+    const line = text.slice(lineStart, lineEnd);
+    const before = text.slice(0, lineStart).split('\n');
+    const lineIndex = before.length - 1;
+    let town = baseTown;
+    before.forEach(function (l) {
+      const m = /^\s*comune\s*:(.*)$/i.exec(l);
+      if (m) town = m[1].trim() || baseTown;
+    });
+    const ctx = { line: line, lineIndex: lineIndex, lineStart: lineStart, lineEnd: lineEnd, town: town, street: '', token: '', tok: 0, typingStreet: false, skip: false };
+    const t = line.trim();
+    if (!t || t[0] === '#' || /^(comune|confine)\s*:?/i.test(t) || /^vuot[ae]\b/i.test(t) || /^(fine\s+(striscia|fila)|striscia\s+vuota)/i.test(t)) {
+      ctx.skip = true;
+      return ctx;
+    }
+    const colon = line.indexOf(':');
+    const col = pos - lineStart;
+    if (colon < 0) {
+      ctx.street = t.replace(/\(\s*\d+\s*\)\s*$/, '').trim();
+      ctx.typingStreet = true;
+      return ctx;
+    }
+    ctx.street = line.slice(0, colon).trim();
+    ctx.typingStreet = col <= colon;
+    if (col > colon) {
+      const left = line.slice(colon + 1, col);
+      const right = line.slice(col);
+      const a = left.lastIndexOf(',');
+      const b = right.indexOf(',');
+      ctx.token = (left.slice(a + 1) + (b < 0 ? right : right.slice(0, b))).trim();
+      ctx.tok = left.split(',').length - 1;
+    }
+    return ctx;
+  }
+
+  function firstTop(token) {
+    if (!token) return '';
+    const r = C.parseToken(token);
+    return r.cells && r.cells.length ? r.cells[0].top : '';
+  }
+
+  // Finds the pigeonhole written at a line (and comma group) of the route.
+  function findCell(line, tok) {
+    const a = state.analysis;
+    if (!a) return null;
+    let firstOfLine = null;
+    for (let p = 0; p < a.strips.length; p++) {
+      const cells = a.strips[p].cells;
+      for (let idx = 0; idx < cells.length; idx++) {
+        if (cells[idx].line !== line) continue;
+        if (cells[idx].tok === tok) return { p: p, idx: idx };
+        if (!firstOfLine) firstOfLine = { p: p, idx: idx };
+      }
+    }
+    return firstOfLine;
+  }
+
+  const caretChangedLater = debounce(caretChanged, 60);
+
+  function caretChanged() {
+    const els = state.els;
+    if (!els.ta) return;
+    const ctx = caretContext(els.ta, sz().town);
+    showSuggestions(ctx);
+    state.caret = ctx.skip ? null : findCell(ctx.lineIndex, ctx.tok);
+    renderNow();
+    if (ctx.skip || !ctx.street) { els.here.textContent = ''; return; }
+    const q = C.mapQuery(ctx.street, firstTop(ctx.token), ctx.town);
+    showHere(els.here, q);
+    setMapLater(q);
+  }
+
+  function showHere(el, q) {
+    el.textContent = '';
+    if (!q) return;
+    el.append('📍 ' + q + ' · ', h('a', { href: mapsLink(q), target: '_blank', rel: 'noopener' }, 'Google Maps'));
+  }
+
+  function knownStreets(town) {
+    const set = {};
+    const list = state.project.streetLists[C.norm(town)] || [];
+    list.forEach(function (n) { set[C.norm(n)] = n; });
+    Object.keys(state.project.streets).forEach(function (k) {
+      const parts = k.split('|');
+      if (parts[1] === C.norm(town)) set[parts[0]] = set[parts[0]] || parts[0];
+    });
+    return Object.keys(set).map(function (k) { return set[k]; });
+  }
+
+  function showSuggestions(ctx) {
+    const els = state.els;
+    els.suggest.textContent = '';
+    if (!ctx.typingStreet || ctx.street.length < 2) return;
+    const q = C.norm(ctx.street);
+    const words = q.split(' ');
+    const found = knownStreets(ctx.town).filter(function (n) {
+      const nn = C.norm(n);
+      return nn !== q && words.every(function (w) { return nn.indexOf(w) >= 0; });
+    }).slice(0, 8);
+    found.forEach(function (name) {
+      els.suggest.append(h('button', {
+        type: 'button',
+        onmousedown: function (e) { e.preventDefault(); },
+        onclick: function () {
+          const ta = els.ta;
+          const ctx2 = caretContext(ta, sz().town);
+          const colon = ctx2.line.indexOf(':');
+          const newLine = C.norm(name) + (colon >= 0 ? ctx2.line.slice(colon) : ': ');
+          ta.value = ta.value.slice(0, ctx2.lineStart) + newLine + ta.value.slice(ctx2.lineEnd);
+          const caret = ctx2.lineStart + newLine.length;
+          ta.focus();
+          ta.setSelectionRange(caret, caret);
+          ta.dispatchEvent(new Event('input'));
+        },
+      }, name));
+    });
+  }
+
+  function mapsLink(q) {
+    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+  }
+
+  function setMap(q) {
+    if (!q || q === state.mapQuery) return;
+    state.mapQuery = q;
+    $('map-where').textContent = q;
+    const box = $('map-box');
+    box.textContent = '';
+    box.append(h('iframe', {
+      title: 'Mappa di ' + q, loading: 'lazy', referrerpolicy: 'no-referrer-when-downgrade',
+      src: 'https://maps.google.com/maps?q=' + encodeURIComponent(q) + '&z=17&output=embed',
+    }));
+    const link = $('map-link');
+    link.href = mapsLink(q);
+    link.hidden = false;
+  }
+  const setMapLater = debounce(setMap, 700);
+
+  // ------------------------------------------------------------ selection
+
+  function select(p, idx) {
+    state.selected = { p: p, idx: idx };
+    state.caret = null;
+    renderAllStrips(state.analysis);
+    renderNow();
+    const s = state.analysis.strips[p];
+    const c = s && s.cells[idx];
+    const card = $('selection-card');
+    const box = $('selection');
+    box.textContent = '';
+    if (!c) { card.hidden = true; return; }
+    card.hidden = false;
+    const what = [c.top, c.second].filter(Boolean).join(' / ') || '(vuota)';
+    const q = C.mapQuery(c.street, c.top, c.town);
+    box.append(
+      h('div', { class: 'sel-info' },
+        h('p', null, h('b', null, c.street || 'Senza via'), c.town ? ' · ' + c.town : ''),
+        h('p', null, 'Scritto nella casella: ', h('b', null, what)),
+        h('p', { class: 'muted small' }, stripTitle(s) + ', casella ' + (c.start + 1) +
+          (c.span > 1 ? ' – ' + (c.end + 1) + ' (larga ' + c.span + ')' : '') + ' · foglio ' +
+          (Math.floor(c.start / C.SLOTS_PER_PAGE) + 1) + ' · riga ' + (c.line + 1) + ' del giro'),
+        h('p', { class: 'actions-inline' },
+          h('button', { type: 'button', onclick: function () { goToLine(c.line); } }, 'Vai alla riga del giro'),
+          q ? h('a', { class: 'btn', href: mapsLink(q), target: '_blank', rel: 'noopener' }, 'Apri in Google Maps') : null)));
+    if (q) setMap(q);
+    if (isTouch) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function goToLine(line) {
+    const ta = state.els.ta;
+    if (!ta) return;
+    const lines = ta.value.split('\n');
+    let start = 0;
+    for (let k = 0; k < line && k < lines.length; k++) start += lines[k].length + 1;
+    ta.focus();
+    ta.setSelectionRange(start, start + (lines[line] || '').length);
+    // put the line in view inside the text box
+    const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 21;
+    ta.scrollTop = Math.max(0, line * lineHeight - ta.clientHeight / 3);
+    ta.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    caretChanged();
+  }
+
+  // ------------------------------------------------------------ side panel
+
+  const refreshSide = debounce(function () {
+    renderStreets();
+    renderDuplicates();
+  }, 250);
+
+  function renderStreets() {
+    const p = state.project;
+    const usage = {};
+    const order = [];
+    p.subzones.forEach(function (s) {
+      C.allCells(C.analyseSubzone(s)).forEach(function (c) {
+        if (!c.key) return;
+        if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0 }; order.push(c.key); }
+        usage[c.key].n += c.span;
+      });
+    });
+    const byTown = {};
+    order.forEach(function (k) {
+      const t = usage[k].town || '';
+      (byTown[t] = byTown[t] || []).push(k);
+    });
+    const towns = Object.keys(byTown);
+    p.subzones.forEach(function (s) {
+      if (s.town && !towns.some(function (t) { return C.norm(t) === C.norm(s.town); })) towns.push(s.town);
+    });
+
+    const lists = $('town-lists');
+    lists.textContent = '';
+    towns.filter(Boolean).forEach(function (t) {
+      const list = p.streetLists[C.norm(t)] || [];
+      lists.append(h('div', { class: 'town-list-line' },
+        h('span', null, 'Elenco vie di ' + t + ': ' + (list.length ? list.length + ' nomi' : 'non c\'è')),
+        h('button', { type: 'button', class: 'link', onclick: function () { openList(t); } }, list.length ? 'cambia' : 'aggiungi')));
+    });
+
+    const ul = $('streets');
+    ul.textContent = '';
+    $('streets-count').textContent = order.length ? '(' + order.length + ')' : '';
+    if (!order.length) {
+      ul.append(h('li', { class: 'muted' }, 'Le vie che scrivi compaiono qui, con il loro colore.'));
+      return;
+    }
+    Object.keys(byTown).forEach(function (t) {
+      if (Object.keys(byTown).length > 1) ul.append(h('li', { class: 'town-head' }, t || 'Comune non scritto'));
+      const official = (p.streetLists[C.norm(t)] || []).map(comparable);
+      byTown[t].sort(function (a, b) { return usage[a].street.localeCompare(usage[b].street, 'it'); }).forEach(function (k) {
+        const u = usage[k];
+        const color = C.colorOf(p, k);
+        const sel = h('select', { 'aria-label': 'Colore di ' + u.street });
+        C.PALETTE.forEach(function (c) {
+          sel.append(h('option', { value: c.hex, selected: c.hex === color }, c.name));
+        });
+        sel.addEventListener('change', function () {
+          p.streets[k] = { color: sel.value };
+          changed(); refreshRoute(); renderStreets();
+        });
+        const unknown = official.length && official.indexOf(comparable(u.street)) < 0;
+        ul.append(h('li', null,
+          h('span', { class: 'sw', style: 'background:#' + color, title: 'Cambia colore: ' + C.paletteName(color) }, sel),
+          h('span', { class: 'nm', title: u.street }, u.street),
+          unknown ? h('span', { class: 'flag', title: 'Questo nome non è nell\'elenco delle vie del comune' }, 'non in elenco') : null,
+          h('span', { class: 'n' }, u.n)));
+      });
+    });
+  }
+
+  // Same street written as "C.NA X" or "CASCINA X", "V. X" or "VIA X".
+  function comparable(name) {
+    return C.norm(C.mapQuery(name, '', '')).replace(/[.'’]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function renderDuplicates() {
+    const d = C.findDuplicates(state.project);
+    const card = $('dups-card');
+    const ul = $('dups');
+    ul.textContent = '';
+    card.hidden = !d.length;
+    d.slice(0, 60).forEach(function (x) {
+      ul.append(h('li', null, h('b', null, x.street + ' ' + x.number), ' · ' + x.where.join('; ')));
+    });
+    if (d.length > 60) ul.append(h('li', { class: 'muted' }, 'e altri ' + (d.length - 60)));
+  }
+
+  // ------------------------------------------------------------ official street lists
+
+  function openList(town) {
+    const dlg = $('dlg-list');
+    $('list-town').textContent = town;
+    $('list-text').value = (state.project.streetLists[C.norm(town)] || []).join('\n');
+    $('osm-status').textContent = '';
+    dlg.dataset.town = town;
+    dlg.showModal();
+  }
+
+  async function downloadFromOsm() {
+    const town = $('dlg-list').dataset.town;
+    const status = $('osm-status');
+    status.textContent = 'Scarico l\'elenco…';
+    const safe = town.replace(/\\/g, '').replace(/"/g, '\\"');
+    const query = '[out:json][timeout:40];' +
+      'area["boundary"="administrative"]["admin_level"="8"]["name"="' + safe + '"]->.a;' +
+      '(way["highway"]["name"](area.a);' +
+      'node["place"]["name"](area.a);way["place"]["name"](area.a);' +
+      'node["name"~"^(cascina|cascine|contrada|localit)",i](area.a);way["name"~"^(cascina|cascine|contrada|localit)",i](area.a););' +
+      'out tags;';
+    try {
+      const res = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      const names = {};
+      (json.elements || []).forEach(function (e) {
+        const n = e.tags && e.tags.name;
+        if (n) names[C.norm(n)] = true;
+      });
+      const list = Object.keys(names).sort(function (a, b) { return a.localeCompare(b, 'it'); });
+      if (!list.length) {
+        status.textContent = 'Non ho trovato vie per «' + town + '». Controlla che il nome del comune sia scritto giusto.';
+        return;
+      }
+      const ta = $('list-text');
+      const merged = {};
+      ta.value.split('\n').map(function (x) { return C.norm(x); }).filter(Boolean).concat(list)
+        .forEach(function (n) { merged[n] = true; });
+      ta.value = Object.keys(merged).sort(function (a, b) { return a.localeCompare(b, 'it'); }).join('\n');
+      status.textContent = 'Trovati ' + list.length + ' nomi. Controllali e poi «Salva l\'elenco».';
+    } catch (e) {
+      status.textContent = 'Non riesco a scaricare l\'elenco: serve la connessione a internet. Puoi anche incollarlo a mano.';
+    }
+  }
+
+  // ------------------------------------------------------------ files
+
+  function exportExcel() {
+    try {
+      const bytes = X.buildXlsx(state.project);
+      download(fileBaseName() + '.xlsx', bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      changed();
+      toast('Excel creato: stampalo su A4 orizzontale, al 100%, senza «adatta alla pagina».');
+    } catch (e) {
+      toast('Non sono riuscito a creare l\'Excel: ' + e.message);
+    }
+  }
+
+  function saveFile() {
+    download(fileBaseName() + '.json', JSON.stringify(state.project, null, 1), 'application/json');
+    toast('File salvato. Riaprilo con «Apri» su questo o su un altro dispositivo.');
+  }
+
+  function openFile(file) {
+    const reader = new FileReader();
+    reader.onload = function () {
+      const text = String(reader.result || '');
+      let p = null;
+      try { p = C.sanitizeProject(JSON.parse(text)); } catch (e) { p = C.textToProject(text); }
+      setProject(p);
+      toast('Aperto: ' + file.name);
+    };
+    reader.onerror = function () { toast('Non riesco a leggere il file.'); };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  function setProject(p) {
+    state.project = p;
+    state.current = 0;
+    state.selected = null;
+    state.caret = null;
+    changed();
+    renderAll();
+  }
+
+  function isEmptyProject() {
+    return state.project.subzones.every(function (s) { return !s.route.trim(); });
+  }
+
+  function loadExample() {
+    if (!isEmptyProject() && !confirm('Carico l\'esempio al posto del lavoro aperto? Se ti serve, prima usa «Salva file».')) return;
+    setProject(C.textToProject(EXAMPLE));
+  }
+
+  function renderAll() {
+    renderProjectFields();
+    renderTabs();
+    renderSubzone();
+    renderStreets();
+    renderDuplicates();
+    $('selection-card').hidden = true;
+  }
+
+  // ------------------------------------------------------------ start
+
+  function wire() {
+    $('zone').addEventListener('input', function (e) { state.project.zone = e.target.value; changed(); });
+    $('owner').addEventListener('input', function (e) { state.project.owner = e.target.value; changed(); });
+    $('btn-excel').addEventListener('click', exportExcel);
+    $('btn-save').addEventListener('click', saveFile);
+    $('btn-open').addEventListener('click', function () { $('file-input').click(); });
+    $('file-input').addEventListener('change', function (e) {
+      const f = e.target.files && e.target.files[0];
+      if (f) openFile(f);
+      e.target.value = '';
+    });
+    const closeMenu = function () { document.querySelector('.menu').open = false; };
+    $('btn-new').addEventListener('click', function () {
+      closeMenu();
+      if (!isEmptyProject() && !confirm('Comincio da capo? Il lavoro aperto si perde, se non l\'hai salvato con «Salva file».')) return;
+      setProject(C.newProject());
+    });
+    $('btn-import').addEventListener('click', function () { closeMenu(); $('import-text').value = ''; $('dlg-import').showModal(); });
+    $('btn-export-text').addEventListener('click', function () {
+      closeMenu();
+      download(fileBaseName() + '.txt', C.projectToText(state.project), 'text/plain;charset=utf-8');
+    });
+    $('btn-example').addEventListener('click', function () { closeMenu(); loadExample(); });
+    $('btn-help').addEventListener('click', function () { closeMenu(); $('dlg-help').showModal(); });
+    $('dlg-import').addEventListener('close', function () {
+      if ($('dlg-import').returnValue !== 'ok') return;
+      const text = $('import-text').value;
+      if (!text.trim()) return;
+      setProject(C.textToProject(text));
+      toast('Testo importato.');
+    });
+    $('btn-osm').addEventListener('click', downloadFromOsm);
+    $('dlg-list').addEventListener('close', function () {
+      const dlg = $('dlg-list');
+      if (dlg.returnValue !== 'ok') return;
+      const list = $('list-text').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      const key = C.norm(dlg.dataset.town);
+      if (list.length) state.project.streetLists[key] = list; else delete state.project.streetLists[key];
+      changed(); renderStreets();
+    });
+    document.addEventListener('click', function (e) {
+      const menu = document.querySelector('.menu');
+      if (menu.open && !menu.contains(e.target)) menu.open = false;
+    });
+    window.addEventListener('resize', debounce(function () { if (state.els.ta) fitTextarea(state.els.ta); }, 200));
+  }
+
+  // Offline use and "add to home screen" when the page is served from a web address.
+  function registerOffline() {
+    if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+    navigator.serviceWorker.register('sw.js').catch(function () { /* works online anyway */ });
+  }
+
+  function start() {
+    wire();
+    const stored = storeLoad();
+    const p = location.hash === '#esempio' ? C.textToProject(EXAMPLE) : stored;
+    state.project = p || C.newProject();
+    C.assignColors(state.project);
+    renderAll();
+    if (stored && p === stored) $('saved').textContent = 'Ripreso da questo dispositivo';
+    const v = $('version');
+    if (v && window.CASELLINO_VERSION) v.textContent = 'Versione ' + window.CASELLINO_VERSION;
+    registerOffline();
+  }
+
+  start();
+})();
+</script>
+</body>
+</html>

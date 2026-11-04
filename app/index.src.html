@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Casellino</title>
+<meta name="description" content="Scrivi il giro con vie e civici e crea il file Excel delle strisce da stampare per le caselle.">
+<meta name="theme-color" content="#2c6db3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Casellino">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>window.CASELLINO_VERSION = '__VERSIONE__';</script>
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <h1>Casellino</h1>
+      <p class="saved" id="saved">Non ancora salvato</p>
+    </div>
+  </div>
+  <nav class="actions">
+    <button type="button" id="btn-open">Apri</button>
+    <button type="button" id="btn-save">Salva file</button>
+    <button type="button" class="primary" id="btn-excel">Crea Excel</button>
+    <details class="menu">
+      <summary>Altro</summary>
+      <div class="menu-list">
+        <button type="button" id="btn-new">Comincia da capo</button>
+        <button type="button" id="btn-import">Importa testo</button>
+        <button type="button" id="btn-export-text">Scarica come testo</button>
+        <button type="button" id="btn-example">Carica l'esempio</button>
+        <button type="button" id="btn-help">Come si scrive</button>
+        <p class="small muted version" id="version"></p>
+        <p class="small muted version">© 2026 Emmanuel Surace · uso gratuito non commerciale</p>
+      </div>
+    </details>
+    <input type="file" id="file-input" accept=".json,.txt,application/json,text/plain" hidden>
+  </nav>
+</header>
+
+<main class="layout">
+  <section class="editor" aria-label="Il giro">
+    <div class="card project">
+      <label>Zona <input id="zone" autocomplete="off" placeholder="es. 9"></label>
+      <label>Titolare <input id="owner" autocomplete="off" placeholder="il tuo nome"></label>
+    </div>
+
+    <div class="tabs" id="tabs" role="tablist"></div>
+
+    <div class="card subzone" id="subzone"></div>
+
+    <div class="card route" id="route"></div>
+
+    <div class="card">
+      <h2>Le strisce, come si leggono: da sinistra a destra, dall'alto in basso</h2>
+      <div id="strips"></div>
+    </div>
+  </section>
+
+  <aside class="side" aria-label="Mappa e vie">
+    <div class="card">
+      <h2>Mappa</h2>
+      <p class="where" id="map-where">Tocca una casella o scrivi una via per vederla sulla mappa.</p>
+      <div class="map-box" id="map-box"></div>
+      <p class="small"><a id="map-link" href="#" target="_blank" rel="noopener" hidden>Apri in Google Maps</a></p>
+      <p class="small muted">Alla mappa vanno solo via, civico e comune: mai i nomi delle persone.</p>
+    </div>
+    <div class="card" id="selection-card" hidden>
+      <h2>Casella scelta</h2>
+      <div id="selection"></div>
+    </div>
+    <div class="card">
+      <h2>Vie <span class="count" id="streets-count"></span></h2>
+      <div id="town-lists"></div>
+      <ul class="streets" id="streets"></ul>
+    </div>
+    <div class="card" id="dups-card" hidden>
+      <h2>Civici scritti due volte</h2>
+      <ul class="dups" id="dups"></ul>
+    </div>
+  </aside>
+</main>
+
+<footer class="foot">Casellino · © 2026 Emmanuel Surace (Garadron) · uso gratuito, non commerciale · i tuoi dati restano su questo dispositivo</footer>
+
+<dialog id="dlg-help">
+  <form method="dialog" class="dlg">
+    <h2>Come si scrive</h2>
+    <p>Il casello si legge come un libro: <b>da sinistra a destra e dall'alto in basso</b>. Si scrive il giro dall'inizio alla fine, una via per riga: il programma riempie la fila 1 di ogni modulo (Ala A, Casello, Ala B), poi la fila 2, e così via. Per spostare una via basta spostare la sua riga.</p>
+    <table class="help">
+      <tr><td><code>VIA DEI TIGLI: 1, 3, 5</code></td><td>tre caselle, una per civico</td></tr>
+      <tr><td><code>2/4</code></td><td>una casella divisa in obliquo: 2 in alto a sinistra, 4 in basso a destra</td></tr>
+      <tr><td><code>61\59</code> o <code>67-69</code></td><td>una casella con due civici uno accanto all'altro</td></tr>
+      <tr><td><code>1..15</code></td><td>1, 3, 5 … 15 (resta sullo stesso lato della via)</td></tr>
+      <tr><td><code>14..2</code></td><td>14, 12 … 2 (all'indietro)</td></tr>
+      <tr><td><code>1..6</code></td><td>1, 2, 3, 4, 5, 6 (tutti)</td></tr>
+      <tr><td><code>1-15 dispari</code>, <code>2-20 pari</code></td><td>come sopra, scritto a parole</td></tr>
+      <tr><td><code>20G..20M</code></td><td>20G, 20H, 20I, 20L, 20M (senza J e K)</td></tr>
+      <tr><td><code>35A (2)</code></td><td>una casella larga due</td></tr>
+      <tr><td><code>OFFICINA ROSSI (2)</code> o <code>(3)</code></td><td>un'azienda o una cascina con tanta posta: casella larga due o tre</td></tr>
+      <tr><td><code>vuota</code></td><td>una casella vuota della via</td></tr>
+      <tr><td><code>vuote 3</code> (riga da sola)</td><td>tre caselle vuote, senza via</td></tr>
+      <tr><td><code>CASCINA ALTA (2)</code> (riga senza due punti)</td><td>una casella con il nome scritto sotto</td></tr>
+      <tr><td><code>FINE STRISCIA</code></td><td>il resto della striscia resta vuoto: si continua sulla striscia dopo (a destra, o la fila sotto)</td></tr>
+      <tr><td><code>FINE FILA</code></td><td>il resto della fila resta vuoto: si continua all'inizio della fila sotto</td></tr>
+      <tr><td><code>STRISCIA VUOTA</code></td><td>salta una striscia intera</td></tr>
+      <tr><td><code>COMUNE: Villa Esempio</code></td><td>da qui in poi le vie sono di un altro comune</td></tr>
+      <tr><td><code>CONFINE: 9B</code></td><td>segna dove comincia un'altra sottozona (non si stampa)</td></tr>
+      <tr><td><code># nota</code></td><td>una riga di appunti, non si stampa</td></tr>
+      <tr><td><code>?</code></td><td>da controllare: la casella resta segnata in rosso</td></tr>
+    </table>
+    <p><b>La regola delle strisce</b>: nella riga sotto c'è solo il nome della via (o piazza, cascina…), steso su tutte le sue caselle; nelle caselle di sopra ci sono solo i civici. Una casella che appartiene a un'altra via, in mezzo a una via, si scrive su una riga sua (per esempio <code>VIA DEI GELSI: 37</code>): prende il suo colore e il suo nome sotto.</p>
+    <p>Di solito nelle vie i dispari sono da un lato e i pari dall'altro, tutti e due a salire (<code>1..15</code> e <code>2..16</code>); nelle piazze i numeri vanno in fila, uno dopo l'altro (<code>1-12 tutti</code>).</p>
+    <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie.</p>
+    <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
+    <h3>Sul telefono</h3>
+    <p>Apri la pagina dal suo indirizzo internet. Su iPhone: Condividi → «Aggiungi alla schermata Home». Su Android: menu ⋮ → «Installa app». Poi si apre come un'app e funziona anche senza internet (la mappa no). Ogni tanto usa «Salva file»: è la copia sicura del tuo lavoro.</p>
+    <menu><button value="ok" class="primary">Ho capito</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-import">
+  <form method="dialog" class="dlg" id="form-import">
+    <h2>Importa testo</h2>
+    <p>Incolla qui un lavoro scritto come testo (per esempio quello scaricato con «Scarica come testo»). Sostituisce quello aperto.</p>
+    <textarea id="import-text" rows="14" spellcheck="false"></textarea>
+    <menu>
+      <button value="cancel" formnovalidate>Annulla</button>
+      <button value="ok" class="primary">Importa</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-list">
+  <form method="dialog" class="dlg" id="form-list">
+    <h2>Elenco delle vie di <span id="list-town"></span></h2>
+    <p>Un nome per riga: vie, vicoli, piazze, cascine, contrade… Serve per scrivere più in fretta e per accorgersi dei nomi scritti male.</p>
+    <p><button type="button" id="btn-osm">Scarica l'elenco da OpenStreetMap</button> <span class="small muted" id="osm-status"></span></p>
+    <textarea id="list-text" rows="14" spellcheck="false"></textarea>
+    <menu>
+      <button value="cancel" formnovalidate>Annulla</button>
+      <button value="ok" class="primary">Salva l'elenco</button>
+    </menu>
+  </form>
+</dialog>
+
+<script src="src/core.js"></script>
+<script src="src/xlsx.js"></script>
+<script src="src/example.js"></script>
+<script src="src/ui.js"></script>
+</body>
+</html>
