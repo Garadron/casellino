@@ -7,7 +7,8 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 1. Prova di stampa di un foglio (A4 orizzontale, al 100%) da appoggiare alle caselle, soprattutto le caselle divise in
    obliquo.
-2. Completare la prova con data della v0.5.0: dopo qualche ora `ots upgrade prove/*.ots` (la conferma arriva da sola,
+2. Completare la prova con data della v0.5.0: dopo qualche ora
+   `python tools/prova_con_data.py --aggiorna prove/impronte-v0.5.0.txt` (la conferma arriva da sola,
    gratis) e salvare.
 
 ## Più avanti (solo cose gratuite)
