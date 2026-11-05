@@ -22,7 +22,10 @@ telefono, e i tuoi dati restano sul tuo dispositivo.
    sottozona entra nell'altra. La **cartina del giro** mette le vie sulla mappa e calcola i chilometri.
 4. **Crea Excel**: esce il file da stampare (1,244 cm per casella), su A4 orizzontale, al 100%. Ogni foglio contiene 22
    caselle.
-5. Il lavoro resta salvato nel browser di quel dispositivo. Per portarlo su un altro, e come copia sicura: **Salva
+5. **Con un account** (pulsante «Accedi» in alto, gratis, basta nome utente e password) i lavori si salvano da soli e
+   li ritrovi da qualsiasi telefono o computer. Alla registrazione ricevi un codice di recupero: scrivilo, serve se
+   dimentichi la password. Sui computer non tuoi, quando esci, scegli di togliere il lavoro da lì.
+6. Senza account il lavoro resta salvato nel browser di quel dispositivo. Per portarlo su un altro, e come copia sicura: **Salva
    file**, poi **Apri** dall'altro. Su iPhone Safari può cancellare i dati dei siti non usati da qualche settimana: con
    l'app sulla schermata Home e un «Salva file» ogni tanto non si perde niente.
 
@@ -46,4 +49,9 @@ per venderlo o farlo adottare da un'azienda serve il permesso scritto dell'autor
     qualsiasi, poi `JSDOM_PATH=<cartella>/node_modules/jsdom`);
   - `python tests/verifica_misure.py <file.xlsx>`: misure uguali al modello (da `tests/misure_modello.json`);
   - `tools/prova_in_excel.ps1`: apre il file in Excel, confronta le misure con il modello e crea il PDF della stampa.
+- Il server degli account sta in `server/` (Cloudflare Worker + D1, piano gratuito): `cd server && npm install`,
+  prova in locale con `npx wrangler dev --local --port 8799`, pubblica con `npx wrangler deploy`. La chiave segreta
+  `SEGRETO` è solo su Cloudflare (`npx wrangler secret put SEGRETO`), mai nel repository. Prove:
+  `node tests/test_server.js` e `node tests/test_account_pagina.js` con il server acceso in locale (la prova del server
+  finisce bloccando i tentativi per un quarto d'ora: falla per ultima).
 - `tools/genera_excel.js` crea l'Excel da un giro scritto come testo; `tools/icone.py` disegna le icone.

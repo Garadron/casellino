@@ -10,3 +10,7 @@ node_modules/
 
 # Office lock files
 ~$*
+
+# Cloudflare tool files and local secrets
+.wrangler/
+.dev.vars

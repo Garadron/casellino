@@ -1,5 +1,24 @@
 # Registro delle versioni
 
+## v0.11.0 · 2026-11-06 · L'account: i lavori salvati e ritrovati da ogni dispositivo
+
+- **Accedi / Registrati** (in alto): con un nome utente e una password i lavori si salvano da soli nell'account mentre
+  si scrive (circa 2 secondi dopo l'ultima modifica) e si ritrovano da qualsiasi telefono o computer. Senza account
+  tutto funziona come prima, sul dispositivo.
+- **I tuoi lavori**: l'elenco dei lavori salvati, con «Apri», «Elimina» e «+ Lavoro nuovo».
+- **Password dimenticata**: niente email; alla registrazione si riceve un codice di recupero da scrivere da qualche
+  parte. Con il codice si sceglie una password nuova, gli altri dispositivi escono e arriva un codice nuovo.
+- **Due dispositivi**: se lo stesso lavoro è stato cambiato altrove, il programma chiede quale tenere.
+- **Esci**: chiede se togliere il lavoro dal dispositivo (consigliato sui computer non propri, come in ufficio).
+  **Elimina l'account** cancella anche tutti i lavori salvati.
+- Senza internet il lavoro resta sul dispositivo e si salva nell'account appena torna la rete.
+- Il server è gratuito (Cloudflare Workers con database D1, in Europa) e separato da ogni altro progetto. Password,
+  codici di recupero e accessi sono salvati solo come impronte firmate con una chiave segreta; troppi tentativi
+  sbagliati bloccano per un quarto d'ora.
+- File: `server/` (nuovo: `src/worker.js`, `migrations/0001_inizio.sql`, `wrangler.toml`, `package.json`),
+  `app/src/ui.js`, `app/src/core.js`, `app/src/style.css`, `app/index.src.html`, `tests/test_server.js` (nuovo),
+  `tests/test_account_pagina.js` (nuovo), `Casellino.html`, `sito/`, `README.md`, `CLAUDE.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.10.0 · 2026-11-06 · Icona nuova e pulsante delle foto ben visibile
 
 - **Icona nuova**: un casello visto di fronte, con le caselle, i divisori e sotto le strisce colorate delle vie. Si vede

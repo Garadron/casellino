@@ -151,6 +151,7 @@
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
       depot: '',        // where the round starts and ends (the office), optional
       wall: null,       // the frame drawn by the user (modules left to right, pencil marks), optional
+      cloud: null,      // where it is saved in the account: { id, versione, aggiornato_il }, optional
     };
   }
 
@@ -198,6 +199,9 @@
     }
     out.depot = String(p.depot || '');
     out.wall = sanitizeWall(p.wall, out.subzones);
+    if (p.cloud && /^[A-Za-z0-9_-]{8,40}$/.test(String(p.cloud.id || ''))) {
+      out.cloud = { id: String(p.cloud.id), versione: Number(p.cloud.versione) || 0, aggiornato_il: Number(p.cloud.aggiornato_il) || 0 };
+    }
     if (p.streetLists && typeof p.streetLists === 'object') {
       Object.keys(p.streetLists).forEach(function (k) {
         if (Array.isArray(p.streetLists[k])) out.streetLists[norm(k)] = p.streetLists[k].map(String);

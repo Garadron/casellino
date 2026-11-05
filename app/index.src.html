@@ -26,6 +26,7 @@
     </div>
   </div>
   <nav class="actions">
+    <button type="button" id="btn-account">Accedi</button>
     <button type="button" id="btn-open">Apri</button>
     <button type="button" id="btn-save">Salva file</button>
     <button type="button" class="primary" id="btn-excel">Crea Excel</button>
@@ -152,6 +153,14 @@
     <h3>Sul telefono</h3>
     <p>Apri la pagina dal suo indirizzo internet. Su iPhone: Condividi → «Aggiungi alla schermata Home». Su Android: menu ⋮ → «Installa app». Poi si apre come un'app e funziona anche senza internet (la mappa no). Ogni tanto usa «Salva file»: è la copia sicura del tuo lavoro.</p>
     <menu><button value="ok" class="primary">Ho capito</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-account">
+  <form method="dialog" class="dlg">
+    <h2 id="account-title">Il tuo account</h2>
+    <div id="account-body"></div>
+    <menu><button value="cancel" formnovalidate>Chiudi</button></menu>
   </form>
 </dialog>
 

@@ -40,6 +40,10 @@ tutti i postini, non solo alla zona di Garadron.
 - Il programma è **una pagina che si apre nel browser** (`Casellino.html`, file unico) e funziona anche **sullo
   smartphone** (cartella `sito/`, online con GitHub Pages, installabile sulla schermata Home).
 - **Niente a pagamento**: si cercano sempre alternative gratuite.
+- **L'account** (v0.11.0, come nel Ricettario): server suo in `server/`, Cloudflare Worker `casellino` con database D1
+  `casellino` (Europa), piano gratuito, separato dal Ricettario. La pagina resta su GitHub Pages e parla con il server
+  con un gettone (`Authorization: Bearer`), senza cookie. La chiave `SEGRETO` sta solo su Cloudflare e, per non
+  perderla, in `dati/segreto-server.txt`: se si perde, nessuno può più entrare con la sua password.
 - La mappa per ora mostra un indirizzo alla volta su Google Maps; il percorso intero verrà dopo (gratis, OpenStreetMap).
 
 ## Come si lavora

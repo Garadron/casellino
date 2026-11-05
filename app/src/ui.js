@@ -105,7 +105,7 @@
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify(state.project));
       const d = new Date();
-      $('saved').textContent = 'Salvato su questo dispositivo alle ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      if (!account.token) $('saved').textContent = 'Salvato su questo dispositivo alle ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
     } catch (e) {
       $('saved').textContent = 'Non riesco a salvare su questo dispositivo: usa «Salva file»';
     }
@@ -114,6 +114,7 @@
   function changed() {
     C.assignColors(state.project);
     storeSave();
+    if (typeof cloudSaveLater === 'function' && account.token) cloudSaveLater();
   }
 
   // ------------------------------------------------------------ top fields and tabs
@@ -1366,6 +1367,274 @@
     });
   }
 
+  // ------------------------------------------------------------ account: works saved online (free, Cloudflare)
+
+  const API = window.CASELLINO_API || 'https://casellino.ricettaio-mannisi.workers.dev';
+  const ACCOUNT_KEY = 'casellino.account';
+  const account = { token: '', utente: '', saving: false, again: false, lastError: '' };
+
+  function accountLoad() {
+    try {
+      const a = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || 'null');
+      if (a && a.token) { account.token = a.token; account.utente = a.utente || ''; }
+    } catch (e) { /* no account on this device */ }
+  }
+
+  function accountStore() {
+    try {
+      if (account.token) localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ token: account.token, utente: account.utente }));
+      else localStorage.removeItem(ACCOUNT_KEY);
+    } catch (e) { /* private window: the account lasts until the page is closed */ }
+  }
+
+  async function api(method, path, body) {
+    const headers = {};
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (account.token) headers.Authorization = 'Bearer ' + account.token;
+    let res;
+    try {
+      res = await fetch(API + path, { method: method, headers: headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    } catch (e) {
+      const err = new Error('Senza internet: il lavoro resta su questo dispositivo e si salva nell\'account appena torna la rete.');
+      err.offline = true;
+      throw err;
+    }
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* empty answer */ }
+    if (res.status === 401 && account.token && path !== '/api/accedi' && path !== '/api/recupera') {
+      account.token = ''; accountStore(); renderAccountButton();
+    }
+    if (!res.ok) {
+      const err = new Error(data.errore || ('Errore ' + res.status));
+      err.status = res.status; err.data = data;
+      throw err;
+    }
+    return data;
+  }
+
+  function workName(p) {
+    const subs = p.subzones.map(function (s) { return s.name; }).filter(Boolean).join(', ');
+    return (p.zone ? 'Zona ' + p.zone : 'Senza zona') + (subs ? ' (' + subs + ')' : '');
+  }
+
+  function newWorkId() {
+    const b = crypto.getRandomValues(new Uint8Array(12));
+    let s = '';
+    b.forEach(function (x) { s += String.fromCharCode(x); });
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function savedLine(text) { $('saved').textContent = text; }
+  const hhmm = function (t) { return new Date(t || Date.now()).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }); };
+
+  // Saves the open work in the account (empty works are not saved). One save at a time.
+  async function cloudSave(force) {
+    if (!account.token || isEmptyProject()) return;
+    if (account.saving) { account.again = true; return; }
+    account.saving = true;
+    const p = state.project;
+    if (!p.cloud) p.cloud = { id: newWorkId(), versione: 0, aggiornato_il: 0 };
+    const data = Object.assign({}, p, { cloud: null });
+    try {
+      const r = await api('PUT', '/api/lavori/' + p.cloud.id, { nome: workName(p), dati: JSON.stringify(data), versione: p.cloud.versione, forza: !!force });
+      if (state.project === p) {
+        p.cloud.versione = r.versione;
+        p.cloud.aggiornato_il = r.aggiornato_il;
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) { /* local copy is optional */ }
+        savedLine('Salvato nel tuo account alle ' + hhmm(r.aggiornato_il));
+      }
+      account.lastError = '';
+    } catch (e) {
+      if (e.status === 409 && e.data && e.data.versione) {
+        const keepMine = confirm('Questo lavoro è stato cambiato da un altro dispositivo alle ' + hhmm(e.data.aggiornato_il) + '.\n\n' +
+          'OK = tieni quello di questo dispositivo (sostituisce l\'altro)\nAnnulla = apri quello salvato nell\'account');
+        account.saving = false;
+        if (keepMine) return cloudSave(true);
+        return openWork(p.cloud.id, true);
+      }
+      account.lastError = e.message;
+      savedLine(e.offline ? 'Senza internet: salvato su questo dispositivo' : 'Non salvato nell\'account: ' + e.message);
+    } finally {
+      account.saving = false;
+    }
+    if (account.again) { account.again = false; cloudSave(); }
+  }
+  const cloudSaveLater = debounce(function () { cloudSave(false); }, 2500);
+
+  async function openWork(id, quiet) {
+    try {
+      const r = await api('GET', '/api/lavori/' + id);
+      const p = C.sanitizeProject(JSON.parse(r.dati));
+      p.cloud = { id: r.id, versione: r.versione, aggiornato_il: r.aggiornato_il };
+      state.project = p;
+      state.current = 0; state.selected = null; state.caret = null;
+      C.assignColors(p);
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) { /* optional */ }
+      renderAll();
+      savedLine('Aperto dal tuo account (salvato alle ' + hhmm(r.aggiornato_il) + ')');
+      if (!quiet) toast('Aperto: ' + r.nome);
+    } catch (e) {
+      toast('Non riesco ad aprirlo: ' + e.message);
+    }
+  }
+
+  function renderAccountButton() {
+    const b = $('btn-account');
+    if (!b) return;
+    b.textContent = account.token ? '👤 ' + account.utente : 'Accedi';
+    b.classList.toggle('primary-soft', !account.token);
+  }
+
+  // The account window: sign in / register / forgotten password, or the list of saved works.
+  let accountMode = 'accedi';
+  function accountForm(box) {
+    const modes = { accedi: 'Accedi', registrati: 'Registrati', recupera: 'Password dimenticata' };
+    const tabs = h('div', { class: 'tabs' });
+    Object.keys(modes).forEach(function (m) {
+      tabs.append(h('button', { type: 'button', role: 'tab', 'aria-selected': m === accountMode ? 'true' : 'false',
+        onclick: function () { accountMode = m; renderAccountDialog(); } }, modes[m]));
+    });
+    const user = h('input', { autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', placeholder: 'es. mario.rossi' });
+    const pass = h('input', { type: 'password', autocomplete: accountMode === 'accedi' ? 'current-password' : 'new-password' });
+    const code = h('input', { autocapitalize: 'characters', spellcheck: 'false', placeholder: 'XXXX-XXXX-XXXX' });
+    const msg = h('p', { class: 'small bad' });
+    const go = h('button', { type: 'submit', class: 'primary' },
+      accountMode === 'accedi' ? 'Accedi' : (accountMode === 'registrati' ? 'Crea l\'account' : 'Cambia la password'));
+    const form = h('form', { class: 'account-form' },
+      h('label', null, 'Nome utente', user),
+      accountMode === 'recupera' ? h('label', null, 'Codice di recupero (te l\'ho dato quando hai creato l\'account)', code) : null,
+      h('label', null, accountMode === 'recupera' ? 'Password nuova (almeno 8 caratteri)' : 'Password' + (accountMode === 'registrati' ? ' (almeno 8 caratteri)' : ''), pass),
+      msg, h('p', { class: 'actions-inline' }, go));
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      msg.textContent = '';
+      go.disabled = true;
+      try {
+        const path = accountMode === 'accedi' ? '/api/accedi' : (accountMode === 'registrati' ? '/api/registrati' : '/api/recupera');
+        const r = await api('POST', path, { utente: user.value, password: pass.value, recupero: code.value });
+        account.token = r.token; account.utente = r.utente;
+        accountStore();
+        renderAccountButton();
+        afterSignIn(r.recupero, accountMode);
+      } catch (err) {
+        msg.textContent = err.message;
+      } finally {
+        go.disabled = false;
+      }
+    });
+    box.append(
+      h('p', null, 'Con un account i tuoi lavori si salvano da soli mentre scrivi e li ritrovi da qualsiasi telefono o computer. È gratis.'),
+      tabs, form,
+      h('p', { class: 'small muted' }, 'Non serve l\'email. Quando crei l\'account ti do un codice di recupero: scrivilo da qualche parte, serve se dimentichi la password. Nell\'account si salvano solo i tuoi lavori.'));
+    setTimeout(function () { user.focus(); }, 30);
+  }
+
+  // After signing in: the code to keep (new account or new password), then the works.
+  async function afterSignIn(recovery, mode) {
+    if (!state.project.cloud && !isEmptyProject()) {
+      await cloudSave(false);
+      if (state.project.cloud) toast('Il lavoro aperto ora è salvato anche nel tuo account.');
+    }
+    renderAccountDialog(recovery ? { recovery: recovery, fresh: mode === 'registrati' } : null);
+  }
+
+  async function worksList(box) {
+    const list = h('ul', { class: 'works' }, h('li', { class: 'muted' }, 'Carico i tuoi lavori…'));
+    box.append(h('h3', null, 'I tuoi lavori'), list,
+      h('p', { class: 'actions-inline' },
+        h('button', { type: 'button', onclick: function () {
+          $('dlg-account').close();
+          if (!isEmptyProject() && !confirm('Comincio un lavoro nuovo? Quello aperto resta salvato nel tuo account.')) return;
+          setProject(C.newProject());
+        } }, '+ Lavoro nuovo')));
+    try {
+      const r = await api('GET', '/api/lavori');
+      list.textContent = '';
+      if (!r.lavori.length) list.append(h('li', { class: 'muted' }, 'Ancora nessuno: il lavoro che scrivi si salva qui da solo.'));
+      r.lavori.forEach(function (w) {
+        const open = state.project.cloud && state.project.cloud.id === w.id;
+        list.append(h('li', { class: open ? 'open' : '' },
+          h('div', null, h('b', null, w.nome), h('div', { class: 'small muted' },
+            'salvato il ' + new Date(w.aggiornato_il).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) +
+            (open ? ' · è quello aperto' : ''))),
+          h('span', { class: 'actions-inline' },
+            open ? null : h('button', { type: 'button', onclick: function () { $('dlg-account').close(); openWork(w.id); } }, 'Apri'),
+            h('button', { type: 'button', class: 'danger', onclick: async function () {
+              if (!confirm('Elimino «' + w.nome + '» dal tuo account? Non si torna indietro.')) return;
+              try {
+                await api('DELETE', '/api/lavori/' + w.id);
+                if (open) state.project.cloud = null;
+                renderAccountDialog();
+              } catch (e) { toast(e.message); }
+            } }, 'Elimina'))));
+      });
+    } catch (e) {
+      list.textContent = '';
+      list.append(h('li', { class: 'bad' }, e.message));
+    }
+  }
+
+  function renderAccountDialog(extra) {
+    const box = $('account-body');
+    box.textContent = '';
+    if (!account.token) { $('account-title').textContent = 'Il tuo account'; accountForm(box); return; }
+    $('account-title').textContent = 'Account: ' + account.utente;
+    if (extra && extra.recovery) {
+      box.append(h('div', { class: 'recovery' },
+        h('p', null, h('b', null, extra.fresh ? 'Account creato. ' : 'Password cambiata. '), 'Questo è il tuo codice di recupero:'),
+        h('p', { class: 'code' }, extra.recovery),
+        h('p', { class: 'small' }, 'Scrivilo o fai una foto: serve se dimentichi la password. Non lo vedrai più.'),
+        h('button', { type: 'button', onclick: function () {
+          if (navigator.clipboard) navigator.clipboard.writeText(extra.recovery).then(function () { toast('Codice copiato.'); });
+        } }, 'Copia il codice')));
+    }
+    worksList(box);
+    box.append(h('p', { class: 'actions-inline account-end' },
+      h('button', { type: 'button', onclick: signOut }, 'Esci'),
+      h('button', { type: 'button', class: 'danger', onclick: deleteAccount }, 'Elimina l\'account')));
+  }
+
+  async function signOut() {
+    const forget = confirm('Esco dall\'account.\n\nOK = tolgo anche il lavoro da questo dispositivo (consigliato se il computer non è tuo, per esempio in ufficio)\nAnnulla = il lavoro resta qui');
+    if (account.saving || (state.project.cloud && !isEmptyProject())) await cloudSave(false);
+    try { await api('POST', '/api/esci', {}); } catch (e) { /* signed out anyway on this device */ }
+    account.token = ''; account.utente = '';
+    accountStore();
+    renderAccountButton();
+    if (forget) {
+      try { localStorage.removeItem(STORE_KEY); } catch (e) { /* nothing saved */ }
+      state.project = C.newProject();
+      state.current = 0;
+      renderAll();
+      savedLine('Uscito: su questo dispositivo non c\'è più niente');
+    } else {
+      state.project.cloud = null;
+      changed();
+    }
+    $('dlg-account').close();
+    toast('Sei uscito dal tuo account.');
+  }
+
+  async function deleteAccount() {
+    const pw = prompt('Per eliminare l\'account e tutti i lavori salvati lì, scrivi la tua password. Non si torna indietro.');
+    if (!pw) return;
+    try {
+      await api('POST', '/api/elimina-account', { password: pw });
+      account.token = ''; account.utente = '';
+      accountStore();
+      state.project.cloud = null;
+      changed();
+      renderAccountButton();
+      $('dlg-account').close();
+      toast('Account eliminato. Il lavoro aperto resta su questo dispositivo.');
+    } catch (e) { toast(e.message); }
+  }
+
+  function openAccount() {
+    renderAccountDialog();
+    $('dlg-account').showModal();
+  }
+
   // ------------------------------------------------------------ official street lists
 
   function openList(town) {
@@ -1449,6 +1718,7 @@
   }
 
   function setProject(p) {
+    p.cloud = null;
     state.project = p;
     state.current = 0;
     state.selected = null;
@@ -1530,6 +1800,8 @@
     $('map-card').addEventListener('toggle', showKnownRound);
     $('btn-route').addEventListener('click', calcRound);
     wirePhotos();
+    $('btn-account').addEventListener('click', openAccount);
+    window.addEventListener('online', function () { if (account.token) cloudSave(false); });
     $('depot').addEventListener('input', function (e) { state.project.depot = e.target.value; changed(); });
   }
 
@@ -1540,6 +1812,8 @@
   }
 
   function start() {
+    accountLoad();
+    renderAccountButton();
     wire();
     const stored = storeLoad();
     const p = location.hash === '#esempio' ? C.textToProject(EXAMPLE) : stored;

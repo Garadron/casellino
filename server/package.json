@@ -1,0 +1,12 @@
+{
+  "name": "casellino-server",
+  "private": true,
+  "description": "Casellino: account server (Cloudflare Worker + D1, free plan)",
+  "scripts": {
+    "prova": "wrangler dev --local --port 8799",
+    "pubblica": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.156.0"
+  }
+}

@@ -1,0 +1,11 @@
+# Casellino: account server. Free plan: Workers + D1, no card needed.
+name = "casellino"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "casellino"
+database_id = "2fbf26ee-8f6d-4046-8573-914b8cd6f6e2"
+migrations_dir = "migrations"
