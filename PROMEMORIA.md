@@ -16,3 +16,5 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 1. Cartina del giro: poter spostare a mano sulla mappa un punto trovato male (dove OpenStreetMap non ha i civici, il
    punto cade a metà della via) e cercare a mano le vie non trovate.
 2. Lettura delle foto: migliorarla per le strisce storte (raddrizzare da sola) e per lo scritto a mano.
+3. Account: se serve, il recupero della password anche per email (come nel Ricettario, gratis con Gmail), oltre al
+   codice di recupero.
