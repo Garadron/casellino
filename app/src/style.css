@@ -324,3 +324,9 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .pen i { width: 14px; height: 14px; border-radius: 3px; background: var(--pen); display: inline-block; }
 .pen.on { outline: 3px solid var(--pen, var(--accent)); outline-offset: 1px; font-weight: 700; }
 .overview-wrap svg.pencil { cursor: crosshair; }
+
+/* reading strips from photos */
+.foto-stage { max-height: 50vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #222; }
+.foto-stage canvas { display: block; max-width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+.foto-rot { display: flex; align-items: center; gap: 8px; }
+.foto-rot input { flex: 1; max-width: 320px; }

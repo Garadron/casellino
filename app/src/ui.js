@@ -253,6 +253,8 @@
         'Scrivi il giro dall\'inizio alla fine, una via per riga. Le caselle si riempiono come le righe di un libro: ' +
         'da sinistra a destra e dall\'alto in basso (fila 1 di ogni modulo, poi fila 2…). ',
         h('button', { type: 'button', class: 'link', onclick: function () { $('dlg-help').showModal(); } }, 'Come si scrive'),
+        ' · ',
+        h('button', { type: 'button', class: 'link', onclick: openPhotos }, 'Leggi le strisce dalle foto'),
         empty ? ' · ' : null,
         empty ? h('button', { type: 'button', class: 'link', onclick: loadExample }, 'Guarda un esempio') : null),
       ta, els.suggest, els.here, els.warnings,
@@ -1176,6 +1178,194 @@
     }
   }
 
+  // ------------------------------------------------------------ reading strips from photos (free, on the device)
+
+  const F = window.CasellinoFoto;
+  const photo = { files: [], index: 0, image: null, angle: 0, rect: null, view: null, worker: null, busy: false };
+  let tesseractReady = null;
+
+  function loadTesseract() {
+    if (tesseractReady) return tesseractReady;
+    tesseractReady = new Promise(function (resolve, reject) {
+      const js = h('script', { src: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js' });
+      js.onload = function () { resolve(window.Tesseract); };
+      js.onerror = function () { tesseractReady = null; reject(new Error('il lettore di foto non si scarica (serve internet la prima volta)')); };
+      document.head.append(js);
+    });
+    return tesseractReady;
+  }
+
+  async function ocrWorker() {
+    if (photo.worker) return photo.worker;
+    const T = await loadTesseract();
+    $('foto-status').textContent = 'Preparo il lettore (la prima volta scarica qualche MB)…';
+    photo.worker = await T.createWorker('ita', 1);
+    return photo.worker;
+  }
+
+  function imageToCanvas(w, hgt) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = hgt;
+    return c;
+  }
+
+  // The photo turned by the chosen angle, at a given scale, on a canvas.
+  function turned(scale) {
+    const img = photo.image;
+    const a = photo.angle * Math.PI / 180;
+    const w = img.naturalWidth * scale, hh = img.naturalHeight * scale;
+    const W = Math.ceil(Math.abs(w * Math.cos(a)) + Math.abs(hh * Math.sin(a)));
+    const H = Math.ceil(Math.abs(w * Math.sin(a)) + Math.abs(hh * Math.cos(a)));
+    const c = imageToCanvas(W, H);
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, W, H);
+    g.translate(W / 2, H / 2);
+    g.rotate(a);
+    g.drawImage(img, -w / 2, -hh / 2, w, hh);
+    return c;
+  }
+
+  function drawPhoto() {
+    const stage = $('foto-canvas');
+    if (!photo.image) { stage.width = stage.height = 0; return; }
+    const box = $('foto-stage');
+    const scale = Math.min(1, (box.clientWidth || 800) / photo.image.naturalWidth);
+    const c = turned(scale);
+    stage.width = c.width; stage.height = c.height;
+    const g = stage.getContext('2d');
+    g.drawImage(c, 0, 0);
+    photo.view = { scale: scale };
+    if (photo.rect) {
+      const r = photo.rect;
+      g.fillStyle = 'rgba(0,0,0,0.35)';
+      g.fillRect(0, 0, stage.width, r.y0);
+      g.fillRect(0, r.y1, stage.width, stage.height - r.y1);
+      g.fillRect(0, r.y0, r.x0, r.y1 - r.y0);
+      g.fillRect(r.x1, r.y0, stage.width - r.x1, r.y1 - r.y0);
+      g.strokeStyle = '#d93025'; g.lineWidth = 2;
+      g.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+    }
+    $('foto-count').textContent = 'Foto ' + (photo.index + 1) + ' di ' + photo.files.length;
+  }
+
+  function showPhoto(i) {
+    photo.index = i;
+    photo.rect = null;
+    photo.angle = 0;
+    $('foto-rot').value = '0';
+    if (i >= photo.files.length) {
+      photo.image = null;
+      drawPhoto();
+      $('foto-count').textContent = 'Foto finite: controlla il testo e premi «Aggiungi al giro».';
+      return;
+    }
+    const url = URL.createObjectURL(photo.files[i]);
+    const img = new Image();
+    img.onload = function () { photo.image = img; drawPhoto(); };
+    img.src = url;
+  }
+
+  function stagePoint(e) {
+    const c = $('foto-canvas');
+    const r = c.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * c.width / r.width, y: (e.clientY - r.top) * c.height / r.height };
+  }
+
+  async function readPhoto() {
+    if (photo.busy || !photo.image) return;
+    photo.busy = true;
+    const status = $('foto-status');
+    try {
+      const w = await ocrWorker();
+      // the chosen part at full size (or all the photo)
+      const full = turned(1);
+      const k = 1 / photo.view.scale;
+      const r = photo.rect || { x0: 0, y0: 0, x1: full.width * photo.view.scale, y1: full.height * photo.view.scale };
+      const x0 = Math.max(0, Math.round(r.x0 * k)), y0 = Math.max(0, Math.round(r.y0 * k));
+      const cw = Math.min(full.width - x0, Math.round((r.x1 - r.x0) * k)), ch = Math.min(full.height - y0, Math.round((r.y1 - r.y0) * k));
+      const data = full.getContext('2d').getImageData(x0, y0, cw, ch);
+      const img = { width: data.width, height: data.height, data: data.data };
+      const seg = F.segmentStrip(img);
+      const S = 2;
+      const up = F.cleanBand(img, seg.top, seg.split, S);
+      const low = F.cleanBand(img, seg.split, seg.bottom, S, true);
+      const toCanvas = function (band) {
+        const c = imageToCanvas(band.width, band.height);
+        c.getContext('2d').putImageData(new ImageData(band.data, band.width, band.height), 0, 0);
+        return c;
+      };
+      const clusters = F.inkClusters(up);
+      await w.setParameters({ tessedit_pageseg_mode: '8', tessedit_char_whitelist: '0123456789ABCDEFGHILMNOPQRSTUVZ/\\-' });
+      const cells = [];
+      for (let i = 0; i < clusters.length; i++) {
+        status.textContent = 'Leggo i civici: ' + (i + 1) + ' di ' + clusters.length + '…';
+        const res = await w.recognize(toCanvas(F.cropBand(up, clusters[i], 10)));
+        const t = F.cleanNumber(res.data.text);
+        if (t) cells.push({ x0: clusters[i].x0 / S, x1: clusters[i].x1 / S, top: t, unsure: res.data.confidence < 70, span: 1 });
+      }
+      status.textContent = 'Leggo i nomi delle vie…';
+      await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
+      const rn = await w.recognize(toCanvas(low));
+      const phrases = F.streetPhrases(rn.data.words).map(function (p) { return { text: p.text, x0: p.x0 / S, x1: p.x1 / S }; });
+      const lines = F.routeLines(cells, phrases);
+      const out = $('foto-result');
+      out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + '# foto ' + (photo.index + 1) + ' (letta in automatico: da controllare)\n' +
+        (lines.length ? lines.join('\n') : '# non ho letto niente: prova a raddrizzarla o a stringere il rettangolo') + '\n';
+      status.textContent = cells.length + ' civici letti nella foto ' + (photo.index + 1) + '.';
+      showPhoto(photo.index + 1);
+    } catch (e) {
+      status.textContent = 'Non riesco a leggere: ' + e.message;
+    } finally {
+      photo.busy = false;
+    }
+  }
+
+  function openPhotos() {
+    $('foto-result').value = '';
+    $('foto-status').textContent = '';
+    photo.files = [];
+    showPhoto(0);
+    $('foto-count').textContent = 'Scegli le foto.';
+    $('dlg-foto').showModal();
+  }
+
+  function wirePhotos() {
+    $('foto-files').addEventListener('change', function (e) {
+      photo.files = Array.prototype.slice.call(e.target.files || []);
+      if (photo.files.length) showPhoto(0);
+    });
+    $('foto-rot').addEventListener('input', function (e) { photo.angle = +e.target.value; photo.rect = null; drawPhoto(); });
+    const stage = $('foto-canvas');
+    let start = null;
+    stage.addEventListener('pointerdown', function (e) { if (!photo.image) return; start = stagePoint(e); stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener('pointermove', function (e) {
+      if (!start) return;
+      const p = stagePoint(e);
+      photo.rect = { x0: Math.min(start.x, p.x), y0: Math.min(start.y, p.y), x1: Math.max(start.x, p.x), y1: Math.max(start.y, p.y) };
+      drawPhoto();
+    });
+    stage.addEventListener('pointerup', function () {
+      start = null;
+      if (photo.rect && (photo.rect.x1 - photo.rect.x0 < 20 || photo.rect.y1 - photo.rect.y0 < 10)) { photo.rect = null; drawPhoto(); }
+    });
+    $('foto-read').addEventListener('click', readPhoto);
+    $('foto-skip').addEventListener('click', function () { showPhoto(photo.index + 1); });
+    $('dlg-foto').addEventListener('close', function () {
+      if ($('dlg-foto').returnValue !== 'ok') return;
+      const text = $('foto-result').value.trim();
+      if (!text) return;
+      const s = sz();
+      s.route = (s.route.replace(/\s+$/, '') + (s.route.trim() ? '\n' : '') + text + '\n');
+      state.els.ta.value = s.route;
+      fitTextarea(state.els.ta);
+      changed();
+      refreshRoute();
+      refreshSide();
+      toast('Aggiunto in fondo al giro: controlla le righe con «?».');
+    });
+  }
+
   // ------------------------------------------------------------ official street lists
 
   function openList(town) {
@@ -1338,6 +1528,7 @@
     $('btn-ov-png').addEventListener('click', downloadOverview);
     $('map-card').addEventListener('toggle', showKnownRound);
     $('btn-route').addEventListener('click', calcRound);
+    wirePhotos();
     $('depot').addEventListener('input', function (e) { state.project.depot = e.target.value; changed(); });
   }
 

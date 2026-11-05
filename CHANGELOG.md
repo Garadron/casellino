@@ -1,5 +1,18 @@
 # Registro delle versioni
 
+## v0.9.0 · 2026-11-05 · Leggere le strisce dalle foto
+
+- **Leggi le strisce dalle foto** (nel riquadro del giro): si scelgono le foto in ordine, una striscia alla volta; per
+  ognuna si raddrizza se serve, si trascina un rettangolo intorno alla striscia e si legge. Vie e civici letti vanno in
+  fondo al giro come bozza, con un «?» dove la lettura è incerta.
+- Gratis e privato: legge Tesseract, dentro il telefono o il PC; le foto non vanno da nessuna parte. La prima volta
+  scarica il lettore (qualche MB).
+- Come legge: la foto diventa bianca e nera, le righe stampate (bordi e righe fra le caselle) vengono tolte, ogni
+  civico è letto da solo tagliando dove c'erano le righe fra le caselle, i nomi delle vie sono letti nella riga sotto.
+  Provato su una striscia vera stampata: 20 civici su 22 letti giusti. Lo scritto a mano si legge poco.
+- File: `app/src/foto.js` (nuovo), `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `tests/test_core.js`,
+  `Casellino.html`, `sito/`, `README.md`, `CHANGELOG.md`, `PROMEMORIA.md`, `prove/`.
+
 ## v0.8.0 · 2026-11-05 · Il mobile disegnato: moduli in qualsiasi ordine e la matita per i confini
 
 - **Com'è fatto il mobile**: nel disegno si mettono i moduli da sinistra a destra, casello (91) o ala (33), e si

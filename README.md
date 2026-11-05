@@ -17,6 +17,9 @@ telefono, e i tuoi dati restano sul tuo dispositivo.
    leggono sempre come un libro, da sinistra a destra e dall'alto in basso: il programma riempie la fila 1 di ogni
    modulo, poi la fila 2, e così via. Sotto vedi «Sei qui» e tutte le strisce. Le regole sono in «Altro → Come si
    scrive».
+   Se hai le foto delle strisce di oggi, **Leggi le strisce dalle foto** scrive una bozza del giro (gratis, dentro il
+   dispositivo). Nel **disegno di tutto il mobile** metti i moduli nell'ordine giusto e, con la matita, segni dove una
+   sottozona entra nell'altra. La **cartina del giro** mette le vie sulla mappa e calcola i chilometri.
 4. **Crea Excel**: esce il file da stampare (1,244 cm per casella), su A4 orizzontale, al 100%. Ogni foglio contiene 22
    caselle.
 5. Il lavoro resta salvato nel browser di quel dispositivo. Per portarlo su un altro, e come copia sicura: **Salva

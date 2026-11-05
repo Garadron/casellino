@@ -154,6 +154,28 @@
   </form>
 </dialog>
 
+<dialog id="dlg-foto">
+  <form method="dialog" class="dlg">
+    <h2>Leggi le strisce dalle foto</h2>
+    <p>Scegli le foto <b>in ordine</b>: una striscia alla volta, da sinistra a destra, fila dopo fila. Per ogni foto: se la striscia è storta, raddrizzala; poi trascina un rettangolo intorno alla sola striscia (dal bordo sopra i civici al bordo sotto le vie) e premi «Leggi».</p>
+    <p class="small muted">È gratis e le foto restano sul tuo dispositivo: la lettura la fa Tesseract, qui dentro. La prima volta scarica il lettore (qualche MB). Legge bene lo stampato, poco lo scritto a mano: è una bozza da controllare, i punti incerti hanno un «?».</p>
+    <p><input type="file" id="foto-files" accept="image/*" multiple></p>
+    <p class="small"><b id="foto-count"></b></p>
+    <div class="foto-stage" id="foto-stage"><canvas id="foto-canvas"></canvas></div>
+    <label class="small foto-rot">Raddrizza <input type="range" id="foto-rot" min="-10" max="10" step="0.5" value="0"></label>
+    <p class="actions-inline">
+      <button type="button" class="primary" id="foto-read">Leggi questa striscia</button>
+      <button type="button" id="foto-skip">Salta la foto</button>
+      <span class="small muted" id="foto-status"></span>
+    </p>
+    <textarea id="foto-result" rows="8" spellcheck="false" placeholder="Qui compare quello che è stato letto: puoi correggerlo."></textarea>
+    <menu>
+      <button value="cancel" formnovalidate>Chiudi</button>
+      <button value="ok" class="primary">Aggiungi al giro</button>
+    </menu>
+  </form>
+</dialog>
+
 <dialog id="dlg-import">
   <form method="dialog" class="dlg" id="form-import">
     <h2>Importa testo</h2>
@@ -181,6 +203,7 @@
 
 <script src="src/core.js"></script>
 <script src="src/xlsx.js"></script>
+<script src="src/foto.js"></script>
 <script src="src/example.js"></script>
 <script src="src/ui.js"></script>
 </body>

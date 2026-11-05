@@ -307,6 +307,34 @@ test('drawing the frame of a project keeps every pigeonhole in place', function 
   assert.deepStrictEqual(again.wall, p.wall);
 });
 
+test('photo of a strip: printed lines removed, one group of ink per pigeonhole', function () {
+  const F = require('../app/src/foto.js');
+  // a white strip 300x60: border lines, a middle line at y=35, lines between pigeonholes at x=100 and 200,
+  // and a "number" (two strokes close together) in each pigeonhole
+  const W = 300, H = 60, data = new Uint8ClampedArray(W * H * 4).fill(255);
+  const ink = function (x0, y0, x1, y1) {
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = (y * W + x) * 4; data[i] = data[i + 1] = data[i + 2] = 0; }
+  };
+  ink(0, 0, W, 2); ink(0, 34, W, 36); ink(0, 58, W, 60);
+  ink(99, 0, 102, 60); ink(199, 0, 202, 60);
+  [40, 140, 240].forEach(function (x) { ink(x, 10, x + 4, 24); ink(x + 7, 10, x + 11, 24); });
+  const img = { width: W, height: H, data: data };
+  const seg = F.segmentStrip(img);
+  assert.ok(Math.abs(seg.split - 35) <= 2, 'line between the two rows: ' + seg.split);
+  const up = F.cleanBand(img, seg.top, seg.split, 1);
+  assert.strictEqual(up.separators.length, 2);
+  const clusters = F.inkClusters(up);
+  assert.deepStrictEqual(clusters.map(function (c) { return [c.x0, c.x1]; }), [[40, 50], [140, 150], [240, 250]]);
+  assert.strictEqual(F.cleanNumber(' |12| '), '12');
+  assert.strictEqual(F.cleanNumber('2O'), '20');
+  assert.strictEqual(F.cleanNumber('20 G'), '20G');
+  assert.strictEqual(F.cleanNumber('61\\59'), '61\\59');
+  assert.strictEqual(F.cleanNumber('ABC'), '');
+  const lines = F.routeLines([{ x0: 0, x1: 10, top: '1', span: 1 }, { x0: 20, x1: 30, top: '3', unsure: true, span: 1 }, { x0: 200, x1: 210, top: '2', span: 1 }],
+    [{ text: 'VIA DEI TIGLI', x0: 0, x1: 40 }, { text: 'VIA DELLE ROSE', x0: 190, x1: 260 }]);
+  assert.deepStrictEqual(lines, ['VIA DEI TIGLI: 1, 3?', 'VIA DELLE ROSE: 2']);
+});
+
 test('files of older versions with another word for the big module still open', function () {
   const p = Core.sanitizeProject({ subzones: [{ name: '1A', modules: { casellVecchio: false, alaB: true }, rows: { casellVecchio: ['V: 1', '', '', ''], alaB: ['W: 2', '', '', ''] } }] });
   assert.deepStrictEqual(p.subzones[0].modules, { alaA: false, casello: false, alaB: true });

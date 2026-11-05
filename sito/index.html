@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.8.0';</script>
+<script>window.CASELLINO_VERSION = '0.9.0';</script>
 <style>
 :root {
   --bg: #f4f5f7;
@@ -341,6 +341,12 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .pen i { width: 14px; height: 14px; border-radius: 3px; background: var(--pen); display: inline-block; }
 .pen.on { outline: 3px solid var(--pen, var(--accent)); outline-offset: 1px; font-weight: 700; }
 .overview-wrap svg.pencil { cursor: crosshair; }
+
+/* reading strips from photos */
+.foto-stage { max-height: 50vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #222; }
+.foto-stage canvas { display: block; max-width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+.foto-rot { display: flex; align-items: center; gap: 8px; }
+.foto-rot input { flex: 1; max-width: 320px; }
 </style>
 </head>
 <body>
@@ -478,6 +484,28 @@ details.fold[open] > summary { margin-bottom: 8px; }
     <h3>Sul telefono</h3>
     <p>Apri la pagina dal suo indirizzo internet. Su iPhone: Condividi → «Aggiungi alla schermata Home». Su Android: menu ⋮ → «Installa app». Poi si apre come un'app e funziona anche senza internet (la mappa no). Ogni tanto usa «Salva file»: è la copia sicura del tuo lavoro.</p>
     <menu><button value="ok" class="primary">Ho capito</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-foto">
+  <form method="dialog" class="dlg">
+    <h2>Leggi le strisce dalle foto</h2>
+    <p>Scegli le foto <b>in ordine</b>: una striscia alla volta, da sinistra a destra, fila dopo fila. Per ogni foto: se la striscia è storta, raddrizzala; poi trascina un rettangolo intorno alla sola striscia (dal bordo sopra i civici al bordo sotto le vie) e premi «Leggi».</p>
+    <p class="small muted">È gratis e le foto restano sul tuo dispositivo: la lettura la fa Tesseract, qui dentro. La prima volta scarica il lettore (qualche MB). Legge bene lo stampato, poco lo scritto a mano: è una bozza da controllare, i punti incerti hanno un «?».</p>
+    <p><input type="file" id="foto-files" accept="image/*" multiple></p>
+    <p class="small"><b id="foto-count"></b></p>
+    <div class="foto-stage" id="foto-stage"><canvas id="foto-canvas"></canvas></div>
+    <label class="small foto-rot">Raddrizza <input type="range" id="foto-rot" min="-10" max="10" step="0.5" value="0"></label>
+    <p class="actions-inline">
+      <button type="button" class="primary" id="foto-read">Leggi questa striscia</button>
+      <button type="button" id="foto-skip">Salta la foto</button>
+      <span class="small muted" id="foto-status"></span>
+    </p>
+    <textarea id="foto-result" rows="8" spellcheck="false" placeholder="Qui compare quello che è stato letto: puoi correggerlo."></textarea>
+    <menu>
+      <button value="cancel" formnovalidate>Chiudi</button>
+      <button value="ok" class="primary">Aggiungi al giro</button>
+    </menu>
   </form>
 </dialog>
 
@@ -2177,6 +2205,298 @@ details.fold[open] > summary { margin-bottom: 8px; }
 </script>
 <script>
 /*
+ * Casellino - reading a photo of a strip (no DOM, no network).
+ * © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
+ *
+ * The photo of one strip is cut into its pigeonholes by finding the dark vertical lines between
+ * them; the upper line (house numbers) and the lower line (street names) are found by the dark
+ * horizontal line between them. The text itself is read by Tesseract (free, on the device),
+ * one pigeonhole at a time; here are only the steps before and after it.
+ * Works in the browser (window.CasellinoFoto) and in Node (module.exports).
+ */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.CasellinoFoto = api;
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // { width, height, data: RGBA } -> gray levels 0..255
+  function toGray(img) {
+    const g = new Uint8Array(img.width * img.height);
+    for (let i = 0, j = 0; i < g.length; i++, j += 4) {
+      g[i] = (img.data[j] * 299 + img.data[j + 1] * 587 + img.data[j + 2] * 114) / 1000;
+    }
+    return g;
+  }
+
+  // Otsu: the gray level that best splits writing (dark) from paper (light).
+  function threshold(gray) {
+    const hist = new Array(256).fill(0);
+    for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
+    let sum = 0;
+    for (let t = 0; t < 256; t++) sum += t * hist[t];
+    let sumB = 0, wB = 0, best = 0, bestT = 128;
+    for (let t = 0; t < 256; t++) {
+      wB += hist[t];
+      if (!wB) continue;
+      const wF = gray.length - wB;
+      if (!wF) break;
+      sumB += t * hist[t];
+      const mB = sumB / wB, mF = (sum - sumB) / wF;
+      const between = wB * wF * (mB - mF) * (mB - mF);
+      if (between > best) { best = between; bestT = t; }
+    }
+    return bestT;
+  }
+
+  function darkMask(img) {
+    const gray = toGray(img);
+    const t = threshold(gray);
+    const mask = new Uint8Array(gray.length);
+    for (let i = 0; i < gray.length; i++) mask[i] = gray[i] <= t ? 1 : 0; // Otsu: the dark class is "up to t"
+    return mask;
+  }
+
+  // Groups of consecutive indexes (allowing small gaps) -> [{ from, to }]
+  function groups(indexes, gap) {
+    const out = [];
+    indexes.forEach(function (x) {
+      const last = out[out.length - 1];
+      if (last && x - last.to <= gap) last.to = x; else out.push({ from: x, to: x });
+    });
+    return out;
+  }
+
+  /*
+   * Finds the parts of a strip photo: the line between house numbers and street names, and
+   * the pigeonholes. Returns { split, top, bottom, cells: [{ x0, x1 }] } in pixels.
+   */
+  function segmentStrip(img) {
+    const W = img.width, H = img.height;
+    const mask = darkMask(img);
+    // horizontal lines: rows that are dark for most of the width
+    const rowDark = [];
+    for (let y = 0; y < H; y++) {
+      let n = 0;
+      for (let x = 0; x < W; x++) n += mask[y * W + x];
+      rowDark.push(n / W);
+    }
+    const lines = groups(rowDark.map(function (f, y) { return f > 0.45 ? y : -1; }).filter(function (y) { return y >= 0; }), 2)
+      .map(function (g) { return (g.from + g.to) / 2; });
+    // the line between the two rows of a strip sits near 58% of the height (1 cm over 0.7 cm)
+    let split = Math.round(H * 0.58);
+    const inner = lines.filter(function (y) { return y > H * 0.3 && y < H * 0.8; });
+    if (inner.length) split = Math.round(inner.reduce(function (a, y) { return Math.abs(y - H * 0.58) < Math.abs(a - H * 0.58) ? y : a; }));
+    const top = Math.round((lines.filter(function (y) { return y < split - H * 0.15; }).pop() || 0));
+    const bottom = Math.round((lines.filter(function (y) { return y > split + H * 0.15; })[0] || H - 1));
+    // vertical lines in the house-number row: columns dark for most of its height
+    const y0 = top + 2, y1 = split - 2;
+    const colDark = [];
+    for (let x = 0; x < W; x++) {
+      let n = 0;
+      for (let y = y0; y < y1; y++) n += mask[y * W + x];
+      colDark.push(n / Math.max(1, y1 - y0));
+    }
+    const vlines = groups(colDark.map(function (f, x) { return f > 0.7 ? x : -1; }).filter(function (x) { return x >= 0; }), 3);
+    const edges = [0].concat(vlines.map(function (g) { return (g.from + g.to) / 2; }), [W - 1]);
+    let cells = [];
+    for (let i = 1; i < edges.length; i++) cells.push({ x0: Math.round(edges[i - 1]), x1: Math.round(edges[i]) });
+    const widths = cells.map(function (c) { return c.x1 - c.x0; }).sort(function (a, b) { return a - b; });
+    const typical = widths[Math.floor(widths.length * 0.6)] || W;
+    // drop the thin gaps of double lines and the cut pieces at the photo edges
+    cells = cells.filter(function (c) { return c.x1 - c.x0 >= typical * 0.4; });
+    cells.forEach(function (c) { c.span = Math.max(1, Math.round((c.x1 - c.x0) / typical)); });
+    return { split: split, top: top, bottom: bottom, cells: cells, typical: typical };
+  }
+
+  /*
+   * A clean black-and-white copy of one band of the strip (rows y0..y1), without the printed
+   * lines: dark columns that cross most of the band (the lines between pigeonholes) and dark rows
+   * across most of the width are made white, so they are not read as "1" or "I".
+   * Returns { width, height, data: RGBA } (scaled by `scale` for better reading).
+   */
+  function cleanBand(img, y0, y1, scale, forNames) {
+    const W = img.width, H = Math.max(1, y1 - y0);
+    const mask = img._mask || (img._mask = darkMask(img));
+    const m = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) m[y * W + x] = mask[(y0 + y) * W + x];
+    // long straight strokes are printed lines, even when the photo is a little crooked:
+    // horizontal runs longer than ~a third of the band height times 3, vertical runs taller than 70%
+    // the widest stroke of a digit is shorter; for street names only the long border lines go
+    const hMax = forNames ? Math.max(40, Math.round(H * 2.5)) : Math.max(12, Math.round(H * 0.4));
+    const cut = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) {
+      let x = 0;
+      while (x < W) {
+        if (!m[y * W + x]) { x++; continue; }
+        let e = x;
+        while (e + 1 < W && m[y * W + e + 1]) e++;
+        if (e - x + 1 > hMax) for (let k = x; k <= e; k++) for (let dy = -1; dy <= 1; dy++) if (y + dy >= 0 && y + dy < H) cut[(y + dy) * W + k] = 1;
+        x = e + 1;
+      }
+    }
+    const vMax = Math.round(H * 0.45); // numbers are about a third of the band tall, lines more
+    const seps = []; // where the lines between pigeonholes were
+    for (let x = 0; x < W; x++) {
+      let y = 0;
+      while (y < H) {
+        if (!m[y * W + x]) { y++; continue; }
+        let e = y;
+        while (e + 1 < H && m[(e + 1) * W + x]) e++;
+        if (e - y + 1 > vMax) {
+          seps.push(x);
+          for (let k = y; k <= e; k++) for (let dx = -2; dx <= 2; dx++) if (x + dx >= 0 && x + dx < W) cut[k * W + x + dx] = 1;
+        }
+        y = e + 1;
+      }
+    }
+    for (let i = 0; i < m.length; i++) if (cut[i]) m[i] = 0;
+    // the edges of the band are the borders of the strip: no number is written there
+    for (let y = 0; y < H; y++) {
+      if (y >= H * 0.12 && y <= H * 0.92) continue;
+      for (let x = 0; x < W; x++) m[y * W + x] = 0;
+    }
+    const s = scale || 1;
+    const out = { width: W * s, height: H * s, data: new Uint8ClampedArray(W * s * H * s * 4) };
+    out.separators = groups(seps.sort(function (a, b) { return a - b; }), 4).map(function (g) { return Math.round((g.from + g.to) / 2 * s); });
+    for (let y = 0; y < H * s; y++) {
+      for (let x = 0; x < W * s; x++) {
+        const v = m[Math.floor(y / s) * W + Math.floor(x / s)] ? 0 : 255;
+        const i = (y * W * s + x) * 4;
+        out.data[i] = out.data[i + 1] = out.data[i + 2] = v;
+        out.data[i + 3] = 255;
+      }
+    }
+    return out;
+  }
+
+  /*
+   * The groups of writing in a cleaned band, left to right: columns with ink, joined when the
+   * white gap between them is small (the letters of one number), split at larger gaps (the
+   * space between two pigeonholes). Returns [{ x0, x1, y0, y1 }] in pixels of the band.
+   */
+  function inkClusters(band) {
+    const W = band.width, H = band.height;
+    const ink = [];
+    for (let x = 0; x < W; x++) {
+      let n = 0;
+      for (let y = 0; y < H; y++) if (band.data[(y * W + x) * 4] < 128) n++;
+      ink.push(n);
+    }
+    const gap = Math.max(3, Math.round(H * 0.10));
+    const seps = band.separators || [];
+    const out = [];
+    let cur = null, white = 0, si = 0;
+    for (let x = 0; x < W; x++) {
+      // a line between two pigeonholes was here: what follows is another pigeonhole
+      let crossed = false;
+      while (si < seps.length && seps[si] <= x) { crossed = true; si++; }
+      if (crossed) { cur = null; white = gap + 1; }
+      if (ink[x] > 0) {
+        if (cur && white <= gap) cur.x1 = x; else { cur = { x0: x, x1: x }; out.push(cur); }
+        white = 0;
+      } else white++;
+    }
+    return out.map(function (c) {
+      let y0 = H, y1 = 0, n = 0;
+      for (let x = c.x0; x <= c.x1; x++) for (let y = 0; y < H; y++) {
+        if (band.data[(y * W + x) * 4] < 128) { n++; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+      return { x0: c.x0, x1: c.x1, y0: y0, y1: y1, ink: n };
+    }).filter(function (c) {
+      // specks and leftovers of lines are not numbers
+      return c.ink > H * 0.6 && c.y1 - c.y0 > H * 0.25;
+    });
+  }
+
+  // A piece of a band as its own small image, with a white border (Tesseract reads it better).
+  function cropBand(band, c, pad) {
+    const w = c.x1 - c.x0 + 1 + 2 * pad, h = c.y1 - c.y0 + 1 + 2 * pad;
+    const out = { width: w, height: h, data: new Uint8ClampedArray(w * h * 4).fill(255) };
+    for (let y = 0; y <= c.y1 - c.y0; y++) for (let x = 0; x <= c.x1 - c.x0; x++) {
+      const si = ((c.y0 + y) * band.width + c.x0 + x) * 4, di = ((y + pad) * w + x + pad) * 4;
+      out.data[di] = out.data[di + 1] = out.data[di + 2] = band.data[si];
+    }
+    return out;
+  }
+
+  // House numbers read on the cleaned upper line: words with their position, left to right.
+  function numberWords(words) {
+    return words.map(function (w) {
+      return { text: cleanNumber(w.text), x0: w.bbox.x0, x1: w.bbox.x1, y0: w.bbox.y0, y1: w.bbox.y1, conf: w.confidence };
+    }).filter(function (w) { return w.text && /\d/.test(w.text); }).sort(function (a, b) { return a.x0 - b.x0; });
+  }
+
+  // Share of dark pixels in a box (to skip empty pigeonholes).
+  function inkIn(img, box) {
+    const mask = img._mask || (img._mask = darkMask(img));
+    let n = 0, all = 0;
+    for (let y = box.y0; y < box.y1; y++) {
+      for (let x = box.x0; x < box.x1; x++) { n += mask[y * img.width + x]; all++; }
+    }
+    return all ? n / all : 0;
+  }
+
+  // What Tesseract read in one pigeonhole -> a house number ("12", "5A", "61\59") or ''.
+  function cleanNumber(text) {
+    let t = String(text || '').toUpperCase().replace(/[|[\]{}()!_.,;:'"`~]/g, ' ').replace(/\s+/g, ' ').trim();
+    t = t.replace(/(\d)\s+([A-Z])\b/g, '$1$2').replace(/O(?=\d)|(?<=\d)O/g, '0');
+    const m = /\d{1,4}\s*[A-Z]?(\s*[\/\\-]\s*\d{1,4}\s*[A-Z]?)?/.exec(t);
+    return m ? m[0].replace(/\s+/g, '') : '';
+  }
+
+  // Street names read on the lower line: words with their position -> phrases [{ text, x0, x1 }]
+  function streetPhrases(words) {
+    const ws = words.map(function (w) {
+      return { text: String(w.text || '').replace(/[^A-ZÀ-Ü'.\s]/gi, '').trim().toUpperCase(), x0: w.bbox.x0, x1: w.bbox.x1, conf: w.confidence };
+    }).filter(function (w) { return w.text.length >= 2 && w.conf > 20; }).sort(function (a, b) { return a.x0 - b.x0; });
+    const out = [];
+    ws.forEach(function (w) {
+      const last = out[out.length - 1];
+      const gap = last ? w.x0 - last.x1 : Infinity;
+      const charW = last ? (last.x1 - last.x0) / Math.max(1, last.text.length) : 0;
+      if (last && gap < charW * 2.5) { last.text += ' ' + w.text; last.x1 = w.x1; } else out.push({ text: w.text, x0: w.x0, x1: w.x1 });
+    });
+    return out.filter(function (ph) { return ph.text.replace(/[^A-Z]/g, '').length >= 3; });
+  }
+
+  /*
+   * Puts together what was read: pigeonholes (left to right, with what was read above and below)
+   * and street phrases -> lines of a route, e.g. "VIA DEI TIGLI: 1, 3, 5/7".
+   * A pigeonhole takes the street written under it, or the nearest one.
+   */
+  function routeLines(cells, phrases) {
+    const streetOf = function (c) {
+      if (!phrases.length) return '?';
+      const mid = (c.x0 + c.x1) / 2;
+      let best = phrases[0], dist = Infinity;
+      phrases.forEach(function (ph) {
+        const d = mid < ph.x0 ? ph.x0 - mid : (mid > ph.x1 ? mid - ph.x1 : 0);
+        if (d < dist) { dist = d; best = ph; }
+      });
+      return best.text;
+    };
+    const lines = [];
+    cells.forEach(function (c) {
+      let tok = c.top || (c.empty ? 'vuota' : '?');
+      if (c.second) tok += '/' + c.second;
+      if (c.unsure && tok !== 'vuota' && !/\?$/.test(tok)) tok += '?';
+      if (c.span > 1) tok += ' (' + c.span + ')';
+      const street = streetOf(c);
+      const last = lines[lines.length - 1];
+      if (last && last.street === street) last.tokens.push(tok);
+      else lines.push({ street: street, tokens: [tok] });
+    });
+    return lines.map(function (l) { return l.street + ': ' + l.tokens.join(', '); });
+  }
+
+  return { toGray: toGray, threshold: threshold, segmentStrip: segmentStrip, cleanBand: cleanBand, inkClusters: inkClusters, cropBand: cropBand, numberWords: numberWords, inkIn: inkIn, cleanNumber: cleanNumber,
+    streetPhrases: streetPhrases, routeLines: routeLines };
+});
+</script>
+<script>
+/*
  * © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
  * Example project with invented streets and town, used by the "Esempio" button and by tests.
  * Never put real streets or names here (the repository must not contain work data).
@@ -2484,6 +2804,8 @@ details.fold[open] > summary { margin-bottom: 8px; }
         'Scrivi il giro dall\'inizio alla fine, una via per riga. Le caselle si riempiono come le righe di un libro: ' +
         'da sinistra a destra e dall\'alto in basso (fila 1 di ogni modulo, poi fila 2…). ',
         h('button', { type: 'button', class: 'link', onclick: function () { $('dlg-help').showModal(); } }, 'Come si scrive'),
+        ' · ',
+        h('button', { type: 'button', class: 'link', onclick: openPhotos }, 'Leggi le strisce dalle foto'),
         empty ? ' · ' : null,
         empty ? h('button', { type: 'button', class: 'link', onclick: loadExample }, 'Guarda un esempio') : null),
       ta, els.suggest, els.here, els.warnings,
@@ -3407,6 +3729,194 @@ details.fold[open] > summary { margin-bottom: 8px; }
     }
   }
 
+  // ------------------------------------------------------------ reading strips from photos (free, on the device)
+
+  const F = window.CasellinoFoto;
+  const photo = { files: [], index: 0, image: null, angle: 0, rect: null, view: null, worker: null, busy: false };
+  let tesseractReady = null;
+
+  function loadTesseract() {
+    if (tesseractReady) return tesseractReady;
+    tesseractReady = new Promise(function (resolve, reject) {
+      const js = h('script', { src: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js' });
+      js.onload = function () { resolve(window.Tesseract); };
+      js.onerror = function () { tesseractReady = null; reject(new Error('il lettore di foto non si scarica (serve internet la prima volta)')); };
+      document.head.append(js);
+    });
+    return tesseractReady;
+  }
+
+  async function ocrWorker() {
+    if (photo.worker) return photo.worker;
+    const T = await loadTesseract();
+    $('foto-status').textContent = 'Preparo il lettore (la prima volta scarica qualche MB)…';
+    photo.worker = await T.createWorker('ita', 1);
+    return photo.worker;
+  }
+
+  function imageToCanvas(w, hgt) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = hgt;
+    return c;
+  }
+
+  // The photo turned by the chosen angle, at a given scale, on a canvas.
+  function turned(scale) {
+    const img = photo.image;
+    const a = photo.angle * Math.PI / 180;
+    const w = img.naturalWidth * scale, hh = img.naturalHeight * scale;
+    const W = Math.ceil(Math.abs(w * Math.cos(a)) + Math.abs(hh * Math.sin(a)));
+    const H = Math.ceil(Math.abs(w * Math.sin(a)) + Math.abs(hh * Math.cos(a)));
+    const c = imageToCanvas(W, H);
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, W, H);
+    g.translate(W / 2, H / 2);
+    g.rotate(a);
+    g.drawImage(img, -w / 2, -hh / 2, w, hh);
+    return c;
+  }
+
+  function drawPhoto() {
+    const stage = $('foto-canvas');
+    if (!photo.image) { stage.width = stage.height = 0; return; }
+    const box = $('foto-stage');
+    const scale = Math.min(1, (box.clientWidth || 800) / photo.image.naturalWidth);
+    const c = turned(scale);
+    stage.width = c.width; stage.height = c.height;
+    const g = stage.getContext('2d');
+    g.drawImage(c, 0, 0);
+    photo.view = { scale: scale };
+    if (photo.rect) {
+      const r = photo.rect;
+      g.fillStyle = 'rgba(0,0,0,0.35)';
+      g.fillRect(0, 0, stage.width, r.y0);
+      g.fillRect(0, r.y1, stage.width, stage.height - r.y1);
+      g.fillRect(0, r.y0, r.x0, r.y1 - r.y0);
+      g.fillRect(r.x1, r.y0, stage.width - r.x1, r.y1 - r.y0);
+      g.strokeStyle = '#d93025'; g.lineWidth = 2;
+      g.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+    }
+    $('foto-count').textContent = 'Foto ' + (photo.index + 1) + ' di ' + photo.files.length;
+  }
+
+  function showPhoto(i) {
+    photo.index = i;
+    photo.rect = null;
+    photo.angle = 0;
+    $('foto-rot').value = '0';
+    if (i >= photo.files.length) {
+      photo.image = null;
+      drawPhoto();
+      $('foto-count').textContent = 'Foto finite: controlla il testo e premi «Aggiungi al giro».';
+      return;
+    }
+    const url = URL.createObjectURL(photo.files[i]);
+    const img = new Image();
+    img.onload = function () { photo.image = img; drawPhoto(); };
+    img.src = url;
+  }
+
+  function stagePoint(e) {
+    const c = $('foto-canvas');
+    const r = c.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * c.width / r.width, y: (e.clientY - r.top) * c.height / r.height };
+  }
+
+  async function readPhoto() {
+    if (photo.busy || !photo.image) return;
+    photo.busy = true;
+    const status = $('foto-status');
+    try {
+      const w = await ocrWorker();
+      // the chosen part at full size (or all the photo)
+      const full = turned(1);
+      const k = 1 / photo.view.scale;
+      const r = photo.rect || { x0: 0, y0: 0, x1: full.width * photo.view.scale, y1: full.height * photo.view.scale };
+      const x0 = Math.max(0, Math.round(r.x0 * k)), y0 = Math.max(0, Math.round(r.y0 * k));
+      const cw = Math.min(full.width - x0, Math.round((r.x1 - r.x0) * k)), ch = Math.min(full.height - y0, Math.round((r.y1 - r.y0) * k));
+      const data = full.getContext('2d').getImageData(x0, y0, cw, ch);
+      const img = { width: data.width, height: data.height, data: data.data };
+      const seg = F.segmentStrip(img);
+      const S = 2;
+      const up = F.cleanBand(img, seg.top, seg.split, S);
+      const low = F.cleanBand(img, seg.split, seg.bottom, S, true);
+      const toCanvas = function (band) {
+        const c = imageToCanvas(band.width, band.height);
+        c.getContext('2d').putImageData(new ImageData(band.data, band.width, band.height), 0, 0);
+        return c;
+      };
+      const clusters = F.inkClusters(up);
+      await w.setParameters({ tessedit_pageseg_mode: '8', tessedit_char_whitelist: '0123456789ABCDEFGHILMNOPQRSTUVZ/\\-' });
+      const cells = [];
+      for (let i = 0; i < clusters.length; i++) {
+        status.textContent = 'Leggo i civici: ' + (i + 1) + ' di ' + clusters.length + '…';
+        const res = await w.recognize(toCanvas(F.cropBand(up, clusters[i], 10)));
+        const t = F.cleanNumber(res.data.text);
+        if (t) cells.push({ x0: clusters[i].x0 / S, x1: clusters[i].x1 / S, top: t, unsure: res.data.confidence < 70, span: 1 });
+      }
+      status.textContent = 'Leggo i nomi delle vie…';
+      await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
+      const rn = await w.recognize(toCanvas(low));
+      const phrases = F.streetPhrases(rn.data.words).map(function (p) { return { text: p.text, x0: p.x0 / S, x1: p.x1 / S }; });
+      const lines = F.routeLines(cells, phrases);
+      const out = $('foto-result');
+      out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + '# foto ' + (photo.index + 1) + ' (letta in automatico: da controllare)\n' +
+        (lines.length ? lines.join('\n') : '# non ho letto niente: prova a raddrizzarla o a stringere il rettangolo') + '\n';
+      status.textContent = cells.length + ' civici letti nella foto ' + (photo.index + 1) + '.';
+      showPhoto(photo.index + 1);
+    } catch (e) {
+      status.textContent = 'Non riesco a leggere: ' + e.message;
+    } finally {
+      photo.busy = false;
+    }
+  }
+
+  function openPhotos() {
+    $('foto-result').value = '';
+    $('foto-status').textContent = '';
+    photo.files = [];
+    showPhoto(0);
+    $('foto-count').textContent = 'Scegli le foto.';
+    $('dlg-foto').showModal();
+  }
+
+  function wirePhotos() {
+    $('foto-files').addEventListener('change', function (e) {
+      photo.files = Array.prototype.slice.call(e.target.files || []);
+      if (photo.files.length) showPhoto(0);
+    });
+    $('foto-rot').addEventListener('input', function (e) { photo.angle = +e.target.value; photo.rect = null; drawPhoto(); });
+    const stage = $('foto-canvas');
+    let start = null;
+    stage.addEventListener('pointerdown', function (e) { if (!photo.image) return; start = stagePoint(e); stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener('pointermove', function (e) {
+      if (!start) return;
+      const p = stagePoint(e);
+      photo.rect = { x0: Math.min(start.x, p.x), y0: Math.min(start.y, p.y), x1: Math.max(start.x, p.x), y1: Math.max(start.y, p.y) };
+      drawPhoto();
+    });
+    stage.addEventListener('pointerup', function () {
+      start = null;
+      if (photo.rect && (photo.rect.x1 - photo.rect.x0 < 20 || photo.rect.y1 - photo.rect.y0 < 10)) { photo.rect = null; drawPhoto(); }
+    });
+    $('foto-read').addEventListener('click', readPhoto);
+    $('foto-skip').addEventListener('click', function () { showPhoto(photo.index + 1); });
+    $('dlg-foto').addEventListener('close', function () {
+      if ($('dlg-foto').returnValue !== 'ok') return;
+      const text = $('foto-result').value.trim();
+      if (!text) return;
+      const s = sz();
+      s.route = (s.route.replace(/\s+$/, '') + (s.route.trim() ? '\n' : '') + text + '\n');
+      state.els.ta.value = s.route;
+      fitTextarea(state.els.ta);
+      changed();
+      refreshRoute();
+      refreshSide();
+      toast('Aggiunto in fondo al giro: controlla le righe con «?».');
+    });
+  }
+
   // ------------------------------------------------------------ official street lists
 
   function openList(town) {
@@ -3569,6 +4079,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
     $('btn-ov-png').addEventListener('click', downloadOverview);
     $('map-card').addEventListener('toggle', showKnownRound);
     $('btn-route').addEventListener('click', calcRound);
+    wirePhotos();
     $('depot').addEventListener('input', function (e) { state.project.depot = e.target.value; changed(); });
   }
 
