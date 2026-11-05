@@ -71,6 +71,14 @@ function caretAt(ta, needle, offset) {
   const toastText = doc.querySelector('.toast') ? doc.querySelector('.toast').textContent : '';
   assert.ok(blobs.length === 1 && blobs[0].size > 5000, 'Excel creato: ' + blobs.length + ' ' + toastText);
 
+  // the photo reader opens from the big button and from the menu
+  doc.querySelector('.photo-btn').dispatchEvent(new win.Event('click'));
+  assert.ok(doc.getElementById('dlg-foto').open, 'finestra delle foto dal pulsante');
+  doc.getElementById('dlg-foto').open = false;
+  doc.getElementById('btn-photos').dispatchEvent(new win.Event('click'));
+  assert.ok(doc.getElementById('dlg-foto').open, 'finestra delle foto dal menu');
+  doc.getElementById('dlg-foto').open = false;
+
   // the drawing of the whole frame: two modules (casello, ala B), then one more casello
   const ov = doc.getElementById('overview-card');
   ov.open = true;

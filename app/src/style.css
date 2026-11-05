@@ -330,3 +330,8 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .foto-stage canvas { display: block; max-width: 100%; height: auto; touch-action: none; cursor: crosshair; }
 .foto-rot { display: flex; align-items: center; gap: 8px; }
 .foto-rot input { flex: 1; max-width: 320px; }
+
+/* the photo button in the route box */
+.route-actions { margin: 0 0 8px; }
+.photo-btn { font-size: 15px; padding: 9px 14px; }
+@media (max-width: 560px) { .photo-btn { width: 100%; } }

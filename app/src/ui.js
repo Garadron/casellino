@@ -249,12 +249,12 @@
     const empty = !state.project.subzones.some(function (x) { return x.route.trim(); });
     box.append(
       h('div', { class: 'row-head' }, h('h2', null, 'Il giro' + (s.name ? ' della ' + s.name : '')), els.meter, els.used),
+      h('p', { class: 'route-actions' },
+        h('button', { type: 'button', class: 'primary photo-btn', onclick: openPhotos }, '📷 Carica e leggi le foto delle strisce')),
       h('p', { class: 'small muted hint' },
-        'Scrivi il giro dall\'inizio alla fine, una via per riga. Le caselle si riempiono come le righe di un libro: ' +
+        'Scrivi il giro dall\'inizio alla fine, una via per riga, oppure fallo scrivere dalle foto qui sopra. Le caselle si riempiono come le righe di un libro: ' +
         'da sinistra a destra e dall\'alto in basso (fila 1 di ogni modulo, poi fila 2…). ',
         h('button', { type: 'button', class: 'link', onclick: function () { $('dlg-help').showModal(); } }, 'Come si scrive'),
-        ' · ',
-        h('button', { type: 'button', class: 'link', onclick: openPhotos }, 'Leggi le strisce dalle foto'),
         empty ? ' · ' : null,
         empty ? h('button', { type: 'button', class: 'link', onclick: loadExample }, 'Guarda un esempio') : null),
       ta, els.suggest, els.here, els.warnings,
@@ -1501,6 +1501,7 @@
     });
     $('btn-example').addEventListener('click', function () { closeMenu(); loadExample(); });
     $('btn-help').addEventListener('click', function () { closeMenu(); $('dlg-help').showModal(); });
+    $('btn-photos').addEventListener('click', function () { closeMenu(); openPhotos(); });
     $('dlg-import').addEventListener('close', function () {
       if ($('dlg-import').returnValue !== 'ok') return;
       const text = $('import-text').value;

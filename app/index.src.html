@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Casellino">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>window.CASELLINO_VERSION = '__VERSIONE__';</script>
 <link rel="stylesheet" href="src/style.css">
@@ -33,6 +33,7 @@
       <summary>Altro</summary>
       <div class="menu-list">
         <button type="button" id="btn-new">Comincia da capo</button>
+        <button type="button" id="btn-photos">📷 Leggi le foto delle strisce</button>
         <button type="button" id="btn-import">Importa testo</button>
         <button type="button" id="btn-export-text">Scarica come testo</button>
         <button type="button" id="btn-example">Carica l'esempio</button>
@@ -159,7 +160,7 @@
     <h2>Leggi le strisce dalle foto</h2>
     <p>Scegli le foto <b>in ordine</b>: una striscia alla volta, da sinistra a destra, fila dopo fila. Per ogni foto: se la striscia è storta, raddrizzala; poi trascina un rettangolo intorno alla sola striscia (dal bordo sopra i civici al bordo sotto le vie) e premi «Leggi».</p>
     <p class="small muted">È gratis e le foto restano sul tuo dispositivo: la lettura la fa Tesseract, qui dentro. La prima volta scarica il lettore (qualche MB). Legge bene lo stampato, poco lo scritto a mano: è una bozza da controllare, i punti incerti hanno un «?».</p>
-    <p><input type="file" id="foto-files" accept="image/*" multiple></p>
+    <p><input type="file" id="foto-files" accept="image/*" multiple> <span class="small muted">Dal telefono puoi scegliere dalla galleria o scattarle subito.</span></p>
     <p class="small"><b id="foto-count"></b></p>
     <div class="foto-stage" id="foto-stage"><canvas id="foto-canvas"></canvas></div>
     <label class="small foto-rot">Raddrizza <input type="range" id="foto-rot" min="-10" max="10" step="0.5" value="0"></label>

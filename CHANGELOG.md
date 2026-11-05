@@ -1,5 +1,15 @@
 # Registro delle versioni
 
+## v0.10.0 · 2026-11-06 · Icona nuova e pulsante delle foto ben visibile
+
+- **Icona nuova**: un casello visto di fronte, con le caselle, i divisori e sotto le strisce colorate delle vie. Si vede
+  sulla schermata Home del telefono, nella scheda del browser e anche nel file unico per il PC (dentro il file).
+  C'è anche la versione per Windows (`casellino.ico`).
+- **Leggere le foto**: ora è un pulsante grande in cima al giro («📷 Carica e leggi le foto delle strisce») e una voce
+  del menu «Altro». Dal telefono si possono scegliere dalla galleria o scattare subito.
+- File: `tools/icone.py`, `app/icons/`, `app/manifest.webmanifest`, `app/sw.js`, `app/index.src.html`, `app/src/ui.js`,
+  `app/src/style.css`, `tools/build.py`, `tests/test_pagina.js`, `Casellino.html`, `sito/`, `CHANGELOG.md`, `prove/`.
+
 ## v0.9.0 · 2026-11-05 · Leggere le strisce dalle foto
 
 - **Leggi le strisce dalle foto** (nel riquadro del giro): si scelgono le foto in ordine, una striscia alla volta; per

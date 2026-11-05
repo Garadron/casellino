@@ -48,18 +48,29 @@ def page(ver):
     return html.replace("__VERSIONE__", ver)
 
 
+def inline_icons(html):
+    """The single file has no icon files next to it: the icons go inside it."""
+    import base64
+
+    def data(name):
+        return "data:image/png;base64," + base64.b64encode((APP / "icons" / name).read_bytes()).decode()
+
+    html = html.replace('href="favicon-64.png"', 'href="' + data("favicon-64.png") + '"')
+    return html.replace('href="apple-touch-icon.png"', 'href="' + data("apple-touch-icon.png") + '"')
+
+
 def build():
     ver = version()
     html = page(ver)
     single = ROOT / "Casellino.html"
-    single.write_text(html, encoding="utf-8", newline="\n")
+    single.write_text(inline_icons(html), encoding="utf-8", newline="\n")
     if SITE.exists():
         shutil.rmtree(SITE)
     SITE.mkdir()
     (SITE / "index.html").write_text(html, encoding="utf-8", newline="\n")
     (SITE / "manifest.webmanifest").write_text(read("manifest.webmanifest"), encoding="utf-8", newline="\n")
     (SITE / "sw.js").write_text(read("sw.js").replace("__VERSIONE__", ver), encoding="utf-8", newline="\n")
-    for icon in (APP / "icons").glob("*.png"):
+    for icon in list((APP / "icons").glob("*.png")) + list((APP / "icons").glob("*.ico")):
         shutil.copy(icon, SITE / icon.name)
     (SITE / ".nojekyll").write_text("", encoding="utf-8")
     print(f"Versione {ver}: creati {single.name} ({single.stat().st_size // 1024} KB) e la cartella sito/ "

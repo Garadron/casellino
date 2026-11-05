@@ -11,9 +11,9 @@
 <meta name="apple-mobile-web-app-title" content="Casellino">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.9.0';</script>
+<script>window.CASELLINO_VERSION = '0.10.0';</script>
 <style>
 :root {
   --bg: #f4f5f7;
@@ -347,6 +347,11 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .foto-stage canvas { display: block; max-width: 100%; height: auto; touch-action: none; cursor: crosshair; }
 .foto-rot { display: flex; align-items: center; gap: 8px; }
 .foto-rot input { flex: 1; max-width: 320px; }
+
+/* the photo button in the route box */
+.route-actions { margin: 0 0 8px; }
+.photo-btn { font-size: 15px; padding: 9px 14px; }
+@media (max-width: 560px) { .photo-btn { width: 100%; } }
 </style>
 </head>
 <body>
@@ -366,6 +371,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
       <summary>Altro</summary>
       <div class="menu-list">
         <button type="button" id="btn-new">Comincia da capo</button>
+        <button type="button" id="btn-photos">📷 Leggi le foto delle strisce</button>
         <button type="button" id="btn-import">Importa testo</button>
         <button type="button" id="btn-export-text">Scarica come testo</button>
         <button type="button" id="btn-example">Carica l'esempio</button>
@@ -492,7 +498,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
     <h2>Leggi le strisce dalle foto</h2>
     <p>Scegli le foto <b>in ordine</b>: una striscia alla volta, da sinistra a destra, fila dopo fila. Per ogni foto: se la striscia è storta, raddrizzala; poi trascina un rettangolo intorno alla sola striscia (dal bordo sopra i civici al bordo sotto le vie) e premi «Leggi».</p>
     <p class="small muted">È gratis e le foto restano sul tuo dispositivo: la lettura la fa Tesseract, qui dentro. La prima volta scarica il lettore (qualche MB). Legge bene lo stampato, poco lo scritto a mano: è una bozza da controllare, i punti incerti hanno un «?».</p>
-    <p><input type="file" id="foto-files" accept="image/*" multiple></p>
+    <p><input type="file" id="foto-files" accept="image/*" multiple> <span class="small muted">Dal telefono puoi scegliere dalla galleria o scattarle subito.</span></p>
     <p class="small"><b id="foto-count"></b></p>
     <div class="foto-stage" id="foto-stage"><canvas id="foto-canvas"></canvas></div>
     <label class="small foto-rot">Raddrizza <input type="range" id="foto-rot" min="-10" max="10" step="0.5" value="0"></label>
@@ -2800,12 +2806,12 @@ details.fold[open] > summary { margin-bottom: 8px; }
     const empty = !state.project.subzones.some(function (x) { return x.route.trim(); });
     box.append(
       h('div', { class: 'row-head' }, h('h2', null, 'Il giro' + (s.name ? ' della ' + s.name : '')), els.meter, els.used),
+      h('p', { class: 'route-actions' },
+        h('button', { type: 'button', class: 'primary photo-btn', onclick: openPhotos }, '📷 Carica e leggi le foto delle strisce')),
       h('p', { class: 'small muted hint' },
-        'Scrivi il giro dall\'inizio alla fine, una via per riga. Le caselle si riempiono come le righe di un libro: ' +
+        'Scrivi il giro dall\'inizio alla fine, una via per riga, oppure fallo scrivere dalle foto qui sopra. Le caselle si riempiono come le righe di un libro: ' +
         'da sinistra a destra e dall\'alto in basso (fila 1 di ogni modulo, poi fila 2…). ',
         h('button', { type: 'button', class: 'link', onclick: function () { $('dlg-help').showModal(); } }, 'Come si scrive'),
-        ' · ',
-        h('button', { type: 'button', class: 'link', onclick: openPhotos }, 'Leggi le strisce dalle foto'),
         empty ? ' · ' : null,
         empty ? h('button', { type: 'button', class: 'link', onclick: loadExample }, 'Guarda un esempio') : null),
       ta, els.suggest, els.here, els.warnings,
@@ -4052,6 +4058,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
     });
     $('btn-example').addEventListener('click', function () { closeMenu(); loadExample(); });
     $('btn-help').addEventListener('click', function () { closeMenu(); $('dlg-help').showModal(); });
+    $('btn-photos').addEventListener('click', function () { closeMenu(); openPhotos(); });
     $('dlg-import').addEventListener('close', function () {
       if ($('dlg-import').returnValue !== 'ok') return;
       const text = $('import-text').value;
