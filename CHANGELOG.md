@@ -1,5 +1,13 @@
 # Registro delle versioni
 
+## v0.7.1 · 2026-11-05 · Tolte due parole che non dovevano esserci
+
+- Nella spiegazione della cartina c'era la parola usata in azienda per il mobile, e in un commento del codice il nome di
+  una via vera: tolti. Ora c'è un controllo (`tools/controllo_privacy.py`) che ferma il salvataggio se trova una parola
+  vietata; l'elenco delle parole resta privato, sul PC.
+- File: `app/index.src.html`, `app/src/core.js`, `tools/controllo_privacy.py`, `Casellino.html`, `sito/`, `CLAUDE.md`,
+  `CHANGELOG.md`.
+
 ## v0.7.0 · 2026-11-05 · Il disegno di tutto il mobile, la cartina del giro, un colore per via
 
 - **Disegno di tutto il mobile**: le sottozone una accanto all'altra, come il mobile vero (fila 1 in alto, fila 4

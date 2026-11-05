@@ -18,7 +18,7 @@ tutti i postini, non solo alla zona di Garadron.
   azienda per il mobile. Si dice **casello**, **ala** o **aletta**, e il programma si chiama **Casellino** (v0.5.0).
 - **Le vie, i civici e i nomi delle persone sono dati di lavoro.** Le foto, l'Excel di partenza e ogni nome vero stanno
   in `dati/`, che non va mai su GitHub. Nel codice, negli esempi, nei messaggi dei commit e nelle Release solo vie e
-  civici inventati. Il repository è **pubblico**: prima di ogni push si controlla che non ci sia niente di vero.
+  civici inventati. Il repository è **pubblico**: prima di ogni commit si lancia `python tools/controllo_privacy.py`, che si ferma se trova una parola vietata (l'elenco è privato, in `dati/parole_vietate.txt`); il commit si fa solo se il controllo passa (`python tools/controllo_privacy.py && git commit ...`).
 - I punti aperti del programma stanno in [PROMEMORIA.md](PROMEMORIA.md); quelli della zona di Garadron in
   `dati/PROMEMORIA-privato.md`. Si leggono tutti e due all'inizio di ogni sessione.
 - Ogni versione va in [CHANGELOG.md](CHANGELOG.md). Licenza: PolyForm Noncommercial con un permesso in più per chi
