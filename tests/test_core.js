@@ -247,6 +247,66 @@ test('one street, written in different ways, is one street', function () {
   assert.strictEqual(Object.keys(p.streets).length, 2);
 });
 
+test('a drawn frame: three modules for A and one for B (like a zone with two alas)', function () {
+  const p = Core.newProject();
+  const a = p.subzones[0]; a.name = '3A';
+  const b = Core.newSubzone('3B', ''); p.subzones.push(b);
+  p.wall = { modules: [{ type: 'ala', owner: a.id }, { type: 'casello', owner: a.id }, { type: 'ala', owner: a.id }, { type: 'casello', owner: b.id }], marks: [] };
+  a.route = 'VIA A: 1..313\nVIA A2: 2';  // 157 = 33 + 91 + 33 fill row 1, then row 2
+  b.route = 'VIA B: 1, 3';
+  const all = Core.analyseProject(p);
+  const cells = Core.allCells(all[0]);
+  const at = function (c) { return (c.i + 1) + ' ' + c.m + '#' + c.wi + ' ' + (c.start + 1); };
+  assert.strictEqual(at(cells[0]), '1 ala#0 1');
+  assert.strictEqual(at(cells[33]), '1 casello#1 1');
+  assert.strictEqual(at(cells[124]), '1 ala#2 1');
+  assert.strictEqual(at(cells[157]), '2 ala#0 1');
+  assert.strictEqual(all[0].capacity, 4 * 157);
+  assert.strictEqual(at(Core.allCells(all[1])[0]), '1 casello#3 1');
+  // Excel: A gets Ala A + Casello + Ala B on one sheet, B its casello
+  const files = Xlsx.buildWorkbookFiles(p);
+  const wb = files.find(function (f) { return f.name === 'xl/workbook.xml'; }).data;
+  assert.ok(wb.indexOf("'3A'!$B$4:$AH$11,'3A'!$AL$4:$DX$11,'3A'!$EB$4:$FH$11") >= 0, wb);
+  assert.ok(wb.indexOf("'3B'!$AL$4:$DX$11") >= 0);
+});
+
+test('a drawn frame: B takes the last row of A from the middle (pencil mark)', function () {
+  const p = Core.newProject();
+  const a = p.subzones[0]; a.name = '5A';
+  const b = Core.newSubzone('5B', ''); p.subzones.push(b);
+  p.wall = { modules: [{ type: 'casello', owner: a.id }, { type: 'ala', owner: a.id }, { type: 'casello', owner: b.id }, { type: 'ala', owner: b.id }], marks: [] };
+  Core.setWallMark(p.wall, 3, 0, 45, b.id); // row 4 of A's casello, from slot 46, is B's
+  assert.deepStrictEqual(p.wall.marks, [{ row: 3, module: 0, slot: 45, owner: b.id }]);
+  a.route = 'VIA A: 1..991'.replace('1..991', '1..591, 2..334'); // 296 + 167 = 463 = 3 x 124 + 45 + 46... fills A
+  b.route = 'VIA B: 1..181\nFINE FILA\nVIA C: 1\nFINE FILA\nVIA D: 1\nFINE FILA\nVIA E: 1, 3';
+  const all = Core.analyseProject(p);
+  const e = Core.allCells(all[1]).filter(function (c) { return c.street === 'VIA E'; });
+  // in reading order, row 4 of B starts in A's casello at slot 46 (left), then B's own modules
+  assert.deepStrictEqual(e.map(function (c) { return c.wi + ':' + (c.start + 1); }), ['0:46', '0:47']);
+  const aRow4 = Core.allCells(all[0]).filter(function (c) { return c.i === 3; });
+  assert.ok(aRow4.every(function (c) { return c.wi === 1 || c.start < 45; }), 'A in row 4 stops at slot 45 of its casello');
+  // the eraser gives the slots back
+  Core.removeWallMark(p.wall, 3, 0, 60);
+  assert.deepStrictEqual(p.wall.marks, []);
+});
+
+test('drawing the frame of a project keeps every pigeonhole in place', function () {
+  const p = Core.newProject();
+  const a = p.subzones[0]; a.name = '1A';
+  const b = Core.newSubzone('1B', ''); b.modules = { alaA: false, casello: true, alaB: true }; p.subzones.push(b);
+  a.route = 'VIA A: 1..591, 2..400\nVIA LUNGA: 2, 4, 6';
+  b.route = 'VIA B: 1..181\nFINE FILA\nVIA C: 1..5\nFINE FILA\nVIA E: 1\nFINE FILA\nVIA D: 1, 3';
+  const key = function (all) { return all.map(function (x) { return Core.allCells(x).map(function (c) { return c.street + c.top + '@' + c.i + c.m + c.start; }).join(','); }).join('|'); };
+  const before = key(Core.analyseProject(p));
+  p.wall = Core.wallFromSubzones(p);
+  assert.strictEqual(p.wall.marks.length, 2);
+  const after = Core.analyseProject(p);
+  assert.strictEqual(key(after).replace(/alaB/g, 'ala'), before.replace(/alaB/g, 'ala'));
+  // saved and opened again
+  const again = Core.sanitizeProject(JSON.parse(JSON.stringify(p)));
+  assert.deepStrictEqual(again.wall, p.wall);
+});
+
 test('files of older versions with another word for the big module still open', function () {
   const p = Core.sanitizeProject({ subzones: [{ name: '1A', modules: { casellVecchio: false, alaB: true }, rows: { casellVecchio: ['V: 1', '', '', ''], alaB: ['W: 2', '', '', ''] } }] });
   assert.deepStrictEqual(p.subzones[0].modules, { alaA: false, casello: false, alaB: true });

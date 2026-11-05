@@ -311,3 +311,16 @@ details.fold[open] > summary { margin-bottom: 8px; }
   font: 700 11px/1.2 Arial, sans-serif; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .stop-pin.depot { background: #111; color: #fff; border-radius: 50%; font: 700 12px/24px Arial, sans-serif; text-align: center; }
 @media (max-width: 560px) { .route-map { height: 320px; } }
+
+/* the frame: modules in a row, pencil and eraser */
+.wall-tools { margin-bottom: 8px; }
+.wall-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.wall-chip { display: flex; flex-direction: column; gap: 4px; border: 2px solid; border-radius: 8px; padding: 6px 8px; background: var(--panel); font-size: 13px; }
+.wall-chip select { font-size: 13px; padding: 3px 6px; }
+.chip-buttons { display: flex; gap: 4px; }
+.chip-buttons button { min-height: 28px; padding: 2px 8px; }
+.pens { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pen { display: inline-flex; align-items: center; gap: 6px; }
+.pen i { width: 14px; height: 14px; border-radius: 3px; background: var(--pen); display: inline-block; }
+.pen.on { outline: 3px solid var(--pen, var(--accent)); outline-offset: 1px; font-weight: 700; }
+.overview-wrap svg.pencil { cursor: crosshair; }

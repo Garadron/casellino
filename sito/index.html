@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.7.1';</script>
+<script>window.CASELLINO_VERSION = '0.8.0';</script>
 <style>
 :root {
   --bg: #f4f5f7;
@@ -328,6 +328,19 @@ details.fold[open] > summary { margin-bottom: 8px; }
   font: 700 11px/1.2 Arial, sans-serif; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .stop-pin.depot { background: #111; color: #fff; border-radius: 50%; font: 700 12px/24px Arial, sans-serif; text-align: center; }
 @media (max-width: 560px) { .route-map { height: 320px; } }
+
+/* the frame: modules in a row, pencil and eraser */
+.wall-tools { margin-bottom: 8px; }
+.wall-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.wall-chip { display: flex; flex-direction: column; gap: 4px; border: 2px solid; border-radius: 8px; padding: 6px 8px; background: var(--panel); font-size: 13px; }
+.wall-chip select { font-size: 13px; padding: 3px 6px; }
+.chip-buttons { display: flex; gap: 4px; }
+.chip-buttons button { min-height: 28px; padding: 2px 8px; }
+.pens { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pen { display: inline-flex; align-items: center; gap: 6px; }
+.pen i { width: 14px; height: 14px; border-radius: 3px; background: var(--pen); display: inline-block; }
+.pen.on { outline: 3px solid var(--pen, var(--accent)); outline-offset: 1px; font-weight: 700; }
+.overview-wrap svg.pencil { cursor: crosshair; }
 </style>
 </head>
 <body>
@@ -380,6 +393,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
     <details class="card fold" id="overview-card">
       <summary><h2>Disegno di tutto il mobile</h2></summary>
       <p class="small muted">Tutte le sottozone una accanto all'altra, come il mobile vero: fila 1 in alto, fila 4 sulla scrivania. La riga colorata sotto ogni casella dice di quale sottozona è; la riga rossa segna il confine dentro una fila. Tocca una casella per andare alla sua riga del giro.</p>
+      <div id="wall-tools" class="wall-tools"></div>
       <p class="actions-inline">
         <button type="button" id="btn-ov-fit">Adatta allo schermo</button>
         <button type="button" id="btn-ov-big">Più grande</button>
@@ -458,7 +472,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
     <p>Di solito nelle vie i dispari sono da un lato e i pari dall'altro, tutti e due a salire (<code>1..15</code> e <code>2..16</code>); nelle piazze i numeri vanno in fila, uno dopo l'altro (<code>1-12 tutti</code>).</p>
     <p><b>Una sottozona più lunga del suo casello e della sua ala</b> continua da sola nell'ultima fila della sottozona dopo (per esempio la A nella fila 4 della B), come nel mobile vero: si scrive tutto nel giro della A, e la B comincia quella fila dopo.</p>
     <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Nella stessa sottozona <b>nessun colore si ripete</b>: ogni via ha il suo. Due vie vicine non hanno mai colori simili. Nell'elenco delle vie i colori già usati nella sottozona e quelli troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
-    <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate.</p>
+    <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. Lì si dice anche com'è fatto il mobile: i moduli da sinistra a destra (casello o ala) e di quale sottozona è ognuno, in qualsiasi ordine (ala, casello, ala, casello… oppure ala, ala, casello, casello…). Con la <b>matita</b> del colore di una sottozona si tocca la casella da cui comincia: da lì verso destra quella fila è sua (per esempio la B che prende metà dell'ultima fila della A). La gomma toglie il segno. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate.</p>
     <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>
@@ -515,7 +529,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
   // The numbers come from the official blank template and must not change.
   const MODULES = ['alaA', 'casello', 'alaB'];
   const MODULE_SLOTS = { alaA: 33, casello: 91, alaB: 33 };
-  const MODULE_NAMES = { alaA: 'Ala A', casello: 'Casello', alaB: 'Ala B' };
+  const MODULE_NAMES = { alaA: 'Ala A', casello: 'Casello', alaB: 'Ala B', ala: 'Ala' };
   const ROWS_PER_MODULE = 4;
   // Landscape A4 holds 23 slot columns of 1.244 cm on paper, but printers keep a small
   // margin and Excel then fits 22 (seen in a real export). The workbook sets a page break
@@ -645,6 +659,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
       depot: '',        // where the round starts and ends (the office), optional
+      wall: null,       // the frame drawn by the user (modules left to right, pencil marks), optional
     };
   }
 
@@ -691,6 +706,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
       });
     }
     out.depot = String(p.depot || '');
+    out.wall = sanitizeWall(p.wall, out.subzones);
     if (p.streetLists && typeof p.streetLists === 'object') {
       Object.keys(p.streetLists).forEach(function (k) {
         if (Array.isArray(p.streetLists[k])) out.streetLists[norm(k)] = p.streetLists[k].map(String);
@@ -847,8 +863,13 @@ details.fold[open] > summary { margin-bottom: 8px; }
    * Returns { strips, overflow, notes }.
    */
   function layoutRoute(items, strips) {
-    // a strip may start with slots already taken ("reserved") by the end of the previous sub-zone
-    const first = function (k) { return k < strips.length ? (strips[k].reserved || 0) : 0; };
+    // a strip may start with slots already taken ("reserved") by the end of the previous sub-zone;
+    // a piece of a drawn frame goes from slot `from` to slot `to`
+    const first = function (k) {
+      if (k >= strips.length) return 0;
+      return strips[k].from !== undefined ? strips[k].from : (strips[k].reserved || 0);
+    };
+    const limit = function (k) { return strips[k].to !== undefined ? strips[k].to + 1 : strips[k].capacity; };
     let p = 0, pos = first(0);
     const overflow = [];
     const notes = [];
@@ -871,20 +892,21 @@ details.fold[open] > summary { margin-bottom: 8px; }
         return;
       }
       if (p >= strips.length) { overflow.push(it); return; }
-      if (it.span > strips[p].capacity) {
+      if (it.span > limit(p) - first(p) && !strips.slice(p).some(function (x, j) { return it.span <= limit(p + j) - first(p + j); })) {
         notes.push({ line: it.line, text: 'Riga ' + (it.line + 1) + ': una casella larga ' + it.span + ' non entra in nessuna striscia.' });
         return;
       }
-      if (pos + it.span > strips[p].capacity) {
+      if (pos + it.span > limit(p)) {
         notes.push({ line: it.line, soft: true, text: 'Riga ' + (it.line + 1) + ': «' + (it.top || it.street) + '» non entrava alla fine della striscia ed è passata alla striscia dopo.' });
         next();
+        while (p < strips.length && pos + it.span > limit(p)) next();
         if (p >= strips.length) { overflow.push(it); return; }
       }
       const s = strips[p];
-      s.cells.push(Object.assign({}, it, { m: s.m, i: s.i, start: pos, end: pos + it.span - 1 }));
+      s.cells.push(Object.assign({}, it, { m: s.m, i: s.i, wi: s.wi, start: pos, end: pos + it.span - 1 }));
       pos += it.span;
       s.used = pos;
-      if (pos === s.capacity) next();
+      if (pos === limit(p)) next();
     });
     strips.forEach(function (s) { s.runs = streetRuns(s.cells, s.capacity); });
     return { strips: strips, overflow: overflow, notes: notes };
@@ -927,7 +949,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
    * strips: its own strips (cells coming from the previous sub-zone have c.foreign = its name);
    * spill: pieces of the next sub-zone's strips holding this sub-zone's continuation.
    */
-  function analyseProject(project) {
+  function analyseLegacy(project) {
     const subzones = project.subzones;
     const list = [];
     let incoming = null;
@@ -986,6 +1008,17 @@ details.fold[open] > summary { margin-bottom: 8px; }
     return list;
   }
 
+  function analyseProject(project) {
+    if (project.wall && project.wall.modules && project.wall.modules.length) return analyseWall(project);
+    const list = analyseLegacy(project);
+    list.forEach(function (out, k) {
+      const rows = {};
+      MODULES.forEach(function (m) { rows[m] = out[m].map(function (x) { return x.layout; }); });
+      out.sheets = [{ name: out.name, modules: project.subzones[k].modules, rows: rows }];
+    });
+    return list;
+  }
+
   // One sub-zone on its own (no continuation into other sub-zones).
   function analyseSubzone(sz) {
     return analyseProject({ subzones: [sz] })[0];
@@ -1026,6 +1059,205 @@ details.fold[open] > summary { margin-bottom: 8px; }
       }
     });
     return dups;
+  }
+
+  // ---------------------------------------------------------------- the frame drawn by the user
+
+  /*
+   * A drawn frame ("mobile") lists the modules of the whole zone from left to right, each one a
+   * casello (91 slots) or an ala (33 slots) belonging to a sub-zone, plus pencil marks: a mark at
+   * (row, module, slot) gives that row of that module, from that slot to the right, to another
+   * sub-zone. Each sub-zone's route then fills only its own slots, in reading order: row 1 from
+   * left to right across the whole frame, then row 2, and so on. This covers every shape: a route
+   * that ends in the next sub-zone's casello, a sub-zone with two alas, one that takes half of the
+   * last row of the other...
+   */
+  const WALL_SLOTS = { casello: 91, ala: 33 };
+
+  function sanitizeWall(w, subzones) {
+    if (!w || typeof w !== 'object' || !Array.isArray(w.modules) || !w.modules.length) return null;
+    const ids = subzones.map(function (s) { return s.id; });
+    const modules = w.modules.map(function (m) {
+      return { type: m && m.type === 'casello' ? 'casello' : 'ala', owner: ids.indexOf(m && m.owner) >= 0 ? m.owner : ids[0] };
+    });
+    const marks = (Array.isArray(w.marks) ? w.marks : []).filter(function (k) {
+      return k && k.row >= 0 && k.row < ROWS_PER_MODULE && k.module >= 0 && k.module < modules.length &&
+        k.slot >= 0 && k.slot < WALL_SLOTS[modules[k.module].type] && ids.indexOf(k.owner) >= 0;
+    }).map(function (k) { return { row: +k.row, module: +k.module, slot: +k.slot, owner: k.owner }; });
+    return { modules: modules, marks: marks };
+  }
+
+  // Which sub-zone owns each slot of one row of one module (array of sub-zone ids).
+  function wallOwners(wall, row, wi) {
+    const mod = wall.modules[wi];
+    const owners = [];
+    for (let s = 0; s < WALL_SLOTS[mod.type]; s++) owners.push(mod.owner);
+    wall.marks.filter(function (k) { return k.row === row && k.module === wi; })
+      .sort(function (a, b) { return a.slot - b.slot; })
+      .forEach(function (k) { for (let s = k.slot; s < owners.length; s++) owners[s] = k.owner; });
+    return owners;
+  }
+
+  // The pencil: from this slot to the right (until the next mark) the row belongs to `owner`.
+  function setWallMark(wall, row, wi, slot, owner) {
+    wall.marks = wall.marks.filter(function (k) { return !(k.row === row && k.module === wi && k.slot === slot); });
+    wall.marks.push({ row: row, module: wi, slot: slot, owner: owner });
+    tidyWallMarks(wall);
+  }
+
+  // The eraser: removes the mark that decides this slot.
+  function removeWallMark(wall, row, wi, slot) {
+    let best = null;
+    wall.marks.forEach(function (k) {
+      if (k.row === row && k.module === wi && k.slot <= slot && (!best || k.slot > best.slot)) best = k;
+    });
+    if (best) wall.marks.splice(wall.marks.indexOf(best), 1);
+    tidyWallMarks(wall);
+  }
+
+  // Drops marks that change nothing (same owner as the slot before them).
+  function tidyWallMarks(wall) {
+    const keep = [];
+    wall.marks.slice().sort(function (a, b) { return a.row - b.row || a.module - b.module || a.slot - b.slot; }).forEach(function (k) {
+      const before = k.slot === 0 ? wall.modules[k.module].owner : wallOwners({ modules: wall.modules, marks: keep }, k.row, k.module)[k.slot - 1];
+      if (before !== k.owner || (k.slot === 0 && k.owner !== wall.modules[k.module].owner)) keep.push(k);
+    });
+    wall.marks = keep.filter(function (k) { return !(k.slot === 0 && k.owner === wall.modules[k.module].owner); });
+  }
+
+  // The drawn frame that matches the sub-zones as they are now (their modules, left to right),
+  // with marks where a route continues into the next sub-zone: nothing moves when it is drawn.
+  function wallFromSubzones(project) {
+    const all = analyseLegacy(project);
+    const modules = [];
+    const where = {};
+    project.subzones.forEach(function (sz) {
+      MODULES.forEach(function (m) {
+        if (!sz.modules[m]) return;
+        where[sz.id + '|' + m] = modules.length;
+        modules.push({ type: m === 'casello' ? 'casello' : 'ala', owner: sz.id });
+      });
+    });
+    const wall = { modules: modules, marks: [] };
+    all.forEach(function (a, k) {
+      (a.spill || []).forEach(function (s) {
+        const target = project.subzones[s.targetIndex];
+        const wi = where[target.id + '|' + s.m];
+        if (wi === undefined) return;
+        wall.marks.push({ row: s.i, module: wi, slot: 0, owner: project.subzones[k].id });
+        if (s.used < s.capacity) wall.marks.push({ row: s.i, module: wi, slot: s.used, owner: target.id });
+      });
+    });
+    return wall;
+  }
+
+  // The same layout as analyseLegacy, for a drawn frame.
+  function analyseWall(project) {
+    const wall = project.wall;
+    const subs = project.subzones;
+    const index = {};
+    subs.forEach(function (s, k) { index[s.id] = k; });
+    const nameOf = function (k) { return subs[k].name || 'sottozona ' + (k + 1); };
+    const pieces = subs.map(function () { return []; });
+    const phys = {};
+    for (let i = 0; i < ROWS_PER_MODULE; i++) {
+      wall.modules.forEach(function (mod, wi) {
+        const owners = wallOwners(wall, i, wi);
+        const st = { m: mod.type, wi: wi, i: i, capacity: owners.length, cells: [], boundaries: [], used: 0, owners: owners };
+        phys[i + ':' + wi] = st;
+        let s = 0;
+        while (s < owners.length) {
+          let e = s;
+          while (e + 1 < owners.length && owners[e + 1] === owners[s]) e++;
+          const k = index[owners[s]];
+          if (k !== undefined) pieces[k].push({ m: mod.type, wi: wi, i: i, capacity: owners.length, from: s, to: e, cells: [], boundaries: [], used: 0 });
+          if (s > 0) st.boundaries.push({ label: k !== undefined ? nameOf(k) : '', at: s, line: -1 });
+          s = e + 1;
+        }
+      });
+    }
+    const results = subs.map(function (sz, k) {
+      const parsed = parseRoute(sz.route, sz.town);
+      const res = layoutRoute(parsed.items, pieces[k]);
+      res.strips.forEach(function (pc) {
+        pc.cells.forEach(function (c) { phys[pc.i + ':' + pc.wi].cells.push(Object.assign({}, c, { owner: k })); });
+      });
+      return { parsed: parsed, res: res };
+    });
+    Object.keys(phys).forEach(function (key) {
+      const st = phys[key];
+      st.cells.sort(function (a, b) { return a.start - b.start; });
+      st.runs = streetRuns(st.cells, st.capacity);
+      st.used = st.cells.reduce(function (a, c) { return Math.max(a, c.end + 1); }, 0);
+    });
+    return subs.map(function (sz, k) {
+      const own = wall.modules.map(function (mod, wi) { return { mod: mod, wi: wi }; }).filter(function (x) { return x.mod.owner === sz.id; });
+      const strips = [];
+      for (let i = 0; i < ROWS_PER_MODULE; i++) {
+        own.forEach(function (x) {
+          const st = phys[i + ':' + x.wi];
+          strips.push(Object.assign({}, st, {
+            cells: st.cells.map(function (c) { return c.owner === k ? c : Object.assign({}, c, { foreign: nameOf(c.owner), fromIndex: c.owner }); }),
+          }));
+        });
+      }
+      const spill = [];
+      Object.keys(phys).forEach(function (key) {
+        const st = phys[key];
+        if (wall.modules[st.wi].owner === sz.id) return;
+        const mine = st.cells.filter(function (c) { return c.owner === k; });
+        if (!mine.length) return;
+        const target = index[wall.modules[st.wi].owner];
+        mine.forEach(function (c) { c.place = nameOf(target); });
+        spill.push(Object.assign({}, st, { cells: mine, runs: streetRuns(mine, st.capacity), target: nameOf(target), targetIndex: target }));
+      });
+      spill.sort(function (a, b) { return a.i - b.i || a.wi - b.wi; });
+      const r = results[k];
+      const out = { strips: strips, spill: spill, overflow: r.res.overflow, warnings: r.parsed.warnings.concat(r.res.notes), name: nameOf(k), wall: true };
+      // slots of its own modules (the ones in another sub-zone's module are shown apart, like a continuation)
+      out.capacity = pieces[k].filter(function (pc) { return wall.modules[pc.wi].owner === sz.id; })
+        .reduce(function (a, pc) { return a + pc.to - pc.from + 1; }, 0);
+      const ownCells = strips.reduce(function (a, st) { return a.concat(st.cells.filter(function (c) { return !c.foreign; })); }, []);
+      out.spillUsed = spill.reduce(function (a, st) { return a + st.cells.reduce(function (b, c) { return b + c.span; }, 0); }, 0);
+      out.used = ownCells.reduce(function (a, c) { return a + c.span; }, 0) + out.spillUsed +
+        out.overflow.reduce(function (a, c) { return a + c.span; }, 0);
+      if (out.overflow.length) {
+        out.warnings.unshift({ line: out.overflow[0].line, text: 'Il giro è più lungo delle caselle della sottozona: ' + out.overflow.length +
+          (out.overflow.length === 1 ? ' casella non entra' : ' caselle non entrano') + ' (dalla riga ' + (out.overflow[0].line + 1) +
+          '). Nel disegno del mobile segna con la matita dove continua.' });
+      }
+      out.sheets = wallSheets(sz, own, phys, nameOf(k));
+      MODULES.forEach(function (m) {
+        out[m] = [];
+        for (let i = 0; i < ROWS_PER_MODULE; i++) out[m].push({ layout: emptyLayout(m) });
+      });
+      return out;
+    });
+  }
+
+  // The printed sheets of a sub-zone: its modules go on the template's places (Ala A, Casello,
+  // Ala B) from left to right; what does not fit goes on another sheet.
+  function wallSheets(sz, own, phys, name) {
+    const sheets = [];
+    let cur = null;
+    const fresh = function () {
+      cur = { name: name + (sheets.length ? ' (' + (sheets.length + 1) + ')' : ''), modules: { alaA: false, casello: false, alaB: false }, rows: {} };
+      sheets.push(cur);
+    };
+    own.forEach(function (x) {
+      let place;
+      if (!cur) fresh();
+      if (x.mod.type === 'casello') {
+        if (cur.modules.casello || cur.modules.alaB) fresh();
+        place = 'casello';
+      } else if (!cur.modules.casello && !cur.modules.alaA) place = 'alaA';
+      else if (!cur.modules.alaB) place = 'alaB';
+      else { fresh(); place = 'alaA'; }
+      cur.modules[place] = true;
+      cur.rows[place] = [];
+      for (let i = 0; i < ROWS_PER_MODULE; i++) cur.rows[place].push(phys[i + ':' + x.wi]);
+    });
+    return sheets;
   }
 
   // ---------------------------------------------------------------- old files (one text per strip)
@@ -1423,6 +1655,12 @@ details.fold[open] > summary { margin-bottom: 8px; }
     streetRuns: streetRuns,
     analyseSubzone: analyseSubzone,
     analyseProject: analyseProject,
+    WALL_SLOTS: WALL_SLOTS,
+    wallOwners: wallOwners,
+    setWallMark: setWallMark,
+    removeWallMark: removeWallMark,
+    wallFromSubzones: wallFromSubzones,
+    sanitizeWall: sanitizeWall,
     allCells: allCells,
     findDuplicates: findDuplicates,
     rowsToRoute: rowsToRoute,
@@ -1662,10 +1900,10 @@ details.fold[open] > summary { margin-bottom: 8px; }
   };
   // Manual page breaks every SLOTS_PER_PAGE slots inside each module (column numbers, 1-based,
   // of the last column on a page).
-  function pageBreaks(sz) {
+  function pageBreaks(sheet) {
     const out = [];
     Core.MODULES.forEach(function (m) {
-      if (!sz.modules[m]) return;
+      if (!sheet.modules[m]) return;
       for (let s = Core.SLOTS_PER_PAGE; s < Core.MODULE_SLOTS[m]; s += Core.SLOTS_PER_PAGE) {
         out.push(LAYOUT[m].first + s - 1);
       }
@@ -1721,17 +1959,17 @@ details.fold[open] > summary { margin-bottom: 8px; }
     return x;
   };
 
-  function buildSheet(project, sz, analysis, styles, strings, selected) {
+  function buildSheet(project, sheet, styles, strings, selected) {
     const sb = new SheetBuilder(styles, strings);
     const head = { size: 14, bold: true, h: 'left' };
 
     sb.put(1, 38, 'Zona', head);
-    sb.put(1, 39, [project.zone, sz.name].filter(Boolean).join(' · ') || '', head);
+    sb.put(1, 39, [project.zone, sheet.name].filter(Boolean).join(' · ') || '', head);
     sb.block(1, 41, 1, 44, 'Titolare', head);
     sb.block(1, 45, 1, 47, project.owner || '', head);
 
     Core.MODULES.forEach(function (m) {
-      if (!sz.modules[m]) return;
+      if (!sheet.modules[m]) return;
       const L = LAYOUT[m];
       const slots = Core.MODULE_SLOTS[m];
       const last = L.first + slots - 1;
@@ -1749,7 +1987,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
         sb.block(top, L.labelLeft, bottom, L.labelLeft, (i + 1) + ' ' + L.word, Object.assign({ rot: 90 }, label));
         sb.block(top, L.labelRight, bottom, L.labelRight, (i + 1) + ' ' + L.word, Object.assign({ rot: 180 }, label));
 
-        const lay = analysis[m][i].layout;
+        const lay = sheet.rows[m][i];
         const edges = function (start, end) {
           return { l: L.first + start === L.first ? 'medium' : 'thin', r: L.first + end === last ? 'medium' : 'thin' };
         };
@@ -1788,15 +2026,15 @@ details.fold[open] > summary { margin-bottom: 8px; }
         }
       }
     });
-    return sb.xml(selected, pageBreaks(sz));
+    return sb.xml(selected, pageBreaks(sheet));
   }
 
   // ------------------------------------------------------------------ workbook
 
-  function sheetNames(project) {
+  function sheetNames(sheets) {
     const used = {};
-    return project.subzones.map(function (sz, i) {
-      let n = String(sz.name || '').replace(/[\[\]:*?\/\\]/g, ' ').replace(/^'+|'+$/g, '').trim().slice(0, 31) || ('Sottozona ' + (i + 1));
+    return sheets.map(function (sh, i) {
+      let n = String(sh.name || '').replace(/[\[\]:*?\/\\]/g, ' ').replace(/^'+|'+$/g, '').trim().slice(0, 31) || ('Sottozona ' + (i + 1));
       let k = n, j = 2;
       while (used[k.toUpperCase()]) { k = n.slice(0, 28) + ' ' + j++; }
       used[k.toUpperCase()] = true;
@@ -1804,9 +2042,9 @@ details.fold[open] > summary { margin-bottom: 8px; }
     });
   }
 
-  function printArea(name, sz) {
+  function printArea(name, sheet) {
     const q = "'" + name.replace(/'/g, "''") + "'!";
-    return Core.MODULES.filter(function (m) { return sz.modules[m]; }).map(function (m) {
+    return Core.MODULES.filter(function (m) { return sheet.modules[m]; }).map(function (m) {
       const L = LAYOUT[m];
       return q + '$' + colName(L.first) + '$4:$' + colName(L.first + Core.MODULE_SLOTS[m] - 1) + '$11';
     }).join(',');
@@ -1816,11 +2054,13 @@ details.fold[open] > summary { margin-bottom: 8px; }
     Core.assignColors(project);
     const styles = new StyleBook();
     const strings = new StringTable();
-    const names = sheetNames(project);
     const all = Core.analyseProject(project);
+    const sheets = [];
+    all.forEach(function (a) { a.sheets.forEach(function (sh) { sheets.push(sh); }); });
+    const names = sheetNames(sheets);
     const files = [];
-    project.subzones.forEach(function (sz, i) {
-      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: buildSheet(project, sz, all[i], styles, strings, i === 0) });
+    sheets.forEach(function (sh, i) {
+      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: buildSheet(project, sh, styles, strings, i === 0) });
     });
     let wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
@@ -1828,12 +2068,12 @@ details.fold[open] > summary { margin-bottom: 8px; }
       '<bookViews><workbookView activeTab="0"/></bookViews><sheets>';
     names.forEach(function (n, i) { wb += '<sheet name="' + esc(n) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; });
     wb += '</sheets><definedNames>';
-    project.subzones.forEach(function (sz, i) {
-      const area = printArea(names[i], sz);
+    sheets.forEach(function (sh, i) {
+      const area = printArea(names[i], sh);
       if (area) wb += '<definedName name="_xlnm.Print_Area" localSheetId="' + i + '">' + esc(area) + '</definedName>';
     });
     wb += '</definedNames></workbook>';
-    const n = project.subzones.length;
+    const n = sheets.length;
     let rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
     for (let i = 0; i < n; i++) {
@@ -2160,6 +2400,7 @@ details.fold[open] > summary { margin-bottom: 8px; }
     const town = h('input', { class: 'town', value: s.town, placeholder: 'es. Borgo Esempio', autocomplete: 'off' });
     town.addEventListener('input', function () { s.town = town.value; changed(); refreshRoute(); refreshSide(); });
     const pick = h('div', { class: 'modules-pick', role: 'group', 'aria-label': 'Moduli' });
+    const drawn = !!state.project.wall;
     const labels = { alaA: 'Ala A (a sinistra)', casello: 'Casello', alaB: 'Ala B (a destra)' };
     C.MODULES.forEach(function (m) {
       const cb = h('input', { type: 'checkbox', checked: s.modules[m] });
@@ -2169,10 +2410,17 @@ details.fold[open] > summary { margin-bottom: 8px; }
       });
       pick.append(h('label', null, cb, labels[m] + ' · ' + C.MODULE_SLOTS[m]));
     });
+    const modulesBox = drawn
+      ? h('div', { class: 'grow' }, h('div', { class: 'small muted', style: 'margin-bottom:3px' }, 'Moduli'),
+          h('p', { class: 'small', style: 'margin:0' }, 'Si scelgono nel ',
+            h('button', { type: 'button', class: 'link', onclick: function () {
+              const c = $('overview-card'); c.open = true; renderOverview(); c.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            } }, 'disegno del mobile'), '.'))
+      : h('div', { class: 'grow' }, h('div', { class: 'small muted', style: 'margin-bottom:3px' }, 'Moduli, da sinistra a destra'), pick);
     box.append(
       h('label', null, 'Sottozona', name),
       h('label', { class: 'grow-m' }, 'Comune', town),
-      h('div', { class: 'grow' }, h('div', { class: 'small muted', style: 'margin-bottom:3px' }, 'Moduli, da sinistra a destra'), pick)
+      modulesBox
     );
     if (state.project.subzones.length > 1) {
       box.append(h('button', {
@@ -2180,6 +2428,12 @@ details.fold[open] > summary { margin-bottom: 8px; }
         onclick: function () {
           if (!confirm('Elimino la sottozona ' + (s.name || state.current + 1) + ' con tutto il suo giro?')) return;
           state.project.subzones.splice(state.current, 1);
+          const w = state.project.wall;
+          if (w) {
+            const heir = state.project.subzones[0].id;
+            w.modules.forEach(function (m) { if (m.owner === s.id) m.owner = heir; });
+            w.marks = w.marks.filter(function (k) { return k.owner !== s.id; });
+          }
           changed();
           openSubzone(Math.max(0, state.current - 1));
         },
@@ -2279,7 +2533,8 @@ details.fold[open] > summary { margin-bottom: 8px; }
   function stripBox(s, p) {
     const strip = h('div', { class: 'strip', style: '--n:' + s.capacity });
     renderStrip(strip, s, p);
-    const from = s.reserved ? ' · le prime ' + s.reserved + ' sono della ' + s.cells[0].foreign : '';
+    const others = s.cells.filter(function (c) { return c.foreign; });
+    const from = others.length ? ' · ' + others.reduce(function (a, c) { return a + c.span; }, 0) + ' caselle sono della ' + others[0].foreign : '';
     return [
       h('div', { class: 'strip-head' },
         h('b', null, C.MODULE_NAMES[s.m] + (s.target ? ' della ' + s.target : '')),
@@ -2708,17 +2963,46 @@ details.fold[open] > summary { margin-bottom: 8px; }
   // One colour per sub-zone for the line under its pigeonholes (not a street colour).
   const ZONE_TINTS = ['#1565C0', '#E65100', '#2E7D32', '#6A1B9A', '#AD1457', '#00838F'];
   let overviewBig = false;
+  let pencil = null; // null = off, 'erase', or a sub-zone id
+  let overviewGeo = null;
+
+  function tintOf(id) {
+    const k = state.project.subzones.findIndex(function (s) { return s.id === id; });
+    return ZONE_TINTS[(k < 0 ? 0 : k) % ZONE_TINTS.length];
+  }
+
+  // The frame as drawn by the user, or the one that matches the sub-zones as they are.
+  function currentWall() { return state.project.wall || C.wallFromSubzones(state.project); }
+
+  // From now on the drawn frame decides (the first time something is changed in the drawing).
+  function ownWall() {
+    if (!state.project.wall) state.project.wall = C.wallFromSubzones(state.project);
+    return state.project.wall;
+  }
+
+  function wallChanged() {
+    changed();
+    renderSubzone();
+    renderOverview();
+    refreshSide();
+  }
 
   function overviewSvg() {
     const p = state.project;
-    const all = C.analyseProject(p);
-    const U = 10, TOP = 16, BOT = 10, BAR = 4, ROWH = TOP + BOT + BAR, GAPR = 12, GAPM = 8, GAPZ = 40, HEAD = 36, LEFT = 22;
-    const frames = p.subzones.map(function (s, k) {
-      const mods = C.MODULES.filter(function (m) { return s.modules[m]; });
-      const w = mods.reduce(function (acc, m, j) { return acc + C.MODULE_SLOTS[m] * U + (j ? GAPM : 0); }, 0);
-      return { s: s, k: k, mods: mods, w: w };
-    }).filter(function (f) { return f.mods.length; });
-    const width = LEFT + frames.reduce(function (acc, f, j) { return acc + f.w + (j ? GAPZ : 0); }, 0) + 6;
+    const wall = currentWall();
+    const view = Object.assign({}, p, { wall: wall });
+    const all = C.analyseProject(view);
+    const strips = {};
+    all.forEach(function (a) { a.strips.forEach(function (s) { strips[s.i + ':' + s.wi] = s; }); });
+    const U = 10, TOP = 16, BOT = 10, BAR = 4, ROWH = TOP + BOT + BAR, GAPR = 12, GAPM = 8, HEAD = 36, LEFT = 22;
+    const xs = [];
+    let x = LEFT;
+    wall.modules.forEach(function (mod, wi) {
+      if (wi) x += GAPM + (mod.owner !== wall.modules[wi - 1].owner ? 26 : 0);
+      xs.push(x);
+      x += C.WALL_SLOTS[mod.type] * U;
+    });
+    const width = x + 6;
     const height = HEAD + C.ROWS_PER_MODULE * (ROWH + GAPR) + 2;
     const NS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(NS, 'svg');
@@ -2737,80 +3021,176 @@ details.fold[open] > summary { margin-bottom: 8px; }
     for (let i = 0; i < C.ROWS_PER_MODULE; i++) {
       add(svg, 'text', { x: 4, y: HEAD + i * (ROWH + GAPR) + 17, 'font-size': 11, fill: '#555' }, String(i + 1));
     }
-    let x0 = LEFT;
-    frames.forEach(function (f, j) {
-      if (j) x0 += GAPZ;
-      const tint = ZONE_TINTS[f.k % ZONE_TINTS.length];
-      add(svg, 'rect', { x: x0, y: 2, width: f.w, height: 16, rx: 3, fill: tint });
+    // headers: one for each run of modules of the same sub-zone
+    let g0 = 0;
+    wall.modules.forEach(function (mod, wi) {
+      const last = wi === wall.modules.length - 1 || wall.modules[wi + 1].owner !== mod.owner;
+      if (!last) return;
+      const sz0 = p.subzones.find(function (s) { return s.id === mod.owner; }) || {};
+      const x0 = xs[g0], x1 = xs[wi] + C.WALL_SLOTS[mod.type] * U;
+      add(svg, 'rect', { x: x0, y: 2, width: x1 - x0, height: 16, rx: 3, fill: tintOf(mod.owner) });
       add(svg, 'text', { x: x0 + 6, y: 14, 'font-size': 11, fill: '#ffffff' },
-        'Sottozona ' + (f.s.name || f.k + 1) + (f.s.town ? ' · ' + f.s.town : ''));
-      let mx = x0;
-      f.mods.forEach(function (m, mj) {
-        if (mj) mx += GAPM;
-        const cap = C.MODULE_SLOTS[m];
-        add(svg, 'text', { x: mx, y: 31, 'font-size': 9, fill: '#555' }, C.MODULE_NAMES[m] + ' · ' + cap);
-        for (let i = 0; i < C.ROWS_PER_MODULE; i++) {
-          const y = HEAD + i * (ROWH + GAPR);
-          const lay = all[f.k][m][i].layout;
-          add(svg, 'rect', { x: mx, y: y, width: cap * U, height: TOP + BOT, fill: '#f1f1f1', stroke: '#b5b5b5', 'stroke-width': 0.5 });
-          let prevOwner = null;
-          lay.cells.forEach(function (c) {
-            if (c.start >= cap) return;
-            const end = Math.min(c.end, cap - 1);
-            const cx = mx + c.start * U, cw = (end - c.start + 1) * U;
-            const owner = c.foreign ? c.fromIndex : f.k;
-            const bg = '#' + C.colorOf(p, c.key), ink = '#' + C.textColorOf(p, c.key);
-            const g = add(svg, 'g', { 'data-k': owner, 'data-line': c.line, style: 'cursor:pointer' });
-            add(g, 'title', {}, (c.street || 'senza via') + (c.top ? ' ' + c.top : '') + (c.second ? '/' + c.second : '') +
-              ' · ' + (p.subzones[owner].name || '') + ' · fila ' + (i + 1) + ' casella ' + (c.start + 1));
-            add(g, 'rect', { x: cx, y: y, width: cw, height: TOP, fill: bg, stroke: '#333', 'stroke-width': 0.4 });
-            const label = c.second ? c.top + '/' + c.second : c.top;
-            if (label && label.length * 3.8 <= cw - 1) {
-              add(g, 'text', { x: cx + cw / 2, y: y + 11, 'font-size': 6.5, 'text-anchor': 'middle', fill: ink }, label);
-            }
-            add(g, 'rect', { x: cx, y: y + TOP + BOT, width: cw, height: BAR, fill: ZONE_TINTS[owner % ZONE_TINTS.length] });
-            if (prevOwner !== null && prevOwner !== owner) {
-              add(svg, 'line', { x1: cx, y1: y - 4, x2: cx, y2: y + ROWH + 4, stroke: '#d93025', 'stroke-width': 2.5 });
-            }
-            prevOwner = owner;
-          });
-          lay.runs.forEach(function (r) {
-            const rx = mx + r.start * U, rw = (r.end - r.start + 1) * U;
-            add(svg, 'rect', { x: rx, y: y + TOP, width: rw, height: BOT, fill: '#' + C.colorOf(p, r.key), stroke: '#333', 'stroke-width': 0.3 });
-            if (r.street.length * 3.4 <= rw - 2) {
-              add(svg, 'text', { x: rx + rw / 2, y: y + TOP + 7.5, 'font-size': 6, 'text-anchor': 'middle', fill: '#' + C.textColorOf(p, r.key) }, r.street);
-            }
-          });
-        }
-        mx += cap * U;
-      });
-      x0 += f.w;
+        'Sottozona ' + (sz0.name || '?') + (sz0.town ? ' · ' + sz0.town : ''));
+      g0 = wi + 1;
     });
-    return { svg: svg, width: width, height: height, frames: frames };
+    wall.modules.forEach(function (mod, wi) {
+      const mx = xs[wi];
+      const cap = C.WALL_SLOTS[mod.type];
+      add(svg, 'text', { x: mx, y: 31, 'font-size': 9, fill: '#555' }, (mod.type === 'casello' ? 'Casello' : 'Ala') + ' · ' + cap);
+      for (let i = 0; i < C.ROWS_PER_MODULE; i++) {
+        const y = HEAD + i * (ROWH + GAPR);
+        const st = strips[i + ':' + wi];
+        add(svg, 'rect', { x: mx, y: y, width: cap * U, height: TOP + BOT, fill: '#f1f1f1', stroke: '#b5b5b5', 'stroke-width': 0.5 });
+        if (!st) continue;
+        // who owns each slot: a coloured line under it, and a red line where it changes
+        let s = 0;
+        while (s < cap) {
+          let e = s;
+          while (e + 1 < cap && st.owners[e + 1] === st.owners[s]) e++;
+          add(svg, 'rect', { x: mx + s * U, y: y + TOP + BOT, width: (e - s + 1) * U, height: BAR, fill: tintOf(st.owners[s]) });
+          if (s > 0) add(svg, 'line', { x1: mx + s * U, y1: y - 4, x2: mx + s * U, y2: y + ROWH + 4, stroke: '#d93025', 'stroke-width': 2.5 });
+          s = e + 1;
+        }
+        st.cells.forEach(function (c) {
+          if (c.start >= cap) return;
+          const end = Math.min(c.end, cap - 1);
+          const cx = mx + c.start * U, cw = (end - c.start + 1) * U;
+          const ownerIndex = c.fromIndex !== undefined ? c.fromIndex : p.subzones.findIndex(function (z) { return z.id === mod.owner; });
+          const bg = '#' + C.colorOf(p, c.key), ink = '#' + C.textColorOf(p, c.key);
+          const g = add(svg, 'g', { 'data-k': ownerIndex, 'data-line': c.line });
+          add(g, 'title', {}, (c.street || 'senza via') + (c.top ? ' ' + c.top : '') + (c.second ? '/' + c.second : '') +
+            ' · ' + ((p.subzones[ownerIndex] || {}).name || '') + ' · fila ' + (i + 1) + ' casella ' + (c.start + 1));
+          add(g, 'rect', { x: cx, y: y, width: cw, height: TOP, fill: bg, stroke: '#333', 'stroke-width': 0.4 });
+          const label = c.second ? c.top + '/' + c.second : c.top;
+          if (label && label.length * 3.8 <= cw - 1) {
+            add(g, 'text', { x: cx + cw / 2, y: y + 11, 'font-size': 6.5, 'text-anchor': 'middle', fill: ink }, label);
+          }
+        });
+        st.runs.forEach(function (r) {
+          const rx = mx + r.start * U, rw = (r.end - r.start + 1) * U;
+          add(svg, 'rect', { x: rx, y: y + TOP, width: rw, height: BOT, fill: '#' + C.colorOf(p, r.key), stroke: '#333', 'stroke-width': 0.3 });
+          if (r.street.length * 3.4 <= rw - 2) {
+            add(svg, 'text', { x: rx + rw / 2, y: y + TOP + 7.5, 'font-size': 6, 'text-anchor': 'middle', fill: '#' + C.textColorOf(p, r.key) }, r.street);
+          }
+        });
+      }
+    });
+    overviewGeo = { xs: xs, U: U, HEAD: HEAD, ROWH: ROWH, GAPR: GAPR, wall: wall };
+    return { svg: svg, width: width, height: height, modules: wall.modules.length };
+  }
+
+  // Where a tap falls on the drawing: { row, wi, slot } or null.
+  function slotAt(svg, evt) {
+    if (!overviewGeo || !svg.getScreenCTM) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const G = overviewGeo;
+    const row = Math.floor((q.y - G.HEAD) / (G.ROWH + G.GAPR));
+    if (row < 0 || row >= C.ROWS_PER_MODULE || q.y - G.HEAD - row * (G.ROWH + G.GAPR) > G.ROWH) return null;
+    for (let wi = 0; wi < G.wall.modules.length; wi++) {
+      const cap = C.WALL_SLOTS[G.wall.modules[wi].type];
+      const slot = Math.floor((q.x - G.xs[wi]) / G.U);
+      if (slot >= 0 && slot < cap) return { row: row, wi: wi, slot: slot };
+    }
+    return null;
+  }
+
+  function renderWallTools() {
+    const box = $('wall-tools');
+    if (!box) return;
+    box.textContent = '';
+    const p = state.project;
+    const wall = currentWall();
+    const chips = h('div', { class: 'wall-chips' });
+    wall.modules.forEach(function (mod, wi) {
+      const owner = h('select', { 'aria-label': 'Sottozona del modulo ' + (wi + 1) });
+      p.subzones.forEach(function (s) { owner.append(h('option', { value: s.id, selected: s.id === mod.owner }, s.name || 'senza nome')); });
+      owner.addEventListener('change', function () { ownWall().modules[wi].owner = owner.value; wallChanged(); });
+      const move = function (d) {
+        const w = ownWall();
+        const j = wi + d;
+        if (j < 0 || j >= w.modules.length) return;
+        const t = w.modules[wi]; w.modules[wi] = w.modules[j]; w.modules[j] = t;
+        w.marks.forEach(function (k) { if (k.module === wi) k.module = j; else if (k.module === j) k.module = wi; });
+        wallChanged();
+      };
+      chips.append(h('div', { class: 'wall-chip', style: 'border-color:' + tintOf(mod.owner) },
+        h('b', { style: 'color:' + tintOf(mod.owner) }, (wi + 1) + '. ' + (mod.type === 'casello' ? 'Casello · 91' : 'Ala · 33')),
+        owner,
+        h('span', { class: 'chip-buttons' },
+          h('button', { type: 'button', title: 'Sposta a sinistra', 'aria-label': 'Sposta a sinistra', onclick: function () { move(-1); } }, '◀'),
+          h('button', { type: 'button', title: 'Sposta a destra', 'aria-label': 'Sposta a destra', onclick: function () { move(1); } }, '▶'),
+          h('button', { type: 'button', title: 'Togli questo modulo', 'aria-label': 'Togli questo modulo', onclick: function () {
+            const w = ownWall();
+            if (w.modules.length < 2 || !confirm('Tolgo il modulo ' + (wi + 1) + ' dal disegno?')) return;
+            w.modules.splice(wi, 1);
+            w.marks = w.marks.filter(function (k) { return k.module !== wi; });
+            w.marks.forEach(function (k) { if (k.module > wi) k.module--; });
+            wallChanged();
+          } }, '✕'))));
+    });
+    const addModule = function (type) {
+      ownWall().modules.push({ type: type, owner: sz().id });
+      wallChanged();
+    };
+    const pens = h('div', { class: 'pens' }, h('span', { class: 'small' }, 'Matita:'));
+    p.subzones.forEach(function (s) {
+      pens.append(h('button', { type: 'button', class: 'pen' + (pencil === s.id ? ' on' : ''), style: '--pen:' + tintOf(s.id),
+        onclick: function () { pencil = pencil === s.id ? null : s.id; renderWallTools(); } }, h('i'), s.name || 'senza nome'));
+    });
+    pens.append(h('button', { type: 'button', class: 'pen' + (pencil === 'erase' ? ' on' : ''),
+      onclick: function () { pencil = pencil === 'erase' ? null : 'erase'; renderWallTools(); } }, 'Gomma'));
+    box.append(
+      h('p', { class: 'small muted' }, 'I moduli del mobile da sinistra a destra, come sono davvero. Scegli di quale sottozona è ogni modulo e mettili nell\'ordine giusto (ala, casello, ala, casello…).'),
+      chips,
+      h('p', { class: 'actions-inline' },
+        h('button', { type: 'button', onclick: function () { addModule('casello'); } }, '+ Casello'),
+        h('button', { type: 'button', onclick: function () { addModule('ala'); } }, '+ Ala'),
+        p.wall ? h('button', { type: 'button', onclick: function () {
+          if (!confirm('Torno al mobile automatico (i moduli scelti in ogni sottozona)? I segni della matita si perdono.')) return;
+          p.wall = null; pencil = null; wallChanged();
+        } }, 'Torna automatico') : null),
+      pens,
+      h('p', { class: 'small muted' }, pencil === null ? 'Per segnare dove una sottozona entra nell\'altra, scegli una matita e tocca nel disegno la casella da cui comincia: da lì verso destra, fino al segno dopo, quella fila è sua.' :
+        (pencil === 'erase' ? 'Gomma: tocca una casella per togliere il segno che la decide.' : 'Matita accesa: tocca nel disegno la prima casella della sottozona scelta.')));
   }
 
   function renderOverview() {
     const card = $('overview-card');
     if (!card || !card.open) return;
+    renderWallTools();
     const box = $('overview');
     box.textContent = '';
     const d = overviewSvg();
-    if (!d.frames.length) { box.append(h('p', { class: 'muted' }, 'Non c\'è ancora niente da disegnare.')); return; }
+    if (!d.modules) { box.append(h('p', { class: 'muted' }, 'Non c\'è ancora niente da disegnare.')); return; }
     d.svg.setAttribute('width', overviewBig ? String(Math.round(d.width * 1.6)) : '100%');
     if (overviewBig) d.svg.setAttribute('height', String(Math.round(d.height * 1.6)));
+    if (pencil) d.svg.classList.add('pencil');
     d.svg.addEventListener('click', function (e) {
+      if (pencil) {
+        const at = slotAt(d.svg, e);
+        if (!at) return;
+        const w = ownWall();
+        if (pencil === 'erase') C.removeWallMark(w, at.row, at.wi, at.slot);
+        else C.setWallMark(w, at.row, at.wi, at.slot, pencil);
+        changed();
+        refreshRoute();
+        renderOverview();
+        refreshSide();
+        return;
+      }
       const g = e.target.closest && e.target.closest('g[data-k]');
       if (!g) return;
       const k = +g.getAttribute('data-k'), line = +g.getAttribute('data-line');
-      if (k !== state.current) openSubzone(k);
+      if (k >= 0 && k !== state.current) openSubzone(k);
       setTimeout(function () { goToLine(line); }, 50);
     });
     box.append(d.svg);
     const legend = $('overview-legend');
     legend.textContent = '';
-    d.frames.forEach(function (f) {
-      legend.append(h('span', { class: 'zone-key' },
-        h('i', { style: 'background:' + ZONE_TINTS[f.k % ZONE_TINTS.length] }), 'Sottozona ' + (f.s.name || f.k + 1)));
+    state.project.subzones.forEach(function (s) {
+      legend.append(h('span', { class: 'zone-key' }, h('i', { style: 'background:' + tintOf(s.id) }), 'Sottozona ' + (s.name || '?')));
     });
     legend.append(h('span', { class: 'zone-key' }, h('i', { style: 'background:#d93025;width:4px' }),
       'confine tra due sottozone dentro una fila'));

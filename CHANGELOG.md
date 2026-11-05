@@ -1,5 +1,21 @@
 # Registro delle versioni
 
+## v0.8.0 · 2026-11-05 · Il mobile disegnato: moduli in qualsiasi ordine e la matita per i confini
+
+- **Com'è fatto il mobile**: nel disegno si mettono i moduli da sinistra a destra, casello (91) o ala (33), e si
+  sceglie di quale sottozona è ognuno, in qualsiasi ordine (ala-casello-ala-casello, ala-ala-casello-casello, una
+  sottozona con due ali e un casello e l'altra con il solo casello…). Si spostano con le frecce, si aggiungono e si tolgono.
+- **La matita**: una per sottozona, del suo colore. Si tocca nel disegno la casella da cui comincia una sottozona e da
+  lì verso destra quella fila è sua (la A che finisce nel casello della B, la B che prende metà dell'ultima fila della
+  A…). La gomma toglie il segno. Ogni giro riempie solo le sue caselle, sempre come un libro: fila 1 da sinistra a destra
+  su tutto il mobile, poi fila 2.
+- Il primo cambiamento nel disegno parte dal mobile di adesso, con il confine dove sta ora: nessuna casella si sposta
+  (provato sulla zona 2: Excel identico). «Torna automatico» rimette il modo di prima.
+- **Excel**: ogni sottozona ha il suo foglio con i suoi moduli al loro posto del modello (Ala A, Casello, Ala B); se ne
+  ha di più, va su un altro foglio.
+- File: `app/src/core.js`, `app/src/ui.js`, `app/src/xlsx.js`, `app/src/style.css`, `app/index.src.html`,
+  `tests/test_core.js`, `tests/test_pagina.js`, `Casellino.html`, `sito/`, `CHANGELOG.md`, `prove/`.
+
 ## v0.7.1 · 2026-11-05 · Tolte due parole che non dovevano esserci
 
 - Nella spiegazione della cartina c'era la parola usata in azienda per il mobile, e in un commento del codice il nome di

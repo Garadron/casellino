@@ -169,6 +169,7 @@
     const town = h('input', { class: 'town', value: s.town, placeholder: 'es. Borgo Esempio', autocomplete: 'off' });
     town.addEventListener('input', function () { s.town = town.value; changed(); refreshRoute(); refreshSide(); });
     const pick = h('div', { class: 'modules-pick', role: 'group', 'aria-label': 'Moduli' });
+    const drawn = !!state.project.wall;
     const labels = { alaA: 'Ala A (a sinistra)', casello: 'Casello', alaB: 'Ala B (a destra)' };
     C.MODULES.forEach(function (m) {
       const cb = h('input', { type: 'checkbox', checked: s.modules[m] });
@@ -178,10 +179,17 @@
       });
       pick.append(h('label', null, cb, labels[m] + ' · ' + C.MODULE_SLOTS[m]));
     });
+    const modulesBox = drawn
+      ? h('div', { class: 'grow' }, h('div', { class: 'small muted', style: 'margin-bottom:3px' }, 'Moduli'),
+          h('p', { class: 'small', style: 'margin:0' }, 'Si scelgono nel ',
+            h('button', { type: 'button', class: 'link', onclick: function () {
+              const c = $('overview-card'); c.open = true; renderOverview(); c.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            } }, 'disegno del mobile'), '.'))
+      : h('div', { class: 'grow' }, h('div', { class: 'small muted', style: 'margin-bottom:3px' }, 'Moduli, da sinistra a destra'), pick);
     box.append(
       h('label', null, 'Sottozona', name),
       h('label', { class: 'grow-m' }, 'Comune', town),
-      h('div', { class: 'grow' }, h('div', { class: 'small muted', style: 'margin-bottom:3px' }, 'Moduli, da sinistra a destra'), pick)
+      modulesBox
     );
     if (state.project.subzones.length > 1) {
       box.append(h('button', {
@@ -189,6 +197,12 @@
         onclick: function () {
           if (!confirm('Elimino la sottozona ' + (s.name || state.current + 1) + ' con tutto il suo giro?')) return;
           state.project.subzones.splice(state.current, 1);
+          const w = state.project.wall;
+          if (w) {
+            const heir = state.project.subzones[0].id;
+            w.modules.forEach(function (m) { if (m.owner === s.id) m.owner = heir; });
+            w.marks = w.marks.filter(function (k) { return k.owner !== s.id; });
+          }
           changed();
           openSubzone(Math.max(0, state.current - 1));
         },
@@ -288,7 +302,8 @@
   function stripBox(s, p) {
     const strip = h('div', { class: 'strip', style: '--n:' + s.capacity });
     renderStrip(strip, s, p);
-    const from = s.reserved ? ' · le prime ' + s.reserved + ' sono della ' + s.cells[0].foreign : '';
+    const others = s.cells.filter(function (c) { return c.foreign; });
+    const from = others.length ? ' · ' + others.reduce(function (a, c) { return a + c.span; }, 0) + ' caselle sono della ' + others[0].foreign : '';
     return [
       h('div', { class: 'strip-head' },
         h('b', null, C.MODULE_NAMES[s.m] + (s.target ? ' della ' + s.target : '')),
@@ -717,17 +732,46 @@
   // One colour per sub-zone for the line under its pigeonholes (not a street colour).
   const ZONE_TINTS = ['#1565C0', '#E65100', '#2E7D32', '#6A1B9A', '#AD1457', '#00838F'];
   let overviewBig = false;
+  let pencil = null; // null = off, 'erase', or a sub-zone id
+  let overviewGeo = null;
+
+  function tintOf(id) {
+    const k = state.project.subzones.findIndex(function (s) { return s.id === id; });
+    return ZONE_TINTS[(k < 0 ? 0 : k) % ZONE_TINTS.length];
+  }
+
+  // The frame as drawn by the user, or the one that matches the sub-zones as they are.
+  function currentWall() { return state.project.wall || C.wallFromSubzones(state.project); }
+
+  // From now on the drawn frame decides (the first time something is changed in the drawing).
+  function ownWall() {
+    if (!state.project.wall) state.project.wall = C.wallFromSubzones(state.project);
+    return state.project.wall;
+  }
+
+  function wallChanged() {
+    changed();
+    renderSubzone();
+    renderOverview();
+    refreshSide();
+  }
 
   function overviewSvg() {
     const p = state.project;
-    const all = C.analyseProject(p);
-    const U = 10, TOP = 16, BOT = 10, BAR = 4, ROWH = TOP + BOT + BAR, GAPR = 12, GAPM = 8, GAPZ = 40, HEAD = 36, LEFT = 22;
-    const frames = p.subzones.map(function (s, k) {
-      const mods = C.MODULES.filter(function (m) { return s.modules[m]; });
-      const w = mods.reduce(function (acc, m, j) { return acc + C.MODULE_SLOTS[m] * U + (j ? GAPM : 0); }, 0);
-      return { s: s, k: k, mods: mods, w: w };
-    }).filter(function (f) { return f.mods.length; });
-    const width = LEFT + frames.reduce(function (acc, f, j) { return acc + f.w + (j ? GAPZ : 0); }, 0) + 6;
+    const wall = currentWall();
+    const view = Object.assign({}, p, { wall: wall });
+    const all = C.analyseProject(view);
+    const strips = {};
+    all.forEach(function (a) { a.strips.forEach(function (s) { strips[s.i + ':' + s.wi] = s; }); });
+    const U = 10, TOP = 16, BOT = 10, BAR = 4, ROWH = TOP + BOT + BAR, GAPR = 12, GAPM = 8, HEAD = 36, LEFT = 22;
+    const xs = [];
+    let x = LEFT;
+    wall.modules.forEach(function (mod, wi) {
+      if (wi) x += GAPM + (mod.owner !== wall.modules[wi - 1].owner ? 26 : 0);
+      xs.push(x);
+      x += C.WALL_SLOTS[mod.type] * U;
+    });
+    const width = x + 6;
     const height = HEAD + C.ROWS_PER_MODULE * (ROWH + GAPR) + 2;
     const NS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(NS, 'svg');
@@ -746,80 +790,176 @@
     for (let i = 0; i < C.ROWS_PER_MODULE; i++) {
       add(svg, 'text', { x: 4, y: HEAD + i * (ROWH + GAPR) + 17, 'font-size': 11, fill: '#555' }, String(i + 1));
     }
-    let x0 = LEFT;
-    frames.forEach(function (f, j) {
-      if (j) x0 += GAPZ;
-      const tint = ZONE_TINTS[f.k % ZONE_TINTS.length];
-      add(svg, 'rect', { x: x0, y: 2, width: f.w, height: 16, rx: 3, fill: tint });
+    // headers: one for each run of modules of the same sub-zone
+    let g0 = 0;
+    wall.modules.forEach(function (mod, wi) {
+      const last = wi === wall.modules.length - 1 || wall.modules[wi + 1].owner !== mod.owner;
+      if (!last) return;
+      const sz0 = p.subzones.find(function (s) { return s.id === mod.owner; }) || {};
+      const x0 = xs[g0], x1 = xs[wi] + C.WALL_SLOTS[mod.type] * U;
+      add(svg, 'rect', { x: x0, y: 2, width: x1 - x0, height: 16, rx: 3, fill: tintOf(mod.owner) });
       add(svg, 'text', { x: x0 + 6, y: 14, 'font-size': 11, fill: '#ffffff' },
-        'Sottozona ' + (f.s.name || f.k + 1) + (f.s.town ? ' · ' + f.s.town : ''));
-      let mx = x0;
-      f.mods.forEach(function (m, mj) {
-        if (mj) mx += GAPM;
-        const cap = C.MODULE_SLOTS[m];
-        add(svg, 'text', { x: mx, y: 31, 'font-size': 9, fill: '#555' }, C.MODULE_NAMES[m] + ' · ' + cap);
-        for (let i = 0; i < C.ROWS_PER_MODULE; i++) {
-          const y = HEAD + i * (ROWH + GAPR);
-          const lay = all[f.k][m][i].layout;
-          add(svg, 'rect', { x: mx, y: y, width: cap * U, height: TOP + BOT, fill: '#f1f1f1', stroke: '#b5b5b5', 'stroke-width': 0.5 });
-          let prevOwner = null;
-          lay.cells.forEach(function (c) {
-            if (c.start >= cap) return;
-            const end = Math.min(c.end, cap - 1);
-            const cx = mx + c.start * U, cw = (end - c.start + 1) * U;
-            const owner = c.foreign ? c.fromIndex : f.k;
-            const bg = '#' + C.colorOf(p, c.key), ink = '#' + C.textColorOf(p, c.key);
-            const g = add(svg, 'g', { 'data-k': owner, 'data-line': c.line, style: 'cursor:pointer' });
-            add(g, 'title', {}, (c.street || 'senza via') + (c.top ? ' ' + c.top : '') + (c.second ? '/' + c.second : '') +
-              ' · ' + (p.subzones[owner].name || '') + ' · fila ' + (i + 1) + ' casella ' + (c.start + 1));
-            add(g, 'rect', { x: cx, y: y, width: cw, height: TOP, fill: bg, stroke: '#333', 'stroke-width': 0.4 });
-            const label = c.second ? c.top + '/' + c.second : c.top;
-            if (label && label.length * 3.8 <= cw - 1) {
-              add(g, 'text', { x: cx + cw / 2, y: y + 11, 'font-size': 6.5, 'text-anchor': 'middle', fill: ink }, label);
-            }
-            add(g, 'rect', { x: cx, y: y + TOP + BOT, width: cw, height: BAR, fill: ZONE_TINTS[owner % ZONE_TINTS.length] });
-            if (prevOwner !== null && prevOwner !== owner) {
-              add(svg, 'line', { x1: cx, y1: y - 4, x2: cx, y2: y + ROWH + 4, stroke: '#d93025', 'stroke-width': 2.5 });
-            }
-            prevOwner = owner;
-          });
-          lay.runs.forEach(function (r) {
-            const rx = mx + r.start * U, rw = (r.end - r.start + 1) * U;
-            add(svg, 'rect', { x: rx, y: y + TOP, width: rw, height: BOT, fill: '#' + C.colorOf(p, r.key), stroke: '#333', 'stroke-width': 0.3 });
-            if (r.street.length * 3.4 <= rw - 2) {
-              add(svg, 'text', { x: rx + rw / 2, y: y + TOP + 7.5, 'font-size': 6, 'text-anchor': 'middle', fill: '#' + C.textColorOf(p, r.key) }, r.street);
-            }
-          });
-        }
-        mx += cap * U;
-      });
-      x0 += f.w;
+        'Sottozona ' + (sz0.name || '?') + (sz0.town ? ' · ' + sz0.town : ''));
+      g0 = wi + 1;
     });
-    return { svg: svg, width: width, height: height, frames: frames };
+    wall.modules.forEach(function (mod, wi) {
+      const mx = xs[wi];
+      const cap = C.WALL_SLOTS[mod.type];
+      add(svg, 'text', { x: mx, y: 31, 'font-size': 9, fill: '#555' }, (mod.type === 'casello' ? 'Casello' : 'Ala') + ' · ' + cap);
+      for (let i = 0; i < C.ROWS_PER_MODULE; i++) {
+        const y = HEAD + i * (ROWH + GAPR);
+        const st = strips[i + ':' + wi];
+        add(svg, 'rect', { x: mx, y: y, width: cap * U, height: TOP + BOT, fill: '#f1f1f1', stroke: '#b5b5b5', 'stroke-width': 0.5 });
+        if (!st) continue;
+        // who owns each slot: a coloured line under it, and a red line where it changes
+        let s = 0;
+        while (s < cap) {
+          let e = s;
+          while (e + 1 < cap && st.owners[e + 1] === st.owners[s]) e++;
+          add(svg, 'rect', { x: mx + s * U, y: y + TOP + BOT, width: (e - s + 1) * U, height: BAR, fill: tintOf(st.owners[s]) });
+          if (s > 0) add(svg, 'line', { x1: mx + s * U, y1: y - 4, x2: mx + s * U, y2: y + ROWH + 4, stroke: '#d93025', 'stroke-width': 2.5 });
+          s = e + 1;
+        }
+        st.cells.forEach(function (c) {
+          if (c.start >= cap) return;
+          const end = Math.min(c.end, cap - 1);
+          const cx = mx + c.start * U, cw = (end - c.start + 1) * U;
+          const ownerIndex = c.fromIndex !== undefined ? c.fromIndex : p.subzones.findIndex(function (z) { return z.id === mod.owner; });
+          const bg = '#' + C.colorOf(p, c.key), ink = '#' + C.textColorOf(p, c.key);
+          const g = add(svg, 'g', { 'data-k': ownerIndex, 'data-line': c.line });
+          add(g, 'title', {}, (c.street || 'senza via') + (c.top ? ' ' + c.top : '') + (c.second ? '/' + c.second : '') +
+            ' · ' + ((p.subzones[ownerIndex] || {}).name || '') + ' · fila ' + (i + 1) + ' casella ' + (c.start + 1));
+          add(g, 'rect', { x: cx, y: y, width: cw, height: TOP, fill: bg, stroke: '#333', 'stroke-width': 0.4 });
+          const label = c.second ? c.top + '/' + c.second : c.top;
+          if (label && label.length * 3.8 <= cw - 1) {
+            add(g, 'text', { x: cx + cw / 2, y: y + 11, 'font-size': 6.5, 'text-anchor': 'middle', fill: ink }, label);
+          }
+        });
+        st.runs.forEach(function (r) {
+          const rx = mx + r.start * U, rw = (r.end - r.start + 1) * U;
+          add(svg, 'rect', { x: rx, y: y + TOP, width: rw, height: BOT, fill: '#' + C.colorOf(p, r.key), stroke: '#333', 'stroke-width': 0.3 });
+          if (r.street.length * 3.4 <= rw - 2) {
+            add(svg, 'text', { x: rx + rw / 2, y: y + TOP + 7.5, 'font-size': 6, 'text-anchor': 'middle', fill: '#' + C.textColorOf(p, r.key) }, r.street);
+          }
+        });
+      }
+    });
+    overviewGeo = { xs: xs, U: U, HEAD: HEAD, ROWH: ROWH, GAPR: GAPR, wall: wall };
+    return { svg: svg, width: width, height: height, modules: wall.modules.length };
+  }
+
+  // Where a tap falls on the drawing: { row, wi, slot } or null.
+  function slotAt(svg, evt) {
+    if (!overviewGeo || !svg.getScreenCTM) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const G = overviewGeo;
+    const row = Math.floor((q.y - G.HEAD) / (G.ROWH + G.GAPR));
+    if (row < 0 || row >= C.ROWS_PER_MODULE || q.y - G.HEAD - row * (G.ROWH + G.GAPR) > G.ROWH) return null;
+    for (let wi = 0; wi < G.wall.modules.length; wi++) {
+      const cap = C.WALL_SLOTS[G.wall.modules[wi].type];
+      const slot = Math.floor((q.x - G.xs[wi]) / G.U);
+      if (slot >= 0 && slot < cap) return { row: row, wi: wi, slot: slot };
+    }
+    return null;
+  }
+
+  function renderWallTools() {
+    const box = $('wall-tools');
+    if (!box) return;
+    box.textContent = '';
+    const p = state.project;
+    const wall = currentWall();
+    const chips = h('div', { class: 'wall-chips' });
+    wall.modules.forEach(function (mod, wi) {
+      const owner = h('select', { 'aria-label': 'Sottozona del modulo ' + (wi + 1) });
+      p.subzones.forEach(function (s) { owner.append(h('option', { value: s.id, selected: s.id === mod.owner }, s.name || 'senza nome')); });
+      owner.addEventListener('change', function () { ownWall().modules[wi].owner = owner.value; wallChanged(); });
+      const move = function (d) {
+        const w = ownWall();
+        const j = wi + d;
+        if (j < 0 || j >= w.modules.length) return;
+        const t = w.modules[wi]; w.modules[wi] = w.modules[j]; w.modules[j] = t;
+        w.marks.forEach(function (k) { if (k.module === wi) k.module = j; else if (k.module === j) k.module = wi; });
+        wallChanged();
+      };
+      chips.append(h('div', { class: 'wall-chip', style: 'border-color:' + tintOf(mod.owner) },
+        h('b', { style: 'color:' + tintOf(mod.owner) }, (wi + 1) + '. ' + (mod.type === 'casello' ? 'Casello · 91' : 'Ala · 33')),
+        owner,
+        h('span', { class: 'chip-buttons' },
+          h('button', { type: 'button', title: 'Sposta a sinistra', 'aria-label': 'Sposta a sinistra', onclick: function () { move(-1); } }, '◀'),
+          h('button', { type: 'button', title: 'Sposta a destra', 'aria-label': 'Sposta a destra', onclick: function () { move(1); } }, '▶'),
+          h('button', { type: 'button', title: 'Togli questo modulo', 'aria-label': 'Togli questo modulo', onclick: function () {
+            const w = ownWall();
+            if (w.modules.length < 2 || !confirm('Tolgo il modulo ' + (wi + 1) + ' dal disegno?')) return;
+            w.modules.splice(wi, 1);
+            w.marks = w.marks.filter(function (k) { return k.module !== wi; });
+            w.marks.forEach(function (k) { if (k.module > wi) k.module--; });
+            wallChanged();
+          } }, '✕'))));
+    });
+    const addModule = function (type) {
+      ownWall().modules.push({ type: type, owner: sz().id });
+      wallChanged();
+    };
+    const pens = h('div', { class: 'pens' }, h('span', { class: 'small' }, 'Matita:'));
+    p.subzones.forEach(function (s) {
+      pens.append(h('button', { type: 'button', class: 'pen' + (pencil === s.id ? ' on' : ''), style: '--pen:' + tintOf(s.id),
+        onclick: function () { pencil = pencil === s.id ? null : s.id; renderWallTools(); } }, h('i'), s.name || 'senza nome'));
+    });
+    pens.append(h('button', { type: 'button', class: 'pen' + (pencil === 'erase' ? ' on' : ''),
+      onclick: function () { pencil = pencil === 'erase' ? null : 'erase'; renderWallTools(); } }, 'Gomma'));
+    box.append(
+      h('p', { class: 'small muted' }, 'I moduli del mobile da sinistra a destra, come sono davvero. Scegli di quale sottozona è ogni modulo e mettili nell\'ordine giusto (ala, casello, ala, casello…).'),
+      chips,
+      h('p', { class: 'actions-inline' },
+        h('button', { type: 'button', onclick: function () { addModule('casello'); } }, '+ Casello'),
+        h('button', { type: 'button', onclick: function () { addModule('ala'); } }, '+ Ala'),
+        p.wall ? h('button', { type: 'button', onclick: function () {
+          if (!confirm('Torno al mobile automatico (i moduli scelti in ogni sottozona)? I segni della matita si perdono.')) return;
+          p.wall = null; pencil = null; wallChanged();
+        } }, 'Torna automatico') : null),
+      pens,
+      h('p', { class: 'small muted' }, pencil === null ? 'Per segnare dove una sottozona entra nell\'altra, scegli una matita e tocca nel disegno la casella da cui comincia: da lì verso destra, fino al segno dopo, quella fila è sua.' :
+        (pencil === 'erase' ? 'Gomma: tocca una casella per togliere il segno che la decide.' : 'Matita accesa: tocca nel disegno la prima casella della sottozona scelta.')));
   }
 
   function renderOverview() {
     const card = $('overview-card');
     if (!card || !card.open) return;
+    renderWallTools();
     const box = $('overview');
     box.textContent = '';
     const d = overviewSvg();
-    if (!d.frames.length) { box.append(h('p', { class: 'muted' }, 'Non c\'è ancora niente da disegnare.')); return; }
+    if (!d.modules) { box.append(h('p', { class: 'muted' }, 'Non c\'è ancora niente da disegnare.')); return; }
     d.svg.setAttribute('width', overviewBig ? String(Math.round(d.width * 1.6)) : '100%');
     if (overviewBig) d.svg.setAttribute('height', String(Math.round(d.height * 1.6)));
+    if (pencil) d.svg.classList.add('pencil');
     d.svg.addEventListener('click', function (e) {
+      if (pencil) {
+        const at = slotAt(d.svg, e);
+        if (!at) return;
+        const w = ownWall();
+        if (pencil === 'erase') C.removeWallMark(w, at.row, at.wi, at.slot);
+        else C.setWallMark(w, at.row, at.wi, at.slot, pencil);
+        changed();
+        refreshRoute();
+        renderOverview();
+        refreshSide();
+        return;
+      }
       const g = e.target.closest && e.target.closest('g[data-k]');
       if (!g) return;
       const k = +g.getAttribute('data-k'), line = +g.getAttribute('data-line');
-      if (k !== state.current) openSubzone(k);
+      if (k >= 0 && k !== state.current) openSubzone(k);
       setTimeout(function () { goToLine(line); }, 50);
     });
     box.append(d.svg);
     const legend = $('overview-legend');
     legend.textContent = '';
-    d.frames.forEach(function (f) {
-      legend.append(h('span', { class: 'zone-key' },
-        h('i', { style: 'background:' + ZONE_TINTS[f.k % ZONE_TINTS.length] }), 'Sottozona ' + (f.s.name || f.k + 1)));
+    state.project.subzones.forEach(function (s) {
+      legend.append(h('span', { class: 'zone-key' }, h('i', { style: 'background:' + tintOf(s.id) }), 'Sottozona ' + (s.name || '?')));
     });
     legend.append(h('span', { class: 'zone-key' }, h('i', { style: 'background:#d93025;width:4px' }),
       'confine tra due sottozone dentro una fila'));

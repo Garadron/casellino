@@ -213,10 +213,10 @@
   };
   // Manual page breaks every SLOTS_PER_PAGE slots inside each module (column numbers, 1-based,
   // of the last column on a page).
-  function pageBreaks(sz) {
+  function pageBreaks(sheet) {
     const out = [];
     Core.MODULES.forEach(function (m) {
-      if (!sz.modules[m]) return;
+      if (!sheet.modules[m]) return;
       for (let s = Core.SLOTS_PER_PAGE; s < Core.MODULE_SLOTS[m]; s += Core.SLOTS_PER_PAGE) {
         out.push(LAYOUT[m].first + s - 1);
       }
@@ -272,17 +272,17 @@
     return x;
   };
 
-  function buildSheet(project, sz, analysis, styles, strings, selected) {
+  function buildSheet(project, sheet, styles, strings, selected) {
     const sb = new SheetBuilder(styles, strings);
     const head = { size: 14, bold: true, h: 'left' };
 
     sb.put(1, 38, 'Zona', head);
-    sb.put(1, 39, [project.zone, sz.name].filter(Boolean).join(' · ') || '', head);
+    sb.put(1, 39, [project.zone, sheet.name].filter(Boolean).join(' · ') || '', head);
     sb.block(1, 41, 1, 44, 'Titolare', head);
     sb.block(1, 45, 1, 47, project.owner || '', head);
 
     Core.MODULES.forEach(function (m) {
-      if (!sz.modules[m]) return;
+      if (!sheet.modules[m]) return;
       const L = LAYOUT[m];
       const slots = Core.MODULE_SLOTS[m];
       const last = L.first + slots - 1;
@@ -300,7 +300,7 @@
         sb.block(top, L.labelLeft, bottom, L.labelLeft, (i + 1) + ' ' + L.word, Object.assign({ rot: 90 }, label));
         sb.block(top, L.labelRight, bottom, L.labelRight, (i + 1) + ' ' + L.word, Object.assign({ rot: 180 }, label));
 
-        const lay = analysis[m][i].layout;
+        const lay = sheet.rows[m][i];
         const edges = function (start, end) {
           return { l: L.first + start === L.first ? 'medium' : 'thin', r: L.first + end === last ? 'medium' : 'thin' };
         };
@@ -339,15 +339,15 @@
         }
       }
     });
-    return sb.xml(selected, pageBreaks(sz));
+    return sb.xml(selected, pageBreaks(sheet));
   }
 
   // ------------------------------------------------------------------ workbook
 
-  function sheetNames(project) {
+  function sheetNames(sheets) {
     const used = {};
-    return project.subzones.map(function (sz, i) {
-      let n = String(sz.name || '').replace(/[\[\]:*?\/\\]/g, ' ').replace(/^'+|'+$/g, '').trim().slice(0, 31) || ('Sottozona ' + (i + 1));
+    return sheets.map(function (sh, i) {
+      let n = String(sh.name || '').replace(/[\[\]:*?\/\\]/g, ' ').replace(/^'+|'+$/g, '').trim().slice(0, 31) || ('Sottozona ' + (i + 1));
       let k = n, j = 2;
       while (used[k.toUpperCase()]) { k = n.slice(0, 28) + ' ' + j++; }
       used[k.toUpperCase()] = true;
@@ -355,9 +355,9 @@
     });
   }
 
-  function printArea(name, sz) {
+  function printArea(name, sheet) {
     const q = "'" + name.replace(/'/g, "''") + "'!";
-    return Core.MODULES.filter(function (m) { return sz.modules[m]; }).map(function (m) {
+    return Core.MODULES.filter(function (m) { return sheet.modules[m]; }).map(function (m) {
       const L = LAYOUT[m];
       return q + '$' + colName(L.first) + '$4:$' + colName(L.first + Core.MODULE_SLOTS[m] - 1) + '$11';
     }).join(',');
@@ -367,11 +367,13 @@
     Core.assignColors(project);
     const styles = new StyleBook();
     const strings = new StringTable();
-    const names = sheetNames(project);
     const all = Core.analyseProject(project);
+    const sheets = [];
+    all.forEach(function (a) { a.sheets.forEach(function (sh) { sheets.push(sh); }); });
+    const names = sheetNames(sheets);
     const files = [];
-    project.subzones.forEach(function (sz, i) {
-      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: buildSheet(project, sz, all[i], styles, strings, i === 0) });
+    sheets.forEach(function (sh, i) {
+      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: buildSheet(project, sh, styles, strings, i === 0) });
     });
     let wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
@@ -379,12 +381,12 @@
       '<bookViews><workbookView activeTab="0"/></bookViews><sheets>';
     names.forEach(function (n, i) { wb += '<sheet name="' + esc(n) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; });
     wb += '</sheets><definedNames>';
-    project.subzones.forEach(function (sz, i) {
-      const area = printArea(names[i], sz);
+    sheets.forEach(function (sh, i) {
+      const area = printArea(names[i], sh);
       if (area) wb += '<definedName name="_xlnm.Print_Area" localSheetId="' + i + '">' + esc(area) + '</definedName>';
     });
     wb += '</definedNames></workbook>';
-    const n = project.subzones.length;
+    const n = sheets.length;
     let rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
     for (let i = 0; i < n; i++) {

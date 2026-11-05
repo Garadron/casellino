@@ -71,6 +71,19 @@ function caretAt(ta, needle, offset) {
   const toastText = doc.querySelector('.toast') ? doc.querySelector('.toast').textContent : '';
   assert.ok(blobs.length === 1 && blobs[0].size > 5000, 'Excel creato: ' + blobs.length + ' ' + toastText);
 
+  // the drawing of the whole frame: two modules (casello, ala B), then one more casello
+  const ov = doc.getElementById('overview-card');
+  ov.open = true;
+  ov.dispatchEvent(new win.Event('toggle'));
+  await wait(50);
+  assert.strictEqual(doc.querySelectorAll('.wall-chip').length, 2, 'due moduli nel disegno');
+  assert.ok(doc.querySelector('#overview svg'), 'disegno fatto');
+  [...doc.querySelectorAll('#wall-tools button')].find(function (b) { return b.textContent === '+ Casello'; }).dispatchEvent(new win.Event('click'));
+  await wait(50);
+  assert.strictEqual(doc.querySelectorAll('.wall-chip').length, 3, 'tre moduli dopo + Casello');
+  assert.ok(/disegno del mobile/.test(text('#subzone')), 'i moduli ora si scelgono nel disegno');
+  assert.ok([...doc.querySelectorAll('.pen')].length >= 2, 'matite e gomma');
+
   assert.ok(/Versione \d+\.\d+\.\d+/.test(text('#version')), 'versione nel menu');
   console.log('Pagina: tutte le prove superate');
   win.close();

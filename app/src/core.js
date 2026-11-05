@@ -20,7 +20,7 @@
   // The numbers come from the official blank template and must not change.
   const MODULES = ['alaA', 'casello', 'alaB'];
   const MODULE_SLOTS = { alaA: 33, casello: 91, alaB: 33 };
-  const MODULE_NAMES = { alaA: 'Ala A', casello: 'Casello', alaB: 'Ala B' };
+  const MODULE_NAMES = { alaA: 'Ala A', casello: 'Casello', alaB: 'Ala B', ala: 'Ala' };
   const ROWS_PER_MODULE = 4;
   // Landscape A4 holds 23 slot columns of 1.244 cm on paper, but printers keep a small
   // margin and Excel then fits 22 (seen in a real export). The workbook sets a page break
@@ -150,6 +150,7 @@
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
       depot: '',        // where the round starts and ends (the office), optional
+      wall: null,       // the frame drawn by the user (modules left to right, pencil marks), optional
     };
   }
 
@@ -196,6 +197,7 @@
       });
     }
     out.depot = String(p.depot || '');
+    out.wall = sanitizeWall(p.wall, out.subzones);
     if (p.streetLists && typeof p.streetLists === 'object') {
       Object.keys(p.streetLists).forEach(function (k) {
         if (Array.isArray(p.streetLists[k])) out.streetLists[norm(k)] = p.streetLists[k].map(String);
@@ -352,8 +354,13 @@
    * Returns { strips, overflow, notes }.
    */
   function layoutRoute(items, strips) {
-    // a strip may start with slots already taken ("reserved") by the end of the previous sub-zone
-    const first = function (k) { return k < strips.length ? (strips[k].reserved || 0) : 0; };
+    // a strip may start with slots already taken ("reserved") by the end of the previous sub-zone;
+    // a piece of a drawn frame goes from slot `from` to slot `to`
+    const first = function (k) {
+      if (k >= strips.length) return 0;
+      return strips[k].from !== undefined ? strips[k].from : (strips[k].reserved || 0);
+    };
+    const limit = function (k) { return strips[k].to !== undefined ? strips[k].to + 1 : strips[k].capacity; };
     let p = 0, pos = first(0);
     const overflow = [];
     const notes = [];
@@ -376,20 +383,21 @@
         return;
       }
       if (p >= strips.length) { overflow.push(it); return; }
-      if (it.span > strips[p].capacity) {
+      if (it.span > limit(p) - first(p) && !strips.slice(p).some(function (x, j) { return it.span <= limit(p + j) - first(p + j); })) {
         notes.push({ line: it.line, text: 'Riga ' + (it.line + 1) + ': una casella larga ' + it.span + ' non entra in nessuna striscia.' });
         return;
       }
-      if (pos + it.span > strips[p].capacity) {
+      if (pos + it.span > limit(p)) {
         notes.push({ line: it.line, soft: true, text: 'Riga ' + (it.line + 1) + ': «' + (it.top || it.street) + '» non entrava alla fine della striscia ed è passata alla striscia dopo.' });
         next();
+        while (p < strips.length && pos + it.span > limit(p)) next();
         if (p >= strips.length) { overflow.push(it); return; }
       }
       const s = strips[p];
-      s.cells.push(Object.assign({}, it, { m: s.m, i: s.i, start: pos, end: pos + it.span - 1 }));
+      s.cells.push(Object.assign({}, it, { m: s.m, i: s.i, wi: s.wi, start: pos, end: pos + it.span - 1 }));
       pos += it.span;
       s.used = pos;
-      if (pos === s.capacity) next();
+      if (pos === limit(p)) next();
     });
     strips.forEach(function (s) { s.runs = streetRuns(s.cells, s.capacity); });
     return { strips: strips, overflow: overflow, notes: notes };
@@ -432,7 +440,7 @@
    * strips: its own strips (cells coming from the previous sub-zone have c.foreign = its name);
    * spill: pieces of the next sub-zone's strips holding this sub-zone's continuation.
    */
-  function analyseProject(project) {
+  function analyseLegacy(project) {
     const subzones = project.subzones;
     const list = [];
     let incoming = null;
@@ -491,6 +499,17 @@
     return list;
   }
 
+  function analyseProject(project) {
+    if (project.wall && project.wall.modules && project.wall.modules.length) return analyseWall(project);
+    const list = analyseLegacy(project);
+    list.forEach(function (out, k) {
+      const rows = {};
+      MODULES.forEach(function (m) { rows[m] = out[m].map(function (x) { return x.layout; }); });
+      out.sheets = [{ name: out.name, modules: project.subzones[k].modules, rows: rows }];
+    });
+    return list;
+  }
+
   // One sub-zone on its own (no continuation into other sub-zones).
   function analyseSubzone(sz) {
     return analyseProject({ subzones: [sz] })[0];
@@ -531,6 +550,205 @@
       }
     });
     return dups;
+  }
+
+  // ---------------------------------------------------------------- the frame drawn by the user
+
+  /*
+   * A drawn frame ("mobile") lists the modules of the whole zone from left to right, each one a
+   * casello (91 slots) or an ala (33 slots) belonging to a sub-zone, plus pencil marks: a mark at
+   * (row, module, slot) gives that row of that module, from that slot to the right, to another
+   * sub-zone. Each sub-zone's route then fills only its own slots, in reading order: row 1 from
+   * left to right across the whole frame, then row 2, and so on. This covers every shape: a route
+   * that ends in the next sub-zone's casello, a sub-zone with two alas, one that takes half of the
+   * last row of the other...
+   */
+  const WALL_SLOTS = { casello: 91, ala: 33 };
+
+  function sanitizeWall(w, subzones) {
+    if (!w || typeof w !== 'object' || !Array.isArray(w.modules) || !w.modules.length) return null;
+    const ids = subzones.map(function (s) { return s.id; });
+    const modules = w.modules.map(function (m) {
+      return { type: m && m.type === 'casello' ? 'casello' : 'ala', owner: ids.indexOf(m && m.owner) >= 0 ? m.owner : ids[0] };
+    });
+    const marks = (Array.isArray(w.marks) ? w.marks : []).filter(function (k) {
+      return k && k.row >= 0 && k.row < ROWS_PER_MODULE && k.module >= 0 && k.module < modules.length &&
+        k.slot >= 0 && k.slot < WALL_SLOTS[modules[k.module].type] && ids.indexOf(k.owner) >= 0;
+    }).map(function (k) { return { row: +k.row, module: +k.module, slot: +k.slot, owner: k.owner }; });
+    return { modules: modules, marks: marks };
+  }
+
+  // Which sub-zone owns each slot of one row of one module (array of sub-zone ids).
+  function wallOwners(wall, row, wi) {
+    const mod = wall.modules[wi];
+    const owners = [];
+    for (let s = 0; s < WALL_SLOTS[mod.type]; s++) owners.push(mod.owner);
+    wall.marks.filter(function (k) { return k.row === row && k.module === wi; })
+      .sort(function (a, b) { return a.slot - b.slot; })
+      .forEach(function (k) { for (let s = k.slot; s < owners.length; s++) owners[s] = k.owner; });
+    return owners;
+  }
+
+  // The pencil: from this slot to the right (until the next mark) the row belongs to `owner`.
+  function setWallMark(wall, row, wi, slot, owner) {
+    wall.marks = wall.marks.filter(function (k) { return !(k.row === row && k.module === wi && k.slot === slot); });
+    wall.marks.push({ row: row, module: wi, slot: slot, owner: owner });
+    tidyWallMarks(wall);
+  }
+
+  // The eraser: removes the mark that decides this slot.
+  function removeWallMark(wall, row, wi, slot) {
+    let best = null;
+    wall.marks.forEach(function (k) {
+      if (k.row === row && k.module === wi && k.slot <= slot && (!best || k.slot > best.slot)) best = k;
+    });
+    if (best) wall.marks.splice(wall.marks.indexOf(best), 1);
+    tidyWallMarks(wall);
+  }
+
+  // Drops marks that change nothing (same owner as the slot before them).
+  function tidyWallMarks(wall) {
+    const keep = [];
+    wall.marks.slice().sort(function (a, b) { return a.row - b.row || a.module - b.module || a.slot - b.slot; }).forEach(function (k) {
+      const before = k.slot === 0 ? wall.modules[k.module].owner : wallOwners({ modules: wall.modules, marks: keep }, k.row, k.module)[k.slot - 1];
+      if (before !== k.owner || (k.slot === 0 && k.owner !== wall.modules[k.module].owner)) keep.push(k);
+    });
+    wall.marks = keep.filter(function (k) { return !(k.slot === 0 && k.owner === wall.modules[k.module].owner); });
+  }
+
+  // The drawn frame that matches the sub-zones as they are now (their modules, left to right),
+  // with marks where a route continues into the next sub-zone: nothing moves when it is drawn.
+  function wallFromSubzones(project) {
+    const all = analyseLegacy(project);
+    const modules = [];
+    const where = {};
+    project.subzones.forEach(function (sz) {
+      MODULES.forEach(function (m) {
+        if (!sz.modules[m]) return;
+        where[sz.id + '|' + m] = modules.length;
+        modules.push({ type: m === 'casello' ? 'casello' : 'ala', owner: sz.id });
+      });
+    });
+    const wall = { modules: modules, marks: [] };
+    all.forEach(function (a, k) {
+      (a.spill || []).forEach(function (s) {
+        const target = project.subzones[s.targetIndex];
+        const wi = where[target.id + '|' + s.m];
+        if (wi === undefined) return;
+        wall.marks.push({ row: s.i, module: wi, slot: 0, owner: project.subzones[k].id });
+        if (s.used < s.capacity) wall.marks.push({ row: s.i, module: wi, slot: s.used, owner: target.id });
+      });
+    });
+    return wall;
+  }
+
+  // The same layout as analyseLegacy, for a drawn frame.
+  function analyseWall(project) {
+    const wall = project.wall;
+    const subs = project.subzones;
+    const index = {};
+    subs.forEach(function (s, k) { index[s.id] = k; });
+    const nameOf = function (k) { return subs[k].name || 'sottozona ' + (k + 1); };
+    const pieces = subs.map(function () { return []; });
+    const phys = {};
+    for (let i = 0; i < ROWS_PER_MODULE; i++) {
+      wall.modules.forEach(function (mod, wi) {
+        const owners = wallOwners(wall, i, wi);
+        const st = { m: mod.type, wi: wi, i: i, capacity: owners.length, cells: [], boundaries: [], used: 0, owners: owners };
+        phys[i + ':' + wi] = st;
+        let s = 0;
+        while (s < owners.length) {
+          let e = s;
+          while (e + 1 < owners.length && owners[e + 1] === owners[s]) e++;
+          const k = index[owners[s]];
+          if (k !== undefined) pieces[k].push({ m: mod.type, wi: wi, i: i, capacity: owners.length, from: s, to: e, cells: [], boundaries: [], used: 0 });
+          if (s > 0) st.boundaries.push({ label: k !== undefined ? nameOf(k) : '', at: s, line: -1 });
+          s = e + 1;
+        }
+      });
+    }
+    const results = subs.map(function (sz, k) {
+      const parsed = parseRoute(sz.route, sz.town);
+      const res = layoutRoute(parsed.items, pieces[k]);
+      res.strips.forEach(function (pc) {
+        pc.cells.forEach(function (c) { phys[pc.i + ':' + pc.wi].cells.push(Object.assign({}, c, { owner: k })); });
+      });
+      return { parsed: parsed, res: res };
+    });
+    Object.keys(phys).forEach(function (key) {
+      const st = phys[key];
+      st.cells.sort(function (a, b) { return a.start - b.start; });
+      st.runs = streetRuns(st.cells, st.capacity);
+      st.used = st.cells.reduce(function (a, c) { return Math.max(a, c.end + 1); }, 0);
+    });
+    return subs.map(function (sz, k) {
+      const own = wall.modules.map(function (mod, wi) { return { mod: mod, wi: wi }; }).filter(function (x) { return x.mod.owner === sz.id; });
+      const strips = [];
+      for (let i = 0; i < ROWS_PER_MODULE; i++) {
+        own.forEach(function (x) {
+          const st = phys[i + ':' + x.wi];
+          strips.push(Object.assign({}, st, {
+            cells: st.cells.map(function (c) { return c.owner === k ? c : Object.assign({}, c, { foreign: nameOf(c.owner), fromIndex: c.owner }); }),
+          }));
+        });
+      }
+      const spill = [];
+      Object.keys(phys).forEach(function (key) {
+        const st = phys[key];
+        if (wall.modules[st.wi].owner === sz.id) return;
+        const mine = st.cells.filter(function (c) { return c.owner === k; });
+        if (!mine.length) return;
+        const target = index[wall.modules[st.wi].owner];
+        mine.forEach(function (c) { c.place = nameOf(target); });
+        spill.push(Object.assign({}, st, { cells: mine, runs: streetRuns(mine, st.capacity), target: nameOf(target), targetIndex: target }));
+      });
+      spill.sort(function (a, b) { return a.i - b.i || a.wi - b.wi; });
+      const r = results[k];
+      const out = { strips: strips, spill: spill, overflow: r.res.overflow, warnings: r.parsed.warnings.concat(r.res.notes), name: nameOf(k), wall: true };
+      // slots of its own modules (the ones in another sub-zone's module are shown apart, like a continuation)
+      out.capacity = pieces[k].filter(function (pc) { return wall.modules[pc.wi].owner === sz.id; })
+        .reduce(function (a, pc) { return a + pc.to - pc.from + 1; }, 0);
+      const ownCells = strips.reduce(function (a, st) { return a.concat(st.cells.filter(function (c) { return !c.foreign; })); }, []);
+      out.spillUsed = spill.reduce(function (a, st) { return a + st.cells.reduce(function (b, c) { return b + c.span; }, 0); }, 0);
+      out.used = ownCells.reduce(function (a, c) { return a + c.span; }, 0) + out.spillUsed +
+        out.overflow.reduce(function (a, c) { return a + c.span; }, 0);
+      if (out.overflow.length) {
+        out.warnings.unshift({ line: out.overflow[0].line, text: 'Il giro è più lungo delle caselle della sottozona: ' + out.overflow.length +
+          (out.overflow.length === 1 ? ' casella non entra' : ' caselle non entrano') + ' (dalla riga ' + (out.overflow[0].line + 1) +
+          '). Nel disegno del mobile segna con la matita dove continua.' });
+      }
+      out.sheets = wallSheets(sz, own, phys, nameOf(k));
+      MODULES.forEach(function (m) {
+        out[m] = [];
+        for (let i = 0; i < ROWS_PER_MODULE; i++) out[m].push({ layout: emptyLayout(m) });
+      });
+      return out;
+    });
+  }
+
+  // The printed sheets of a sub-zone: its modules go on the template's places (Ala A, Casello,
+  // Ala B) from left to right; what does not fit goes on another sheet.
+  function wallSheets(sz, own, phys, name) {
+    const sheets = [];
+    let cur = null;
+    const fresh = function () {
+      cur = { name: name + (sheets.length ? ' (' + (sheets.length + 1) + ')' : ''), modules: { alaA: false, casello: false, alaB: false }, rows: {} };
+      sheets.push(cur);
+    };
+    own.forEach(function (x) {
+      let place;
+      if (!cur) fresh();
+      if (x.mod.type === 'casello') {
+        if (cur.modules.casello || cur.modules.alaB) fresh();
+        place = 'casello';
+      } else if (!cur.modules.casello && !cur.modules.alaA) place = 'alaA';
+      else if (!cur.modules.alaB) place = 'alaB';
+      else { fresh(); place = 'alaA'; }
+      cur.modules[place] = true;
+      cur.rows[place] = [];
+      for (let i = 0; i < ROWS_PER_MODULE; i++) cur.rows[place].push(phys[i + ':' + x.wi]);
+    });
+    return sheets;
   }
 
   // ---------------------------------------------------------------- old files (one text per strip)
@@ -928,6 +1146,12 @@
     streetRuns: streetRuns,
     analyseSubzone: analyseSubzone,
     analyseProject: analyseProject,
+    WALL_SLOTS: WALL_SLOTS,
+    wallOwners: wallOwners,
+    setWallMark: setWallMark,
+    removeWallMark: removeWallMark,
+    wallFromSubzones: wallFromSubzones,
+    sanitizeWall: sanitizeWall,
     allCells: allCells,
     findDuplicates: findDuplicates,
     rowsToRoute: rowsToRoute,
