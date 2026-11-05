@@ -213,21 +213,23 @@ a.btn {
   display: flex; align-items: center; justify-content: center;
   overflow: hidden; white-space: nowrap;
   border-right: 1px solid rgba(0,0,0,.28);
-  font: 700 12px/1 Arial, system-ui, sans-serif;
+  font: 700 12px/1 Arial, system-ui, sans-serif; /* the size is set for each box so the text always fits */
   padding: 0 1px; cursor: pointer; color: #111;
 }
 .cell.top { grid-row: 1; border-bottom: 1px solid rgba(0,0,0,.28); }
-.cell.top.long { font-size: 9px; white-space: normal; text-align: center; line-height: 1.05; }
-/* two numbers in one pigeonhole, split by a diagonal line */
+.cell.top.long { white-space: normal; text-align: center; line-height: 1.05; }
+/* two numbers in one pigeonhole, split by a "/" line from the lower-left to the upper-right corner;
+   the numbers sit in the free corners and the line never touches them */
 .cell.top.diag {
   position: relative; display: block; padding: 0;
-  background-image: linear-gradient(to top right, transparent calc(50% - 1px), rgba(0,0,0,.6) 50%, transparent calc(50% + 1px));
+  background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px));
 }
-.cell.top.diag .d1, .cell.top.diag .d2 { position: absolute; font-size: 10px; line-height: 1; }
+.cell.top.diag .d1, .cell.top.diag .d2 { position: absolute; line-height: 1; }
 .cell.top.diag .d1 { top: 2px; left: 2px; }
 .cell.top.diag .d2 { bottom: 2px; right: 2px; }
-.cell.run { grid-row: 2; font-size: 10px; letter-spacing: .02em; }
-.cell.run.tight { font-size: 7px; letter-spacing: 0; justify-content: flex-start; }
+.cell.run { grid-row: 2; letter-spacing: .02em; }
+.cell.foreign { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.0) 0 6px, rgba(255,255,255,.18) 6px 8px); }
+.cell.top.diag.foreign { background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px)); }
 .cell.unsure { box-shadow: inset 0 0 0 2px #d93025; }
 .cell.sel { outline: 3px solid var(--accent); outline-offset: -3px; z-index: 2; }
 .cut { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #6b7480; pointer-events: none; }
@@ -240,7 +242,7 @@ a.btn {
 .where { margin: 0 0 8px; font-size: 14px; }
 .streets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .streets li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.streets .sw { width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(0,0,0,.25); flex: none; position: relative; }
+.streets .sw { width: 24px; height: 24px; border-radius: 5px; border: 1px solid rgba(0,0,0,.25); flex: none; position: relative; display: flex; align-items: center; justify-content: center; font: 700 13px/1 Arial, sans-serif; }
 .streets .sw select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 .streets .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .streets .n { color: var(--muted); font-variant-numeric: tabular-nums; }

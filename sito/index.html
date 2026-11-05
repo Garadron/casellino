@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.5.0';</script>
+<script>window.CASELLINO_VERSION = '0.6.0';</script>
 <style>
 :root {
   --bg: #f4f5f7;
@@ -230,21 +230,23 @@ a.btn {
   display: flex; align-items: center; justify-content: center;
   overflow: hidden; white-space: nowrap;
   border-right: 1px solid rgba(0,0,0,.28);
-  font: 700 12px/1 Arial, system-ui, sans-serif;
+  font: 700 12px/1 Arial, system-ui, sans-serif; /* the size is set for each box so the text always fits */
   padding: 0 1px; cursor: pointer; color: #111;
 }
 .cell.top { grid-row: 1; border-bottom: 1px solid rgba(0,0,0,.28); }
-.cell.top.long { font-size: 9px; white-space: normal; text-align: center; line-height: 1.05; }
-/* two numbers in one pigeonhole, split by a diagonal line */
+.cell.top.long { white-space: normal; text-align: center; line-height: 1.05; }
+/* two numbers in one pigeonhole, split by a "/" line from the lower-left to the upper-right corner;
+   the numbers sit in the free corners and the line never touches them */
 .cell.top.diag {
   position: relative; display: block; padding: 0;
-  background-image: linear-gradient(to top right, transparent calc(50% - 1px), rgba(0,0,0,.6) 50%, transparent calc(50% + 1px));
+  background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px));
 }
-.cell.top.diag .d1, .cell.top.diag .d2 { position: absolute; font-size: 10px; line-height: 1; }
+.cell.top.diag .d1, .cell.top.diag .d2 { position: absolute; line-height: 1; }
 .cell.top.diag .d1 { top: 2px; left: 2px; }
 .cell.top.diag .d2 { bottom: 2px; right: 2px; }
-.cell.run { grid-row: 2; font-size: 10px; letter-spacing: .02em; }
-.cell.run.tight { font-size: 7px; letter-spacing: 0; justify-content: flex-start; }
+.cell.run { grid-row: 2; letter-spacing: .02em; }
+.cell.foreign { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.0) 0 6px, rgba(255,255,255,.18) 6px 8px); }
+.cell.top.diag.foreign { background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px)); }
 .cell.unsure { box-shadow: inset 0 0 0 2px #d93025; }
 .cell.sel { outline: 3px solid var(--accent); outline-offset: -3px; z-index: 2; }
 .cut { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #6b7480; pointer-events: none; }
@@ -257,7 +259,7 @@ a.btn {
 .where { margin: 0 0 8px; font-size: 14px; }
 .streets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .streets li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.streets .sw { width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(0,0,0,.25); flex: none; position: relative; }
+.streets .sw { width: 24px; height: 24px; border-radius: 5px; border: 1px solid rgba(0,0,0,.25); flex: none; position: relative; display: flex; align-items: center; justify-content: center; font: 700 13px/1 Arial, sans-serif; }
 .streets .sw select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 .streets .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .streets .n { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -385,7 +387,7 @@ table.help td:first-child { white-space: nowrap; }
     <p>Il casello si legge come un libro: <b>da sinistra a destra e dall'alto in basso</b>. Si scrive il giro dall'inizio alla fine, una via per riga: il programma riempie la fila 1 di ogni modulo (Ala A, Casello, Ala B), poi la fila 2, e così via. Per spostare una via basta spostare la sua riga.</p>
     <table class="help">
       <tr><td><code>VIA DEI TIGLI: 1, 3, 5</code></td><td>tre caselle, una per civico</td></tr>
-      <tr><td><code>2/4</code></td><td>una casella divisa in obliquo: 2 in alto a sinistra, 4 in basso a destra</td></tr>
+      <tr><td><code>2/4</code></td><td>una casella divisa da una riga obliqua (da in basso a sinistra a in alto a destra): 2 in alto a sinistra, 4 in basso a destra. I numeri non toccano mai la riga; se sono lunghi, fai la casella larga due: <code>20G/20H (2)</code></td></tr>
       <tr><td><code>61\59</code> o <code>67-69</code></td><td>una casella con due civici uno accanto all'altro</td></tr>
       <tr><td><code>1..15</code></td><td>1, 3, 5 … 15 (resta sullo stesso lato della via)</td></tr>
       <tr><td><code>14..2</code></td><td>14, 12 … 2 (all'indietro)</td></tr>
@@ -407,6 +409,8 @@ table.help td:first-child { white-space: nowrap; }
     </table>
     <p><b>La regola delle strisce</b>: nella riga sotto c'è solo il nome della via (o piazza, cascina…), steso su tutte le sue caselle; nelle caselle di sopra ci sono solo i civici. Una casella che appartiene a un'altra via, in mezzo a una via, si scrive su una riga sua (per esempio <code>VIA DEI GELSI: 37</code>): prende il suo colore e il suo nome sotto.</p>
     <p>Di solito nelle vie i dispari sono da un lato e i pari dall'altro, tutti e due a salire (<code>1..15</code> e <code>2..16</code>); nelle piazze i numeri vanno in fila, uno dopo l'altro (<code>1-12 tutti</code>).</p>
+    <p><b>Una sottozona più lunga del suo casello e della sua ala</b> continua da sola nell'ultima fila della sottozona dopo (per esempio la A nella fila 4 della B), come nel mobile vero: si scrive tutto nel giro della A, e la B comincia quella fila dopo.</p>
+    <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Due vie vicine non possono avere colori simili: nell'elenco delle vie i colori troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
     <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>
@@ -474,29 +478,48 @@ table.help td:first-child { white-space: nowrap; }
   const IT_LETTERS = 'ABCDEFGHILMNOPQRSTUVZ';
   const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-  // Print-friendly light colours; text stays black on all of them.
+  // Strong colours for the strips. Each one has the text colour that reads best on it
+  // (contrast checked: from 6.9:1 up to 18.9:1) and a family: two streets next to each other
+  // never get colours of the same family or colours that look alike (see similarColors).
   const PALETTE = [
-    { name: 'azzurro', hex: '9DC3E6' },
-    { name: 'verde', hex: 'A9D08E' },
-    { name: 'giallo', hex: 'FFE699' },
-    { name: 'rosa', hex: 'F4B6C2' },
-    { name: 'arancione', hex: 'F8CBAD' },
-    { name: 'lilla', hex: 'CDB8E8' },
-    { name: 'verde acqua', hex: '9FDCD0' },
-    { name: 'sabbia', hex: 'E2D3B5' },
-    { name: 'celeste', hex: 'C9E4F5' },
-    { name: 'verde chiaro', hex: 'D4EDBC' },
-    { name: 'rosso', hex: 'F1948A' },
-    { name: 'grigio', hex: 'D9D9D9' },
-    { name: 'bianco', hex: 'FFFFFF' },
+    { name: 'giallo', hex: 'FFE135', text: '111111', family: 'giallo', dark: false },
+    { name: 'blu', hex: '1F4E9E', text: 'FFFFFF', family: 'blu', dark: true },
+    { name: 'verde chiaro', hex: '8ED16B', text: '111111', family: 'verde', dark: false },
+    { name: 'rosso scuro', hex: '8B1A1A', text: 'FFF6C2', family: 'rosso', dark: true },
+    { name: 'azzurro', hex: '6CCFF6', text: '111111', family: 'azzurro', dark: false },
+    { name: 'viola', hex: '5B2A94', text: 'FFFFFF', family: 'viola', dark: true },
+    { name: 'arancione', hex: 'FF9A2E', text: '111111', family: 'arancio', dark: false },
+    { name: 'verde scuro', hex: '17673A', text: 'FFFFFF', family: 'verde', dark: true },
+    { name: 'rosa', hex: 'F7A1CF', text: '111111', family: 'rosa', dark: false },
+    { name: 'nero', hex: '151515', text: 'FFFFFF', family: 'nero', dark: true },
+    { name: 'grigio', hex: 'CFCFCF', text: '111111', family: 'grigio', dark: false },
+    { name: 'marrone', hex: '6A3F22', text: 'FFFFFF', family: 'marrone', dark: true },
+    { name: 'bianco', hex: 'FFFFFF', text: '111111', family: 'bianco', dark: false },
+  ];
+  // Pairs that look too much alike to stay next to each other (besides same family).
+  const ALIKE = [
+    ['giallo', 'arancione'], ['blu', 'viola'], ['rosso scuro', 'marrone'], ['nero', 'marrone'],
+    ['azzurro', 'grigio'], ['azzurro', 'bianco'], ['rosa', 'grigio'], ['grigio', 'bianco'],
   ];
 
   function norm(text) {
     return String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim().toUpperCase();
   }
 
+  // The same street written as "C.NA ALTA" or "CASCINA ALTA", or with a "?", is one street
+  // (one colour, one line in the list of streets).
+  const KEY_WORDS = [
+    [/^C\.?\s*NA\b\.?\s*/, 'CASCINA '], [/^CNA\b\.?\s*/, 'CASCINA '], [/^V\.\s*LE\b\.?\s*/, 'VIALE '],
+    [/^P\.\s*Z?ZA\b\.?\s*/, 'PIAZZA '], [/^V\.\s*/, 'VIA '], [/^LOC\.\s*/, 'LOCALITA '], [/\bF\.\s*LLI\b\.?/, 'FRATELLI'],
+  ];
+  function streetName(street) {
+    let k = norm(street).replace(/\?/g, '');
+    KEY_WORDS.forEach(function (w) { k = k.replace(w[0], w[1]); });
+    return k.replace(/\s+/g, ' ').trim();
+  }
+
   function streetKey(street, town) {
-    return norm(street) + '|' + norm(town);
+    return streetName(street) + '|' + norm(town);
   }
 
   function newSubzone(name, town) {
@@ -712,25 +735,27 @@ table.help td:first-child { white-space: nowrap; }
    * Returns { strips, overflow, notes }.
    */
   function layoutRoute(items, strips) {
-    let p = 0, pos = 0;
+    // a strip may start with slots already taken ("reserved") by the end of the previous sub-zone
+    const first = function (k) { return k < strips.length ? (strips[k].reserved || 0) : 0; };
+    let p = 0, pos = first(0);
     const overflow = [];
     const notes = [];
-    function next() { p++; pos = 0; }
-    function rowStart() { return pos === 0 && (p === 0 || p >= strips.length || strips[p].i !== strips[p - 1].i); }
+    function next() { p++; pos = first(p); }
+    function rowStart() { return pos === first(p) && (p === 0 || p >= strips.length || strips[p].i !== strips[p - 1].i); }
     items.forEach(function (it) {
       if (it.kind === 'boundary') {
         if (p < strips.length) strips[p].boundaries.push({ label: it.label, at: pos, line: it.line });
         return;
       }
       if (it.kind === 'break') {
-        if (it.mode === 'strip') { if (pos > 0) next(); }
+        if (it.mode === 'strip') { if (pos > first(p)) next(); }
         else if (it.mode === 'row') {
           if (!rowStart() && p < strips.length) {
             const row = strips[p].i;
             while (p < strips.length && strips[p].i === row) p++;
-            pos = 0;
+            pos = first(p);
           }
-        } else if (it.mode === 'skip') { if (pos > 0) next(); next(); }
+        } else if (it.mode === 'skip') { if (pos > first(p)) next(); next(); }
         return;
       }
       if (p >= strips.length) { overflow.push(it); return; }
@@ -781,51 +806,104 @@ table.help td:first-child { white-space: nowrap; }
   }
 
   /*
-   * Lays out a sub-zone. Returns
-   *   { strips, overflow, warnings, used, capacity, [module][row] = { layout } }
+   * Lays out every sub-zone of a project, in order. When the route of a sub-zone is longer than
+   * its own modules, the rest continues in the next sub-zone, on the same (last) row, from its
+   * first module: in a real frame the row goes on to the right. The next sub-zone then starts
+   * that row after those pigeonholes.
+   * Returns one analysis per sub-zone:
+   *   { strips, spill, overflow, warnings, used, capacity, spillUsed, [module][row] = { layout } }
+   * strips: its own strips (cells coming from the previous sub-zone have c.foreign = its name);
+   * spill: pieces of the next sub-zone's strips holding this sub-zone's continuation.
    */
-  function analyseSubzone(sz) {
-    const parsed = parseRoute(sz.route, sz.town);
-    const res = layoutRoute(parsed.items, stripOrder(sz));
-    const out = { strips: res.strips, overflow: res.overflow, warnings: parsed.warnings.concat(res.notes) };
-    out.capacity = res.strips.reduce(function (a, s) { return a + s.capacity; }, 0);
-    out.used = res.strips.reduce(function (a, s) { return a + s.used; }, 0) +
-      res.overflow.reduce(function (a, c) { return a + c.span; }, 0);
-    if (res.overflow.length) {
-      out.warnings.unshift({ line: res.overflow[0].line, text: 'Il giro è più lungo dei moduli: ' + res.overflow.length +
-        (res.overflow.length === 1 ? ' casella non entra' : ' caselle non entrano') + ' (dalla riga ' + (res.overflow[0].line + 1) + ').' });
-    }
-    MODULES.forEach(function (m) {
-      out[m] = [];
-      for (let i = 0; i < ROWS_PER_MODULE; i++) {
-        const s = res.strips.find(function (x) { return x.m === m && x.i === i; });
-        out[m].push({ layout: s || emptyLayout(m) });
+  function analyseProject(project) {
+    const subzones = project.subzones;
+    const list = [];
+    let incoming = null;
+    subzones.forEach(function (sz, k) {
+      const name = sz.name || 'sottozona ' + (k + 1);
+      const parsed = parseRoute(sz.route, sz.town);
+      const strips = stripOrder(sz);
+      if (incoming) {
+        const rowStrips = strips.filter(function (s) { return s.i === incoming.row; });
+        const tmp = rowStrips.map(function (s) {
+          return { m: s.m, i: s.i, capacity: s.capacity, cells: [], boundaries: [], used: 0, target: name, targetIndex: k };
+        });
+        const r = layoutRoute(incoming.items, tmp);
+        tmp.forEach(function (t, j) {
+          rowStrips[j].reserved = t.used;
+          rowStrips[j].used = t.used;
+          t.cells.forEach(function (c) {
+            c.place = name;
+            rowStrips[j].cells.push(Object.assign({}, c, { foreign: incoming.name, fromIndex: incoming.index }));
+          });
+          if (t.used > 0 && t.used < t.capacity) {
+            rowStrips[j].boundaries.push({ label: name, at: t.used, line: -1 });
+            t.boundaries.push({ label: name, at: t.used, line: -1 });
+          }
+        });
+        list[incoming.index].spill = tmp.filter(function (t) { return t.cells.length; });
+        list[incoming.index].overflow = r.overflow;
       }
+      const res = layoutRoute(parsed.items, strips);
+      list.push({ strips: res.strips, spill: [], overflow: res.overflow, warnings: parsed.warnings.concat(res.notes), name: name });
+      incoming = res.overflow.length && k + 1 < subzones.length && strips.length
+        ? { items: res.overflow, row: strips[strips.length - 1].i, index: k, name: name } : null;
     });
-    return out;
+    list.forEach(function (out) {
+      const own = function (s) { return s.used - (s.reserved || 0); };
+      out.capacity = out.strips.reduce(function (a, s) { return a + s.capacity - (s.reserved || 0); }, 0);
+      out.spillUsed = out.spill.reduce(function (a, s) { return a + s.used; }, 0);
+      out.used = out.strips.reduce(function (a, s) { return a + own(s); }, 0) + out.spillUsed +
+        out.overflow.reduce(function (a, c) { return a + c.span; }, 0);
+      if (out.spill.length) {
+        out.warnings.unshift({ line: -1, soft: true, text: 'Il giro continua nella sottozona ' + out.spill[0].target + ': ' +
+          out.spillUsed + ' caselle nella fila ' + (out.spill[0].i + 1) + '.' });
+      }
+      if (out.overflow.length) {
+        out.warnings.unshift({ line: out.overflow[0].line, text: 'Il giro è più lungo dei moduli: ' + out.overflow.length +
+          (out.overflow.length === 1 ? ' casella non entra' : ' caselle non entrano') + ' (dalla riga ' + (out.overflow[0].line + 1) + ').' });
+      }
+      MODULES.forEach(function (m) {
+        out[m] = [];
+        for (let i = 0; i < ROWS_PER_MODULE; i++) {
+          const s = out.strips.find(function (x) { return x.m === m && x.i === i; });
+          out[m].push({ layout: s || emptyLayout(m) });
+        }
+      });
+    });
+    return list;
   }
 
+  // One sub-zone on its own (no continuation into other sub-zones).
+  function analyseSubzone(sz) {
+    return analyseProject({ subzones: [sz] })[0];
+  }
+
+  // The pigeonholes written in this sub-zone's route, wherever they ended up.
   function allCells(a) {
     const cells = [];
-    a.strips.forEach(function (s) { s.cells.forEach(function (c) { cells.push(c); }); });
+    a.strips.forEach(function (s) { s.cells.forEach(function (c) { if (!c.foreign) cells.push(c); }); });
+    (a.spill || []).forEach(function (s) { s.cells.forEach(function (c) { cells.push(c); }); });
     return cells.concat(a.overflow);
   }
 
   function placeName(sz, c) {
-    if (c.m === undefined) return (sz.name ? sz.name + ', ' : '') + 'fuori dai moduli';
-    return (sz.name ? sz.name + ', ' : '') + 'fila ' + (c.i + 1) + ' ' + MODULE_NAMES[c.m] + ' casella ' + (c.start + 1);
+    const who = sz.name ? sz.name + ', ' : '';
+    if (c.m === undefined) return who + 'fuori dai moduli';
+    return who + (c.place ? 'nella ' + c.place + ' ' : '') + 'fila ' + (c.i + 1) + ' ' + MODULE_NAMES[c.m] + ' casella ' + (c.start + 1);
   }
 
   // Same house number of the same street written more than once in the project.
   function findDuplicates(project) {
     const seen = {};
     const dups = [];
-    project.subzones.forEach(function (sz) {
-      allCells(analyseSubzone(sz)).forEach(function (c) {
+    const all = analyseProject(project);
+    project.subzones.forEach(function (sz, k) {
+      allCells(all[k]).forEach(function (c) {
         [c.top, c.second].forEach(function (n) {
           if (!c.key || !/^\d+\s*[A-Z]?$/i.test(n)) return;
-          const k = c.key + '|' + norm(n).replace(/\s/g, '');
-          (seen[k] = seen[k] || []).push(placeName(sz, c));
+          const key = c.key + '|' + norm(n).replace(/\s/g, '');
+          (seen[key] = seen[key] || []).push(placeName(sz, c));
         });
       });
     });
@@ -875,45 +953,69 @@ table.help td:first-child { white-space: nowrap; }
 
   // ---------------------------------------------------------------- colours
 
+  function paletteEntry(hex) {
+    return PALETTE.find(function (c) { return c.hex === String(hex || '').toUpperCase(); }) || null;
+  }
+
   function paletteName(hex) {
-    const p = PALETTE.find(function (c) { return c.hex === String(hex).toUpperCase(); });
+    const p = paletteEntry(hex);
     return p ? p.name : '#' + hex;
   }
 
-  /*
-   * Gives every street without a colour one that differs from the streets next to it.
-   * Colours are stored in project.streets so they never change by themselves.
-   * Returns true if something was assigned.
-   */
-  function assignColors(project) {
+  // True when two colours must not be used for streets next to each other.
+  function similarColors(hexA, hexB) {
+    const a = paletteEntry(hexA), b = paletteEntry(hexB);
+    if (!a || !b) return String(hexA).toUpperCase() === String(hexB).toUpperCase();
+    if (a === b || a.family === b.family) return true;
+    return ALIKE.some(function (x) { return (x[0] === a.name && x[1] === b.name) || (x[0] === b.name && x[1] === a.name); });
+  }
+
+  // Streets that touch each other somewhere on the strips: key -> { otherKey: true }.
+  function streetNeighbours(project) {
     const neighbours = {};
     const order = [];
-    project.subzones.forEach(function (sz) {
-      const a = analyseSubzone(sz);
+    analyseProject(project).forEach(function (a) {
       a.strips.concat([{ cells: a.overflow }]).forEach(function (s) {
         let prev = null;
         s.cells.forEach(function (c) {
           if (!c.key) { prev = null; return; }
           if (!neighbours[c.key]) { neighbours[c.key] = {}; order.push(c.key); }
-          if (prev && prev !== c.key) { neighbours[c.key][prev] = 1; neighbours[prev][c.key] = 1; }
+          if (prev && prev !== c.key) { neighbours[c.key][prev] = true; neighbours[prev][c.key] = true; }
           prev = c.key;
         });
       });
     });
+    return { map: neighbours, order: order };
+  }
+
+  /*
+   * Gives every street without a colour one that is not similar to any street next to it,
+   * alternating light and dark colours. Colours are stored in project.streets, so they never
+   * change by themselves; colours that are not in the palette any more are given again.
+   * Returns true if something was assigned.
+   */
+  function assignColors(project) {
+    let changed = false;
+    Object.keys(project.streets).forEach(function (k) {
+      if (!paletteEntry(project.streets[k].color)) { delete project.streets[k]; changed = true; }
+    });
+    const nb = streetNeighbours(project);
     const usage = {};
     Object.keys(project.streets).forEach(function (k) {
       const col = project.streets[k].color;
       usage[col] = (usage[col] || 0) + 1;
     });
-    let changed = false;
     const choices = PALETTE.filter(function (c) { return c.name !== 'bianco'; });
-    order.forEach(function (key) {
+    nb.order.forEach(function (key) {
       if (project.streets[key]) return;
-      const taken = {};
-      Object.keys(neighbours[key]).forEach(function (n) { if (project.streets[n]) taken[project.streets[n].color] = 1; });
-      const free = choices.filter(function (c) { return !taken[c.hex]; });
+      const near = Object.keys(nb.map[key]).filter(function (n) { return project.streets[n]; })
+        .map(function (n) { return project.streets[n].color; });
+      const darkNear = near.filter(function (h) { return paletteEntry(h).dark; }).length;
+      const wantDark = near.length ? darkNear * 2 < near.length : false;
+      const free = choices.filter(function (c) { return !near.some(function (h) { return similarColors(h, c.hex); }); });
       const pool = free.length ? free : choices;
-      pool.sort(function (x, y) { return (usage[x.hex] || 0) - (usage[y.hex] || 0) || choices.indexOf(x) - choices.indexOf(y); });
+      const score = function (c) { return (near.length && c.dark !== wantDark ? 100 : 0) + (usage[c.hex] || 0); };
+      pool.sort(function (x, y) { return score(x) - score(y) || choices.indexOf(x) - choices.indexOf(y); });
       project.streets[key] = { color: pool[0].hex };
       usage[pool[0].hex] = (usage[pool[0].hex] || 0) + 1;
       changed = true;
@@ -923,6 +1025,12 @@ table.help td:first-child { white-space: nowrap; }
 
   function colorOf(project, key) {
     return key && project.streets[key] ? project.streets[key].color : 'FFFFFF';
+  }
+
+  // The colour of the writing on a street's colour.
+  function textColorOf(project, key) {
+    const p = paletteEntry(colorOf(project, key));
+    return p ? p.text : '111111';
   }
 
   // ---------------------------------------------------------------- map
@@ -1089,11 +1197,17 @@ table.help td:first-child { white-space: nowrap; }
     layoutRoute: layoutRoute,
     streetRuns: streetRuns,
     analyseSubzone: analyseSubzone,
+    analyseProject: analyseProject,
     allCells: allCells,
     findDuplicates: findDuplicates,
     rowsToRoute: rowsToRoute,
     assignColors: assignColors,
     colorOf: colorOf,
+    textColorOf: textColorOf,
+    similarColors: similarColors,
+    streetNeighbours: streetNeighbours,
+    paletteEntry: paletteEntry,
+    streetName: streetName,
     paletteName: paletteName,
     mapQuery: mapQuery,
     projectToText: projectToText,
@@ -1187,12 +1301,14 @@ table.help td:first-child { white-space: nowrap; }
       '"/><bgColor indexed="64"/></patternFill></fill>');
   };
   StyleBook.prototype.border = function (b) {
-    const side = function (name, style) {
-      return style ? '<' + name + ' style="' + style + '"><color indexed="64"/></' + name + '>' : '<' + name + '/>';
+    const side = function (name, style, hex) {
+      const color = hex ? '<color rgb="FF' + hex + '"/>' : '<color indexed="64"/>';
+      return style ? '<' + name + ' style="' + style + '">' + color + '</' + name + '>' : '<' + name + '/>';
     };
-    // b.d: a diagonal line from bottom-left to top-right (two numbers in one pigeonhole)
+    // b.d: colour of a "/" line from the lower-left to the upper-right corner (two numbers in one
+    // pigeonhole); it has the colour of the writing, so it shows on dark colours too
     return this.add(this.borders, '<border' + (b.d ? ' diagonalUp="1"' : '') + '>' + side('left', b.l) +
-      side('right', b.r) + side('top', b.t) + side('bottom', b.b) + side('diagonal', b.d ? 'thin' : null) + '</border>');
+      side('right', b.r) + side('top', b.t) + side('bottom', b.b) + side('diagonal', b.d ? 'thin' : null, b.d) + '</border>');
   };
   // s = { size, bold, color, fill, border:{l,r,t,b}, text, wrap, shrink, rot, h }
   StyleBook.prototype.xf = function (s) {
@@ -1260,9 +1376,25 @@ table.help td:first-child { white-space: nowrap; }
     }
     return w;
   }
+  const ROW_PX = 28.35 * 96 / 72; // height of the house-number row (1 cm) in pixels
+
+  // The largest size (pt) that keeps both numbers clear of the "/" line, so nothing is cut:
+  // the first number fits in the upper-left triangle, the second in the lower-right one.
+  function diagonalSize(first, second, span) {
+    const W = SLOT_PX * span, H = ROW_PX;
+    const lineY = function (x) { return H - H / W * x; }; // the line from (0, H) to (W, 0)
+    for (let size = 12; size >= 5; size--) {
+      const em = size * 96 / 72, L = 1.15 * em, t = (H - 2 * L) / 2;
+      const w1 = textPx(first, size), w2 = textPx(second, size);
+      const firstClear = t + 0.97 * em + 1 <= lineY(3 + w1);         // lower-right corner of the first
+      const secondClear = t + L + 0.25 * em - 1 >= lineY(W - 5 - w2);  // upper-left corner of the second
+      if (firstClear && secondClear) return size;
+    }
+    return 5;
+  }
+
   function diagonalText(first, second, span) {
-    const longest = Math.max(String(first).length, String(second).length);
-    const size = longest <= 2 ? 12 : (longest <= 3 ? 11 : 9); // two lines of 12 pt fill the 1 cm row
+    const size = diagonalSize(first, second, span);
     const free = SLOT_PX * span - 8 - textPx(second, size);
     const spaces = Math.max(1, Math.round(free / textPx(' ', size)));
     return { text: first + '\n' + ' '.repeat(spaces) + second, size: size };
@@ -1359,9 +1491,8 @@ table.help td:first-child { white-space: nowrap; }
     return x;
   };
 
-  function buildSheet(project, sz, styles, strings, selected) {
+  function buildSheet(project, sz, analysis, styles, strings, selected) {
     const sb = new SheetBuilder(styles, strings);
-    const analysis = Core.analyseSubzone(sz);
     const head = { size: 14, bold: true, h: 'left' };
 
     sb.put(1, 38, 'Zona', head);
@@ -1398,21 +1529,22 @@ table.help td:first-child { white-space: nowrap; }
           if (c.start >= slots) return;
           const end = Math.min(c.end, slots - 1);
           const color = Core.colorOf(project, c.key);
+          const ink = Core.textColorOf(project, c.key);
           const e = edges(c.start, end);
           if (c.second) {
             const d = diagonalText(c.top, c.second, end - c.start + 1);
             sb.block(top, L.first + c.start, top, L.first + end, d.text,
-              { bold: true, text: true, fill: color, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: true } });
+              { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: ink } });
           } else {
             sb.block(top, L.first + c.start, top, L.first + end, c.top,
-              Object.assign({ bold: true, text: true, fill: color, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
+              Object.assign({ bold: true, text: true, fill: color, color: ink, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
           }
           for (let s = c.start; s <= end; s++) usedTop[s] = true;
         });
         lay.runs.forEach(function (run) {
           const e = edges(run.start, run.end);
           sb.block(bottom, L.first + run.start, bottom, L.first + run.end, run.street,
-            { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
+            { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
           for (let s = run.start; s <= run.end; s++) usedBottom[s] = true;
         });
         // Slots left empty, and pigeonholes with no street, get a plain lower line.
@@ -1455,9 +1587,10 @@ table.help td:first-child { white-space: nowrap; }
     const styles = new StyleBook();
     const strings = new StringTable();
     const names = sheetNames(project);
+    const all = Core.analyseProject(project);
     const files = [];
     project.subzones.forEach(function (sz, i) {
-      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: buildSheet(project, sz, styles, strings, i === 0) });
+      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: buildSheet(project, sz, all[i], styles, strings, i === 0) });
     });
     let wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
@@ -1709,7 +1842,7 @@ table.help td:first-child { white-space: nowrap; }
 
   function sz() { return state.project.subzones[state.current]; }
 
-  function stripTitle(s) { return 'Fila ' + (s.i + 1) + ' · ' + C.MODULE_NAMES[s.m]; }
+  function stripTitle(s) { return (s.target ? 'nella ' + s.target + ', ' : '') + 'Fila ' + (s.i + 1) + ' · ' + C.MODULE_NAMES[s.m]; }
 
   const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
@@ -1878,17 +2011,22 @@ table.help td:first-child { white-space: nowrap; }
     ta.style.height = Math.min(ta.scrollHeight + 4, max) + 'px';
   }
 
+  // Own strips, then the pieces of the next sub-zone where this route continues.
+  function stripsOf(a) { return a ? a.strips.concat(a.spill || []) : []; }
+
   function refreshRoute() {
     const els = state.els;
     if (!els.ta) return;
-    const a = C.analyseSubzone(sz());
+    const a = C.analyseProject(state.project)[state.current];
     state.analysis = a;
-    const over = a.used > a.capacity;
-    els.used.textContent = a.used + ' / ' + a.capacity + ' caselle';
+    const over = a.overflow.length > 0;
+    const ownUsed = a.used - a.spillUsed;
+    els.used.textContent = ownUsed + ' / ' + a.capacity + ' caselle' +
+      (a.spillUsed ? ' + ' + a.spillUsed + ' nella ' + a.spill[0].target : '');
     els.used.classList.toggle('over', over);
     els.meter.classList.toggle('over', over);
-    els.meter.classList.toggle('full', a.used === a.capacity);
-    els.meter.firstChild.style.width = (a.capacity ? Math.min(100, a.used / a.capacity * 100) : 0) + '%';
+    els.meter.classList.toggle('full', !over && ownUsed >= a.capacity);
+    els.meter.firstChild.style.width = (a.capacity ? Math.min(100, ownUsed / a.capacity * 100) : 0) + '%';
 
     els.warnings.textContent = '';
     a.warnings.slice(0, 12).forEach(function (w) {
@@ -1903,6 +2041,18 @@ table.help td:first-child { white-space: nowrap; }
     renderNow();
   }
 
+  function stripBox(s, p) {
+    const strip = h('div', { class: 'strip', style: '--n:' + s.capacity });
+    renderStrip(strip, s, p);
+    const from = s.reserved ? ' · le prime ' + s.reserved + ' sono della ' + s.cells[0].foreign : '';
+    return [
+      h('div', { class: 'strip-head' },
+        h('b', null, C.MODULE_NAMES[s.m] + (s.target ? ' della ' + s.target : '')),
+        h('span', { class: 'used' + (s.used === s.capacity ? ' full' : '') }, s.used + ' / ' + s.capacity + from)),
+      h('div', { class: 'strip-wrap' }, strip),
+    ];
+  }
+
   function renderAllStrips(a) {
     const box = state.els.strips;
     box.textContent = '';
@@ -1914,14 +2064,13 @@ table.help td:first-child { white-space: nowrap; }
       const row = a.strips.map(function (s, p) { return { s: s, p: p }; }).filter(function (x) { return x.s.i === i; });
       if (!row.length) continue;
       const sec = h('section', { class: 'fila' }, h('h3', null, 'Fila ' + (i + 1)));
-      row.forEach(function (x) {
-        const strip = h('div', { class: 'strip', style: '--n:' + x.s.capacity });
-        renderStrip(strip, x.s, x.p);
-        sec.append(h('div', { class: 'strip-head' },
-          h('b', null, C.MODULE_NAMES[x.s.m]),
-          h('span', { class: 'used' + (x.s.used === x.s.capacity ? ' full' : '') }, x.s.used + ' / ' + x.s.capacity)),
-        h('div', { class: 'strip-wrap' }, strip));
-      });
+      row.forEach(function (x) { stripBox(x.s, x.p).forEach(function (e) { sec.append(e); }); });
+      box.append(sec);
+    }
+    if (a.spill.length) {
+      const sec = h('section', { class: 'fila' }, h('h3', null, 'Il giro continua nella sottozona ' + a.spill[0].target +
+        ', fila ' + (a.spill[0].i + 1)));
+      a.spill.forEach(function (s, j) { stripBox(s, a.strips.length + j).forEach(function (e) { sec.append(e); }); });
       box.append(sec);
     }
     if (a.overflow.length) {
@@ -1931,33 +2080,63 @@ table.help td:first-child { white-space: nowrap; }
     }
   }
 
+  // Font size (px) that keeps every word inside its box: nothing written is ever cut.
+  function fitPx(text, widthPx, maxPx, lines) {
+    const n = Math.max(1, String(text).length);
+    return Math.max(5, Math.min(maxPx, Math.floor((widthPx - 4) * (lines || 1) / (n * 0.62))));
+  }
+  // Two numbers split by a "/" diagonal: the largest size that keeps both clear of the line.
+  function diagPx(a, b, widthPx, heightPx) {
+    for (let s = 12; s >= 5; s--) {
+      const w = Math.max(String(a).length, String(b).length) * 0.6 * s;
+      if ((2 + w) / widthPx <= 1 - (3 + s) / heightPx) return s;
+    }
+    return 5;
+  }
+  function slotPx() {
+    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot')) || 30;
+  }
+
   function renderStrip(el, s, p, focusIdx) {
     const proj = state.project;
+    const slot = slotPx();
     el.textContent = '';
     const sel = state.selected && state.selected.p === p ? state.selected.idx : -1;
     s.cells.forEach(function (c, idx) {
       const bg = '#' + C.colorOf(proj, c.key);
+      const ink = '#' + C.textColorOf(proj, c.key);
       const unsure = /\?/.test(c.top + c.second + c.street);
-      const tip = (c.street || 'senza via') + (c.top ? ' · ' + c.top : '') + (c.second ? ' / ' + c.second : '') +
-        ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') + ' · riga ' + (c.line + 1) + ' del giro';
+      const tip = (c.foreign ? 'Della ' + c.foreign + ' · ' : '') + (c.street || 'senza via') + (c.top ? ' · ' + c.top : '') +
+        (c.second ? ' / ' + c.second : '') + ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') +
+        ' · riga ' + (c.line + 1) + ' del giro';
       const pick = function () { select(p, idx); };
-      const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '');
-      const longText = c.top.length > 4 * c.span;
-      const inside = c.second
-        ? [h('span', { class: 'd1' }, c.top), h('span', { class: 'd2' }, c.second)]
-        : [c.top];
+      const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '');
+      const width = c.span * slot;
+      let inside, size, cls = '';
+      if (c.second) {
+        size = diagPx(c.top, c.second, width, 32);
+        inside = [h('span', { class: 'd1' }, c.top), h('span', { class: 'd2' }, c.second)];
+        cls = ' diag';
+      } else {
+        const long = /\s/.test(c.top) && c.top.length > 4 * c.span;
+        size = long ? fitPx(c.top, width, 10, 2) : fitPx(c.top, width, 13);
+        inside = [c.top];
+        cls = long ? ' long' : '';
+      }
       el.append(h.apply(null, ['div', {
-        class: 'cell top' + (c.second ? ' diag' : '') + (longText && !c.second ? ' long' : '') + (unsure ? ' unsure' : '') + mark,
-        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';background-color:' + bg, title: tip, onclick: pick,
-        'data-idx': idx,
+        class: 'cell top' + cls + (unsure ? ' unsure' : '') + mark,
+        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';background-color:' + bg + ';color:' + ink +
+          ';--ink:' + ink + ';font-size:' + size + 'px',
+        title: tip, onclick: pick, 'data-idx': idx,
       }].concat(inside)));
     });
     s.runs.forEach(function (r) {
       const idx = s.cells.findIndex(function (c) { return c.start === r.start; });
-      const tight = r.street.length * 6.5 > (r.end - r.start + 1) * 30;
+      const width = (r.end - r.start + 1) * slot;
       el.append(h('div', {
-        class: 'cell run' + (tight ? ' tight' : ''), title: r.street + (r.town ? ' · ' + r.town : ''),
-        style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key),
+        class: 'cell run', title: r.street + (r.town ? ' · ' + r.town : ''),
+        style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
+          ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' + fitPx(r.street, width, 11) + 'px',
         onclick: function () { select(p, idx); },
       }, r.street));
     });
@@ -1975,11 +2154,12 @@ table.help td:first-child { white-space: nowrap; }
     const a = state.analysis;
     els.nowWrap.textContent = '';
     const target = state.caret || state.selected;
-    if (!a || !target || !a.strips[target.p]) {
+    const list = stripsOf(a);
+    if (!a || !target || !list[target.p]) {
       els.nowTitle.textContent = a && a.strips.length ? 'Tocca una riga del giro o una casella: qui vedi la sua striscia.' : '';
       return;
     }
-    const s = a.strips[target.p];
+    const s = list[target.p];
     const c = s.cells[target.idx];
     els.nowTitle.textContent = 'Sei qui: ' + stripTitle(s) + (c ? ' · casella ' + (c.start + 1) + ' di ' + s.capacity +
       ' · foglio ' + (Math.floor(c.start / C.SLOTS_PER_PAGE) + 1) : '');
@@ -2047,10 +2227,11 @@ table.help td:first-child { white-space: nowrap; }
     const a = state.analysis;
     if (!a) return null;
     let firstOfLine = null;
-    for (let p = 0; p < a.strips.length; p++) {
-      const cells = a.strips[p].cells;
+    const list = stripsOf(a);
+    for (let p = 0; p < list.length; p++) {
+      const cells = list[p].cells;
       for (let idx = 0; idx < cells.length; idx++) {
-        if (cells[idx].line !== line) continue;
+        if (cells[idx].foreign || cells[idx].line !== line) continue;
         if (cells[idx].tok === tok) return { p: p, idx: idx };
         if (!firstOfLine) firstOfLine = { p: p, idx: idx };
       }
@@ -2146,13 +2327,23 @@ table.help td:first-child { white-space: nowrap; }
     state.caret = null;
     renderAllStrips(state.analysis);
     renderNow();
-    const s = state.analysis.strips[p];
+    const s = stripsOf(state.analysis)[p];
     const c = s && s.cells[idx];
     const card = $('selection-card');
     const box = $('selection');
     box.textContent = '';
     if (!c) { card.hidden = true; return; }
     card.hidden = false;
+    if (c.foreign) {
+      box.append(h('div', { class: 'sel-info' },
+        h('p', null, h('b', null, c.street || 'Senza via'), ' · ' + [c.top, c.second].filter(Boolean).join(' / ')),
+        h('p', null, 'Questa casella è del giro della ' + c.foreign + ' (riga ' + (c.line + 1) + '): continua qui, nella fila ' + (c.i + 1) + '.'),
+        h('p', { class: 'actions-inline' }, h('button', { type: 'button', onclick: function () {
+          openSubzone(c.fromIndex);
+          setTimeout(function () { goToLine(c.line); }, 50);
+        } }, 'Apri il giro della ' + c.foreign))));
+      return;
+    }
     const what = [c.top, c.second].filter(Boolean).join(' / ') || '(vuota)';
     const q = C.mapQuery(c.street, c.top, c.town);
     box.append(
@@ -2195,8 +2386,8 @@ table.help td:first-child { white-space: nowrap; }
     const p = state.project;
     const usage = {};
     const order = [];
-    p.subzones.forEach(function (s) {
-      C.allCells(C.analyseSubzone(s)).forEach(function (c) {
+    C.analyseProject(p).forEach(function (a) {
+      C.allCells(a).forEach(function (c) {
         if (!c.key) return;
         if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0 }; order.push(c.key); }
         usage[c.key].n += c.span;
@@ -2228,6 +2419,7 @@ table.help td:first-child { white-space: nowrap; }
       ul.append(h('li', { class: 'muted' }, 'Le vie che scrivi compaiono qui, con il loro colore.'));
       return;
     }
+    const near = C.streetNeighbours(p).map;
     Object.keys(byTown).forEach(function (t) {
       if (Object.keys(byTown).length > 1) ul.append(h('li', { class: 'town-head' }, t || 'Comune non scritto'));
       const official = (p.streetLists[C.norm(t)] || []).map(comparable);
@@ -2235,8 +2427,12 @@ table.help td:first-child { white-space: nowrap; }
         const u = usage[k];
         const color = C.colorOf(p, k);
         const sel = h('select', { 'aria-label': 'Colore di ' + u.street });
+        const others = Object.keys(near[k] || {});
         C.PALETTE.forEach(function (c) {
-          sel.append(h('option', { value: c.hex, selected: c.hex === color }, c.name));
+          const clash = others.find(function (o) { return C.similarColors(C.colorOf(p, o), c.hex); });
+          const clashName = clash && usage[clash] ? usage[clash].street : '';
+          sel.append(h('option', { value: c.hex, selected: c.hex === color, disabled: !!clash && c.hex !== color },
+            c.name + (clash ? ' (troppo simile a ' + (clashName || 'una via vicina') + ')' : '')));
         });
         sel.addEventListener('change', function () {
           p.streets[k] = { color: sel.value };
@@ -2244,7 +2440,7 @@ table.help td:first-child { white-space: nowrap; }
         });
         const unknown = official.length && official.indexOf(comparable(u.street)) < 0;
         ul.append(h('li', null,
-          h('span', { class: 'sw', style: 'background:#' + color, title: 'Cambia colore: ' + C.paletteName(color) }, sel),
+          h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, k), title: 'Cambia colore: ' + C.paletteName(color) }, 'A', sel),
           h('span', { class: 'nm', title: u.street }, u.street),
           unknown ? h('span', { class: 'flag', title: 'Questo nome non è nell\'elenco delle vie del comune' }, 'non in elenco') : null,
           h('span', { class: 'n' }, u.n)));

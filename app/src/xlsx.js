@@ -82,12 +82,14 @@
       '"/><bgColor indexed="64"/></patternFill></fill>');
   };
   StyleBook.prototype.border = function (b) {
-    const side = function (name, style) {
-      return style ? '<' + name + ' style="' + style + '"><color indexed="64"/></' + name + '>' : '<' + name + '/>';
+    const side = function (name, style, hex) {
+      const color = hex ? '<color rgb="FF' + hex + '"/>' : '<color indexed="64"/>';
+      return style ? '<' + name + ' style="' + style + '">' + color + '</' + name + '>' : '<' + name + '/>';
     };
-    // b.d: a diagonal line from bottom-left to top-right (two numbers in one pigeonhole)
+    // b.d: colour of a "/" line from the lower-left to the upper-right corner (two numbers in one
+    // pigeonhole); it has the colour of the writing, so it shows on dark colours too
     return this.add(this.borders, '<border' + (b.d ? ' diagonalUp="1"' : '') + '>' + side('left', b.l) +
-      side('right', b.r) + side('top', b.t) + side('bottom', b.b) + side('diagonal', b.d ? 'thin' : null) + '</border>');
+      side('right', b.r) + side('top', b.t) + side('bottom', b.b) + side('diagonal', b.d ? 'thin' : null, b.d) + '</border>');
   };
   // s = { size, bold, color, fill, border:{l,r,t,b}, text, wrap, shrink, rot, h }
   StyleBook.prototype.xf = function (s) {
@@ -155,9 +157,25 @@
     }
     return w;
   }
+  const ROW_PX = 28.35 * 96 / 72; // height of the house-number row (1 cm) in pixels
+
+  // The largest size (pt) that keeps both numbers clear of the "/" line, so nothing is cut:
+  // the first number fits in the upper-left triangle, the second in the lower-right one.
+  function diagonalSize(first, second, span) {
+    const W = SLOT_PX * span, H = ROW_PX;
+    const lineY = function (x) { return H - H / W * x; }; // the line from (0, H) to (W, 0)
+    for (let size = 12; size >= 5; size--) {
+      const em = size * 96 / 72, L = 1.15 * em, t = (H - 2 * L) / 2;
+      const w1 = textPx(first, size), w2 = textPx(second, size);
+      const firstClear = t + 0.97 * em + 1 <= lineY(3 + w1);         // lower-right corner of the first
+      const secondClear = t + L + 0.25 * em - 1 >= lineY(W - 5 - w2);  // upper-left corner of the second
+      if (firstClear && secondClear) return size;
+    }
+    return 5;
+  }
+
   function diagonalText(first, second, span) {
-    const longest = Math.max(String(first).length, String(second).length);
-    const size = longest <= 2 ? 12 : (longest <= 3 ? 11 : 9); // two lines of 12 pt fill the 1 cm row
+    const size = diagonalSize(first, second, span);
     const free = SLOT_PX * span - 8 - textPx(second, size);
     const spaces = Math.max(1, Math.round(free / textPx(' ', size)));
     return { text: first + '\n' + ' '.repeat(spaces) + second, size: size };
@@ -254,9 +272,8 @@
     return x;
   };
 
-  function buildSheet(project, sz, styles, strings, selected) {
+  function buildSheet(project, sz, analysis, styles, strings, selected) {
     const sb = new SheetBuilder(styles, strings);
-    const analysis = Core.analyseSubzone(sz);
     const head = { size: 14, bold: true, h: 'left' };
 
     sb.put(1, 38, 'Zona', head);
@@ -293,21 +310,22 @@
           if (c.start >= slots) return;
           const end = Math.min(c.end, slots - 1);
           const color = Core.colorOf(project, c.key);
+          const ink = Core.textColorOf(project, c.key);
           const e = edges(c.start, end);
           if (c.second) {
             const d = diagonalText(c.top, c.second, end - c.start + 1);
             sb.block(top, L.first + c.start, top, L.first + end, d.text,
-              { bold: true, text: true, fill: color, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: true } });
+              { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: ink } });
           } else {
             sb.block(top, L.first + c.start, top, L.first + end, c.top,
-              Object.assign({ bold: true, text: true, fill: color, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
+              Object.assign({ bold: true, text: true, fill: color, color: ink, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
           }
           for (let s = c.start; s <= end; s++) usedTop[s] = true;
         });
         lay.runs.forEach(function (run) {
           const e = edges(run.start, run.end);
           sb.block(bottom, L.first + run.start, bottom, L.first + run.end, run.street,
-            { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
+            { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
           for (let s = run.start; s <= run.end; s++) usedBottom[s] = true;
         });
         // Slots left empty, and pigeonholes with no street, get a plain lower line.
@@ -350,9 +368,10 @@
     const styles = new StyleBook();
     const strings = new StringTable();
     const names = sheetNames(project);
+    const all = Core.analyseProject(project);
     const files = [];
     project.subzones.forEach(function (sz, i) {
-      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: buildSheet(project, sz, styles, strings, i === 0) });
+      files.push({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: buildSheet(project, sz, all[i], styles, strings, i === 0) });
     });
     let wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +

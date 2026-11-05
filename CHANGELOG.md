@@ -1,5 +1,24 @@
 # Registro delle versioni
 
+## v0.6.0 · 2026-11-05 · Riga obliqua giusta, colori forti, la sottozona che continua nell'altra
+
+- **Riga obliqua al verso giusto**: `2/4` divide la casella con una riga da in basso a sinistra a in alto a destra; i
+  numeri stanno negli angoli liberi e la riga non li tocca mai (la grandezza si calcola per ogni casella), sia nel
+  programma sia nell'Excel.
+- **Niente scritte tagliate**: nel programma ogni scritta si rimpicciolisce quanto serve per stare tutta nella sua casella.
+- **Colori nuovi, forti**: 13 colori con la scritta in contrasto (bianca o giallo chiarissimo sui colori scuri, nera sui
+  chiari; contrasto da 6,9 a 18,9). Due vie vicine non hanno mai colori simili (stessa famiglia, o coppie come giallo e
+  arancione, blu e viola); i colori nuovi alternano chiaro e scuro. Nell'elenco delle vie i colori troppo simili alle
+  vie accanto sono bloccati. Anche la riga obliqua prende il colore della scritta.
+- **Una via, un colore**: «C.NA ALTA» e «CASCINA ALTA», «V. ROMA» e «VIA ROMA», o con un «?», sono la stessa via: una
+  riga sola nell'elenco e lo stesso colore su tutti i suoi pezzi.
+- **Una sottozona più lunga continua nella sottozona dopo**, nell'ultima fila, come nel mobile vero: si scrive tutto nel
+  giro della prima; la seconda comincia quella fila dopo le sue caselle. Nel programma si vede in fondo al giro della
+  prima e all'inizio della fila della seconda (toccando una di quelle caselle si apre il giro giusto); nell'Excel si
+  stampa sul foglio della seconda.
+- File: `app/src/core.js`, `app/src/ui.js`, `app/src/xlsx.js`, `app/src/style.css`, `app/index.src.html`,
+  `tests/test_core.js`, `Casellino.html`, `sito/`, `CHANGELOG.md`, `prove/`.
+
 ## v0.5.0 · 2026-11-04 · Si chiama Casellino: pubblico, firmato, online per il telefono
 
 - **Nome nuovo**: il programma si chiama **Casellino**, il modulo grande **casello**, quello piccolo **ala** o

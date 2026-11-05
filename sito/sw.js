@@ -4,7 +4,7 @@
  * cache when there is no connection. Maps and street lists always need the network.
  */
 'use strict';
-const CACHE = 'casellino-0.5.0';
+const CACHE = 'casellino-0.6.0';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', function (event) {

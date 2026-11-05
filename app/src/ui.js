@@ -81,7 +81,7 @@
 
   function sz() { return state.project.subzones[state.current]; }
 
-  function stripTitle(s) { return 'Fila ' + (s.i + 1) + ' · ' + C.MODULE_NAMES[s.m]; }
+  function stripTitle(s) { return (s.target ? 'nella ' + s.target + ', ' : '') + 'Fila ' + (s.i + 1) + ' · ' + C.MODULE_NAMES[s.m]; }
 
   const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
@@ -250,17 +250,22 @@
     ta.style.height = Math.min(ta.scrollHeight + 4, max) + 'px';
   }
 
+  // Own strips, then the pieces of the next sub-zone where this route continues.
+  function stripsOf(a) { return a ? a.strips.concat(a.spill || []) : []; }
+
   function refreshRoute() {
     const els = state.els;
     if (!els.ta) return;
-    const a = C.analyseSubzone(sz());
+    const a = C.analyseProject(state.project)[state.current];
     state.analysis = a;
-    const over = a.used > a.capacity;
-    els.used.textContent = a.used + ' / ' + a.capacity + ' caselle';
+    const over = a.overflow.length > 0;
+    const ownUsed = a.used - a.spillUsed;
+    els.used.textContent = ownUsed + ' / ' + a.capacity + ' caselle' +
+      (a.spillUsed ? ' + ' + a.spillUsed + ' nella ' + a.spill[0].target : '');
     els.used.classList.toggle('over', over);
     els.meter.classList.toggle('over', over);
-    els.meter.classList.toggle('full', a.used === a.capacity);
-    els.meter.firstChild.style.width = (a.capacity ? Math.min(100, a.used / a.capacity * 100) : 0) + '%';
+    els.meter.classList.toggle('full', !over && ownUsed >= a.capacity);
+    els.meter.firstChild.style.width = (a.capacity ? Math.min(100, ownUsed / a.capacity * 100) : 0) + '%';
 
     els.warnings.textContent = '';
     a.warnings.slice(0, 12).forEach(function (w) {
@@ -275,6 +280,18 @@
     renderNow();
   }
 
+  function stripBox(s, p) {
+    const strip = h('div', { class: 'strip', style: '--n:' + s.capacity });
+    renderStrip(strip, s, p);
+    const from = s.reserved ? ' · le prime ' + s.reserved + ' sono della ' + s.cells[0].foreign : '';
+    return [
+      h('div', { class: 'strip-head' },
+        h('b', null, C.MODULE_NAMES[s.m] + (s.target ? ' della ' + s.target : '')),
+        h('span', { class: 'used' + (s.used === s.capacity ? ' full' : '') }, s.used + ' / ' + s.capacity + from)),
+      h('div', { class: 'strip-wrap' }, strip),
+    ];
+  }
+
   function renderAllStrips(a) {
     const box = state.els.strips;
     box.textContent = '';
@@ -286,14 +303,13 @@
       const row = a.strips.map(function (s, p) { return { s: s, p: p }; }).filter(function (x) { return x.s.i === i; });
       if (!row.length) continue;
       const sec = h('section', { class: 'fila' }, h('h3', null, 'Fila ' + (i + 1)));
-      row.forEach(function (x) {
-        const strip = h('div', { class: 'strip', style: '--n:' + x.s.capacity });
-        renderStrip(strip, x.s, x.p);
-        sec.append(h('div', { class: 'strip-head' },
-          h('b', null, C.MODULE_NAMES[x.s.m]),
-          h('span', { class: 'used' + (x.s.used === x.s.capacity ? ' full' : '') }, x.s.used + ' / ' + x.s.capacity)),
-        h('div', { class: 'strip-wrap' }, strip));
-      });
+      row.forEach(function (x) { stripBox(x.s, x.p).forEach(function (e) { sec.append(e); }); });
+      box.append(sec);
+    }
+    if (a.spill.length) {
+      const sec = h('section', { class: 'fila' }, h('h3', null, 'Il giro continua nella sottozona ' + a.spill[0].target +
+        ', fila ' + (a.spill[0].i + 1)));
+      a.spill.forEach(function (s, j) { stripBox(s, a.strips.length + j).forEach(function (e) { sec.append(e); }); });
       box.append(sec);
     }
     if (a.overflow.length) {
@@ -303,33 +319,63 @@
     }
   }
 
+  // Font size (px) that keeps every word inside its box: nothing written is ever cut.
+  function fitPx(text, widthPx, maxPx, lines) {
+    const n = Math.max(1, String(text).length);
+    return Math.max(5, Math.min(maxPx, Math.floor((widthPx - 4) * (lines || 1) / (n * 0.62))));
+  }
+  // Two numbers split by a "/" diagonal: the largest size that keeps both clear of the line.
+  function diagPx(a, b, widthPx, heightPx) {
+    for (let s = 12; s >= 5; s--) {
+      const w = Math.max(String(a).length, String(b).length) * 0.6 * s;
+      if ((2 + w) / widthPx <= 1 - (3 + s) / heightPx) return s;
+    }
+    return 5;
+  }
+  function slotPx() {
+    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot')) || 30;
+  }
+
   function renderStrip(el, s, p, focusIdx) {
     const proj = state.project;
+    const slot = slotPx();
     el.textContent = '';
     const sel = state.selected && state.selected.p === p ? state.selected.idx : -1;
     s.cells.forEach(function (c, idx) {
       const bg = '#' + C.colorOf(proj, c.key);
+      const ink = '#' + C.textColorOf(proj, c.key);
       const unsure = /\?/.test(c.top + c.second + c.street);
-      const tip = (c.street || 'senza via') + (c.top ? ' · ' + c.top : '') + (c.second ? ' / ' + c.second : '') +
-        ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') + ' · riga ' + (c.line + 1) + ' del giro';
+      const tip = (c.foreign ? 'Della ' + c.foreign + ' · ' : '') + (c.street || 'senza via') + (c.top ? ' · ' + c.top : '') +
+        (c.second ? ' / ' + c.second : '') + ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') +
+        ' · riga ' + (c.line + 1) + ' del giro';
       const pick = function () { select(p, idx); };
-      const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '');
-      const longText = c.top.length > 4 * c.span;
-      const inside = c.second
-        ? [h('span', { class: 'd1' }, c.top), h('span', { class: 'd2' }, c.second)]
-        : [c.top];
+      const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '');
+      const width = c.span * slot;
+      let inside, size, cls = '';
+      if (c.second) {
+        size = diagPx(c.top, c.second, width, 32);
+        inside = [h('span', { class: 'd1' }, c.top), h('span', { class: 'd2' }, c.second)];
+        cls = ' diag';
+      } else {
+        const long = /\s/.test(c.top) && c.top.length > 4 * c.span;
+        size = long ? fitPx(c.top, width, 10, 2) : fitPx(c.top, width, 13);
+        inside = [c.top];
+        cls = long ? ' long' : '';
+      }
       el.append(h.apply(null, ['div', {
-        class: 'cell top' + (c.second ? ' diag' : '') + (longText && !c.second ? ' long' : '') + (unsure ? ' unsure' : '') + mark,
-        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';background-color:' + bg, title: tip, onclick: pick,
-        'data-idx': idx,
+        class: 'cell top' + cls + (unsure ? ' unsure' : '') + mark,
+        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';background-color:' + bg + ';color:' + ink +
+          ';--ink:' + ink + ';font-size:' + size + 'px',
+        title: tip, onclick: pick, 'data-idx': idx,
       }].concat(inside)));
     });
     s.runs.forEach(function (r) {
       const idx = s.cells.findIndex(function (c) { return c.start === r.start; });
-      const tight = r.street.length * 6.5 > (r.end - r.start + 1) * 30;
+      const width = (r.end - r.start + 1) * slot;
       el.append(h('div', {
-        class: 'cell run' + (tight ? ' tight' : ''), title: r.street + (r.town ? ' · ' + r.town : ''),
-        style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key),
+        class: 'cell run', title: r.street + (r.town ? ' · ' + r.town : ''),
+        style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
+          ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' + fitPx(r.street, width, 11) + 'px',
         onclick: function () { select(p, idx); },
       }, r.street));
     });
@@ -347,11 +393,12 @@
     const a = state.analysis;
     els.nowWrap.textContent = '';
     const target = state.caret || state.selected;
-    if (!a || !target || !a.strips[target.p]) {
+    const list = stripsOf(a);
+    if (!a || !target || !list[target.p]) {
       els.nowTitle.textContent = a && a.strips.length ? 'Tocca una riga del giro o una casella: qui vedi la sua striscia.' : '';
       return;
     }
-    const s = a.strips[target.p];
+    const s = list[target.p];
     const c = s.cells[target.idx];
     els.nowTitle.textContent = 'Sei qui: ' + stripTitle(s) + (c ? ' · casella ' + (c.start + 1) + ' di ' + s.capacity +
       ' · foglio ' + (Math.floor(c.start / C.SLOTS_PER_PAGE) + 1) : '');
@@ -419,10 +466,11 @@
     const a = state.analysis;
     if (!a) return null;
     let firstOfLine = null;
-    for (let p = 0; p < a.strips.length; p++) {
-      const cells = a.strips[p].cells;
+    const list = stripsOf(a);
+    for (let p = 0; p < list.length; p++) {
+      const cells = list[p].cells;
       for (let idx = 0; idx < cells.length; idx++) {
-        if (cells[idx].line !== line) continue;
+        if (cells[idx].foreign || cells[idx].line !== line) continue;
         if (cells[idx].tok === tok) return { p: p, idx: idx };
         if (!firstOfLine) firstOfLine = { p: p, idx: idx };
       }
@@ -518,13 +566,23 @@
     state.caret = null;
     renderAllStrips(state.analysis);
     renderNow();
-    const s = state.analysis.strips[p];
+    const s = stripsOf(state.analysis)[p];
     const c = s && s.cells[idx];
     const card = $('selection-card');
     const box = $('selection');
     box.textContent = '';
     if (!c) { card.hidden = true; return; }
     card.hidden = false;
+    if (c.foreign) {
+      box.append(h('div', { class: 'sel-info' },
+        h('p', null, h('b', null, c.street || 'Senza via'), ' · ' + [c.top, c.second].filter(Boolean).join(' / ')),
+        h('p', null, 'Questa casella è del giro della ' + c.foreign + ' (riga ' + (c.line + 1) + '): continua qui, nella fila ' + (c.i + 1) + '.'),
+        h('p', { class: 'actions-inline' }, h('button', { type: 'button', onclick: function () {
+          openSubzone(c.fromIndex);
+          setTimeout(function () { goToLine(c.line); }, 50);
+        } }, 'Apri il giro della ' + c.foreign))));
+      return;
+    }
     const what = [c.top, c.second].filter(Boolean).join(' / ') || '(vuota)';
     const q = C.mapQuery(c.street, c.top, c.town);
     box.append(
@@ -567,8 +625,8 @@
     const p = state.project;
     const usage = {};
     const order = [];
-    p.subzones.forEach(function (s) {
-      C.allCells(C.analyseSubzone(s)).forEach(function (c) {
+    C.analyseProject(p).forEach(function (a) {
+      C.allCells(a).forEach(function (c) {
         if (!c.key) return;
         if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0 }; order.push(c.key); }
         usage[c.key].n += c.span;
@@ -600,6 +658,7 @@
       ul.append(h('li', { class: 'muted' }, 'Le vie che scrivi compaiono qui, con il loro colore.'));
       return;
     }
+    const near = C.streetNeighbours(p).map;
     Object.keys(byTown).forEach(function (t) {
       if (Object.keys(byTown).length > 1) ul.append(h('li', { class: 'town-head' }, t || 'Comune non scritto'));
       const official = (p.streetLists[C.norm(t)] || []).map(comparable);
@@ -607,8 +666,12 @@
         const u = usage[k];
         const color = C.colorOf(p, k);
         const sel = h('select', { 'aria-label': 'Colore di ' + u.street });
+        const others = Object.keys(near[k] || {});
         C.PALETTE.forEach(function (c) {
-          sel.append(h('option', { value: c.hex, selected: c.hex === color }, c.name));
+          const clash = others.find(function (o) { return C.similarColors(C.colorOf(p, o), c.hex); });
+          const clashName = clash && usage[clash] ? usage[clash].street : '';
+          sel.append(h('option', { value: c.hex, selected: c.hex === color, disabled: !!clash && c.hex !== color },
+            c.name + (clash ? ' (troppo simile a ' + (clashName || 'una via vicina') + ')' : '')));
         });
         sel.addEventListener('change', function () {
           p.streets[k] = { color: sel.value };
@@ -616,7 +679,7 @@
         });
         const unknown = official.length && official.indexOf(comparable(u.street)) < 0;
         ul.append(h('li', null,
-          h('span', { class: 'sw', style: 'background:#' + color, title: 'Cambia colore: ' + C.paletteName(color) }, sel),
+          h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, k), title: 'Cambia colore: ' + C.paletteName(color) }, 'A', sel),
           h('span', { class: 'nm', title: u.street }, u.street),
           unknown ? h('span', { class: 'flag', title: 'Questo nome non è nell\'elenco delle vie del comune' }, 'non in elenco') : null,
           h('span', { class: 'n' }, u.n)));

@@ -131,6 +131,80 @@ test('old files with one text per strip keep every pigeonhole in place', functio
   assert.strictEqual(p.subzones[0].route, route);
 });
 
+test('a sub-zone longer than its modules continues in the next one, on its last row', function () {
+  const p = Core.newProject();
+  const a = Core.newSubzone('1A', 'Borgo'); a.modules = { alaA: false, casello: true, alaB: true };
+  const b = Core.newSubzone('1B', 'Villa'); b.modules = { alaA: false, casello: true, alaB: true };
+  // 1A: 4 rows x (91 + 33) = 496 pigeonholes, then 3 more
+  a.route = 'VIA A: 1..591, 2..400\nVIA LUNGA: 2, 4, 6';
+  // 1B: row 1, row 2, row 3, then row 4 starts after the 3 pigeonholes of 1A
+  b.route = 'VIA B: 1..181\nFINE FILA\nVIA C: 1..5\nFINE FILA\nVIA E: 1\nFINE FILA\nVIA D: 1, 3';
+  p.subzones = [a, b];
+  const all = Core.analyseProject(p);
+  assert.strictEqual(all[0].overflow.length, 0, 'nothing left out');
+  assert.strictEqual(all[0].spillUsed, 3);
+  assert.deepStrictEqual(all[0].spill.map(function (s) { return s.target + ' ' + (s.i + 1) + ' ' + s.m + ' ' + s.used; }), ['1B 4 casello 3']);
+  const bRow4 = all[1].casello[3].layout;
+  assert.deepStrictEqual(bRow4.cells.map(function (c) { return (c.foreign ? '1A:' : '') + c.street + ' ' + c.top + ' @' + (c.start + 1); }),
+    ['1A:VIA LUNGA 2 @1', '1A:VIA LUNGA 4 @2', '1A:VIA LUNGA 6 @3', 'VIA D 1 @4', 'VIA D 3 @5']);
+  assert.deepStrictEqual(bRow4.boundaries.map(function (x) { return x.label + '@' + x.at; }), ['1B@3']);
+  assert.ok(/continua nella sottozona 1B/.test(all[0].warnings[0].text));
+  // each pigeonhole is counted once, in its own sub-zone
+  assert.strictEqual(Core.allCells(all[1]).filter(function (c) { return c.street === 'VIA LUNGA'; }).length, 0);
+  assert.strictEqual(Core.allCells(all[0]).filter(function (c) { return c.street === 'VIA LUNGA'; }).length, 3);
+  // and the Excel of 1B prints them in its row 4
+  const sheet2 = Xlsx.buildWorkbookFiles(p).find(function (f) { return f.name === 'xl/worksheets/sheet2.xml'; }).data;
+  assert.ok(sheet2.indexOf('<c r="AL10" ') >= 0 && sheet2.indexOf('<c r="AN10" ') >= 0);
+});
+
+test('without a next sub-zone the extra pigeonholes are reported', function () {
+  const p = Core.newProject();
+  p.subzones[0].route = 'VIA A: 1..591, 2..400\nVIA LUNGA: 2, 4, 6';
+  const a = Core.analyseProject(p)[0];
+  assert.strictEqual(a.overflow.length, 3);
+  assert.ok(/più lungo/.test(a.warnings[0].text));
+});
+
+test('colours: strong contrast, never alike next to each other, light and dark alternate', function () {
+  // every colour has readable writing on it
+  const lum = function (hex) {
+    const v = [0, 2, 4].map(function (i) { const c = parseInt(hex.slice(i, i + 2), 16) / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  };
+  Core.PALETTE.forEach(function (c) {
+    const a = lum(c.hex), b = lum(c.text);
+    const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    assert.ok(ratio >= 6.5, c.name + ' contrasto ' + ratio.toFixed(1));
+  });
+  assert.ok(Core.similarColors('FFE135', 'FF9A2E'), 'giallo e arancione sono simili');
+  assert.ok(Core.similarColors('8ED16B', '17673A'), 'due verdi sono simili');
+  assert.ok(!Core.similarColors('151515', 'FFFFFF'), 'nero e bianco no');
+  const p = Core.newProject();
+  p.subzones[0].route = 'VIA A: 1\nVIA B: 1\nVIA C: 1\nVIA D: 1\nVIA E: 1\nVIA F: 1\nVIA G: 1\nVIA H: 1';
+  p.streets['OLD|'] = { color: 'F4B6C2' }; // a colour of an older version: given again
+  Core.assignColors(p);
+  assert.ok(!p.streets['OLD|'], 'old colour removed');
+  const cells = Core.allCells(Core.analyseSubzone(p.subzones[0]));
+  for (let i = 1; i < cells.length; i++) {
+    const a = Core.colorOf(p, cells[i - 1].key), b = Core.colorOf(p, cells[i].key);
+    assert.ok(!Core.similarColors(a, b), cells[i - 1].street + ' / ' + cells[i].street);
+    assert.notStrictEqual(Core.paletteEntry(a).dark, Core.paletteEntry(b).dark, 'chiaro e scuro alternati');
+  }
+});
+
+test('one street, written in different ways, is one street', function () {
+  assert.strictEqual(Core.streetKey('C.NA ALTA', 'Borgo'), Core.streetKey('CASCINA ALTA', 'borgo'));
+  assert.strictEqual(Core.streetKey('V. DEI TIGLI?', 'Borgo'), Core.streetKey('VIA DEI TIGLI', 'Borgo'));
+  assert.notStrictEqual(Core.streetKey('VIA DEI TIGLI', 'Borgo'), Core.streetKey('VIA DEI TIGLI', 'Villa'));
+  // a street split in several pieces of the route keeps one colour
+  const p = Core.newProject();
+  p.subzones[0].route = 'VIA A: 1, 3\nVIA B: 2\nV. A: 5';
+  Core.assignColors(p);
+  const cells = Core.allCells(Core.analyseSubzone(p.subzones[0]));
+  assert.strictEqual(Core.colorOf(p, cells[0].key), Core.colorOf(p, cells[3].key));
+  assert.strictEqual(Object.keys(p.streets).length, 2);
+});
+
 test('files of older versions with another word for the big module still open', function () {
   const p = Core.sanitizeProject({ subzones: [{ name: '1A', modules: { casellVecchio: false, alaB: true }, rows: { casellVecchio: ['V: 1', '', '', ''], alaB: ['W: 2', '', '', ''] } }] });
   assert.deepStrictEqual(p.subzones[0].modules, { alaA: false, casello: false, alaB: true });

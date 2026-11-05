@@ -31,29 +31,48 @@
   const IT_LETTERS = 'ABCDEFGHILMNOPQRSTUVZ';
   const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-  // Print-friendly light colours; text stays black on all of them.
+  // Strong colours for the strips. Each one has the text colour that reads best on it
+  // (contrast checked: from 6.9:1 up to 18.9:1) and a family: two streets next to each other
+  // never get colours of the same family or colours that look alike (see similarColors).
   const PALETTE = [
-    { name: 'azzurro', hex: '9DC3E6' },
-    { name: 'verde', hex: 'A9D08E' },
-    { name: 'giallo', hex: 'FFE699' },
-    { name: 'rosa', hex: 'F4B6C2' },
-    { name: 'arancione', hex: 'F8CBAD' },
-    { name: 'lilla', hex: 'CDB8E8' },
-    { name: 'verde acqua', hex: '9FDCD0' },
-    { name: 'sabbia', hex: 'E2D3B5' },
-    { name: 'celeste', hex: 'C9E4F5' },
-    { name: 'verde chiaro', hex: 'D4EDBC' },
-    { name: 'rosso', hex: 'F1948A' },
-    { name: 'grigio', hex: 'D9D9D9' },
-    { name: 'bianco', hex: 'FFFFFF' },
+    { name: 'giallo', hex: 'FFE135', text: '111111', family: 'giallo', dark: false },
+    { name: 'blu', hex: '1F4E9E', text: 'FFFFFF', family: 'blu', dark: true },
+    { name: 'verde chiaro', hex: '8ED16B', text: '111111', family: 'verde', dark: false },
+    { name: 'rosso scuro', hex: '8B1A1A', text: 'FFF6C2', family: 'rosso', dark: true },
+    { name: 'azzurro', hex: '6CCFF6', text: '111111', family: 'azzurro', dark: false },
+    { name: 'viola', hex: '5B2A94', text: 'FFFFFF', family: 'viola', dark: true },
+    { name: 'arancione', hex: 'FF9A2E', text: '111111', family: 'arancio', dark: false },
+    { name: 'verde scuro', hex: '17673A', text: 'FFFFFF', family: 'verde', dark: true },
+    { name: 'rosa', hex: 'F7A1CF', text: '111111', family: 'rosa', dark: false },
+    { name: 'nero', hex: '151515', text: 'FFFFFF', family: 'nero', dark: true },
+    { name: 'grigio', hex: 'CFCFCF', text: '111111', family: 'grigio', dark: false },
+    { name: 'marrone', hex: '6A3F22', text: 'FFFFFF', family: 'marrone', dark: true },
+    { name: 'bianco', hex: 'FFFFFF', text: '111111', family: 'bianco', dark: false },
+  ];
+  // Pairs that look too much alike to stay next to each other (besides same family).
+  const ALIKE = [
+    ['giallo', 'arancione'], ['blu', 'viola'], ['rosso scuro', 'marrone'], ['nero', 'marrone'],
+    ['azzurro', 'grigio'], ['azzurro', 'bianco'], ['rosa', 'grigio'], ['grigio', 'bianco'],
   ];
 
   function norm(text) {
     return String(text || '').normalize('NFC').replace(/\s+/g, ' ').trim().toUpperCase();
   }
 
+  // The same street written as "C.NA ALTA" or "CASCINA ALTA", or with a "?", is one street
+  // (one colour, one line in the list of streets).
+  const KEY_WORDS = [
+    [/^C\.?\s*NA\b\.?\s*/, 'CASCINA '], [/^CNA\b\.?\s*/, 'CASCINA '], [/^V\.\s*LE\b\.?\s*/, 'VIALE '],
+    [/^P\.\s*Z?ZA\b\.?\s*/, 'PIAZZA '], [/^V\.\s*/, 'VIA '], [/^LOC\.\s*/, 'LOCALITA '], [/\bF\.\s*LLI\b\.?/, 'FRATELLI'],
+  ];
+  function streetName(street) {
+    let k = norm(street).replace(/\?/g, '');
+    KEY_WORDS.forEach(function (w) { k = k.replace(w[0], w[1]); });
+    return k.replace(/\s+/g, ' ').trim();
+  }
+
   function streetKey(street, town) {
-    return norm(street) + '|' + norm(town);
+    return streetName(street) + '|' + norm(town);
   }
 
   function newSubzone(name, town) {
@@ -269,25 +288,27 @@
    * Returns { strips, overflow, notes }.
    */
   function layoutRoute(items, strips) {
-    let p = 0, pos = 0;
+    // a strip may start with slots already taken ("reserved") by the end of the previous sub-zone
+    const first = function (k) { return k < strips.length ? (strips[k].reserved || 0) : 0; };
+    let p = 0, pos = first(0);
     const overflow = [];
     const notes = [];
-    function next() { p++; pos = 0; }
-    function rowStart() { return pos === 0 && (p === 0 || p >= strips.length || strips[p].i !== strips[p - 1].i); }
+    function next() { p++; pos = first(p); }
+    function rowStart() { return pos === first(p) && (p === 0 || p >= strips.length || strips[p].i !== strips[p - 1].i); }
     items.forEach(function (it) {
       if (it.kind === 'boundary') {
         if (p < strips.length) strips[p].boundaries.push({ label: it.label, at: pos, line: it.line });
         return;
       }
       if (it.kind === 'break') {
-        if (it.mode === 'strip') { if (pos > 0) next(); }
+        if (it.mode === 'strip') { if (pos > first(p)) next(); }
         else if (it.mode === 'row') {
           if (!rowStart() && p < strips.length) {
             const row = strips[p].i;
             while (p < strips.length && strips[p].i === row) p++;
-            pos = 0;
+            pos = first(p);
           }
-        } else if (it.mode === 'skip') { if (pos > 0) next(); next(); }
+        } else if (it.mode === 'skip') { if (pos > first(p)) next(); next(); }
         return;
       }
       if (p >= strips.length) { overflow.push(it); return; }
@@ -338,51 +359,104 @@
   }
 
   /*
-   * Lays out a sub-zone. Returns
-   *   { strips, overflow, warnings, used, capacity, [module][row] = { layout } }
+   * Lays out every sub-zone of a project, in order. When the route of a sub-zone is longer than
+   * its own modules, the rest continues in the next sub-zone, on the same (last) row, from its
+   * first module: in a real frame the row goes on to the right. The next sub-zone then starts
+   * that row after those pigeonholes.
+   * Returns one analysis per sub-zone:
+   *   { strips, spill, overflow, warnings, used, capacity, spillUsed, [module][row] = { layout } }
+   * strips: its own strips (cells coming from the previous sub-zone have c.foreign = its name);
+   * spill: pieces of the next sub-zone's strips holding this sub-zone's continuation.
    */
-  function analyseSubzone(sz) {
-    const parsed = parseRoute(sz.route, sz.town);
-    const res = layoutRoute(parsed.items, stripOrder(sz));
-    const out = { strips: res.strips, overflow: res.overflow, warnings: parsed.warnings.concat(res.notes) };
-    out.capacity = res.strips.reduce(function (a, s) { return a + s.capacity; }, 0);
-    out.used = res.strips.reduce(function (a, s) { return a + s.used; }, 0) +
-      res.overflow.reduce(function (a, c) { return a + c.span; }, 0);
-    if (res.overflow.length) {
-      out.warnings.unshift({ line: res.overflow[0].line, text: 'Il giro è più lungo dei moduli: ' + res.overflow.length +
-        (res.overflow.length === 1 ? ' casella non entra' : ' caselle non entrano') + ' (dalla riga ' + (res.overflow[0].line + 1) + ').' });
-    }
-    MODULES.forEach(function (m) {
-      out[m] = [];
-      for (let i = 0; i < ROWS_PER_MODULE; i++) {
-        const s = res.strips.find(function (x) { return x.m === m && x.i === i; });
-        out[m].push({ layout: s || emptyLayout(m) });
+  function analyseProject(project) {
+    const subzones = project.subzones;
+    const list = [];
+    let incoming = null;
+    subzones.forEach(function (sz, k) {
+      const name = sz.name || 'sottozona ' + (k + 1);
+      const parsed = parseRoute(sz.route, sz.town);
+      const strips = stripOrder(sz);
+      if (incoming) {
+        const rowStrips = strips.filter(function (s) { return s.i === incoming.row; });
+        const tmp = rowStrips.map(function (s) {
+          return { m: s.m, i: s.i, capacity: s.capacity, cells: [], boundaries: [], used: 0, target: name, targetIndex: k };
+        });
+        const r = layoutRoute(incoming.items, tmp);
+        tmp.forEach(function (t, j) {
+          rowStrips[j].reserved = t.used;
+          rowStrips[j].used = t.used;
+          t.cells.forEach(function (c) {
+            c.place = name;
+            rowStrips[j].cells.push(Object.assign({}, c, { foreign: incoming.name, fromIndex: incoming.index }));
+          });
+          if (t.used > 0 && t.used < t.capacity) {
+            rowStrips[j].boundaries.push({ label: name, at: t.used, line: -1 });
+            t.boundaries.push({ label: name, at: t.used, line: -1 });
+          }
+        });
+        list[incoming.index].spill = tmp.filter(function (t) { return t.cells.length; });
+        list[incoming.index].overflow = r.overflow;
       }
+      const res = layoutRoute(parsed.items, strips);
+      list.push({ strips: res.strips, spill: [], overflow: res.overflow, warnings: parsed.warnings.concat(res.notes), name: name });
+      incoming = res.overflow.length && k + 1 < subzones.length && strips.length
+        ? { items: res.overflow, row: strips[strips.length - 1].i, index: k, name: name } : null;
     });
-    return out;
+    list.forEach(function (out) {
+      const own = function (s) { return s.used - (s.reserved || 0); };
+      out.capacity = out.strips.reduce(function (a, s) { return a + s.capacity - (s.reserved || 0); }, 0);
+      out.spillUsed = out.spill.reduce(function (a, s) { return a + s.used; }, 0);
+      out.used = out.strips.reduce(function (a, s) { return a + own(s); }, 0) + out.spillUsed +
+        out.overflow.reduce(function (a, c) { return a + c.span; }, 0);
+      if (out.spill.length) {
+        out.warnings.unshift({ line: -1, soft: true, text: 'Il giro continua nella sottozona ' + out.spill[0].target + ': ' +
+          out.spillUsed + ' caselle nella fila ' + (out.spill[0].i + 1) + '.' });
+      }
+      if (out.overflow.length) {
+        out.warnings.unshift({ line: out.overflow[0].line, text: 'Il giro è più lungo dei moduli: ' + out.overflow.length +
+          (out.overflow.length === 1 ? ' casella non entra' : ' caselle non entrano') + ' (dalla riga ' + (out.overflow[0].line + 1) + ').' });
+      }
+      MODULES.forEach(function (m) {
+        out[m] = [];
+        for (let i = 0; i < ROWS_PER_MODULE; i++) {
+          const s = out.strips.find(function (x) { return x.m === m && x.i === i; });
+          out[m].push({ layout: s || emptyLayout(m) });
+        }
+      });
+    });
+    return list;
   }
 
+  // One sub-zone on its own (no continuation into other sub-zones).
+  function analyseSubzone(sz) {
+    return analyseProject({ subzones: [sz] })[0];
+  }
+
+  // The pigeonholes written in this sub-zone's route, wherever they ended up.
   function allCells(a) {
     const cells = [];
-    a.strips.forEach(function (s) { s.cells.forEach(function (c) { cells.push(c); }); });
+    a.strips.forEach(function (s) { s.cells.forEach(function (c) { if (!c.foreign) cells.push(c); }); });
+    (a.spill || []).forEach(function (s) { s.cells.forEach(function (c) { cells.push(c); }); });
     return cells.concat(a.overflow);
   }
 
   function placeName(sz, c) {
-    if (c.m === undefined) return (sz.name ? sz.name + ', ' : '') + 'fuori dai moduli';
-    return (sz.name ? sz.name + ', ' : '') + 'fila ' + (c.i + 1) + ' ' + MODULE_NAMES[c.m] + ' casella ' + (c.start + 1);
+    const who = sz.name ? sz.name + ', ' : '';
+    if (c.m === undefined) return who + 'fuori dai moduli';
+    return who + (c.place ? 'nella ' + c.place + ' ' : '') + 'fila ' + (c.i + 1) + ' ' + MODULE_NAMES[c.m] + ' casella ' + (c.start + 1);
   }
 
   // Same house number of the same street written more than once in the project.
   function findDuplicates(project) {
     const seen = {};
     const dups = [];
-    project.subzones.forEach(function (sz) {
-      allCells(analyseSubzone(sz)).forEach(function (c) {
+    const all = analyseProject(project);
+    project.subzones.forEach(function (sz, k) {
+      allCells(all[k]).forEach(function (c) {
         [c.top, c.second].forEach(function (n) {
           if (!c.key || !/^\d+\s*[A-Z]?$/i.test(n)) return;
-          const k = c.key + '|' + norm(n).replace(/\s/g, '');
-          (seen[k] = seen[k] || []).push(placeName(sz, c));
+          const key = c.key + '|' + norm(n).replace(/\s/g, '');
+          (seen[key] = seen[key] || []).push(placeName(sz, c));
         });
       });
     });
@@ -432,45 +506,69 @@
 
   // ---------------------------------------------------------------- colours
 
+  function paletteEntry(hex) {
+    return PALETTE.find(function (c) { return c.hex === String(hex || '').toUpperCase(); }) || null;
+  }
+
   function paletteName(hex) {
-    const p = PALETTE.find(function (c) { return c.hex === String(hex).toUpperCase(); });
+    const p = paletteEntry(hex);
     return p ? p.name : '#' + hex;
   }
 
-  /*
-   * Gives every street without a colour one that differs from the streets next to it.
-   * Colours are stored in project.streets so they never change by themselves.
-   * Returns true if something was assigned.
-   */
-  function assignColors(project) {
+  // True when two colours must not be used for streets next to each other.
+  function similarColors(hexA, hexB) {
+    const a = paletteEntry(hexA), b = paletteEntry(hexB);
+    if (!a || !b) return String(hexA).toUpperCase() === String(hexB).toUpperCase();
+    if (a === b || a.family === b.family) return true;
+    return ALIKE.some(function (x) { return (x[0] === a.name && x[1] === b.name) || (x[0] === b.name && x[1] === a.name); });
+  }
+
+  // Streets that touch each other somewhere on the strips: key -> { otherKey: true }.
+  function streetNeighbours(project) {
     const neighbours = {};
     const order = [];
-    project.subzones.forEach(function (sz) {
-      const a = analyseSubzone(sz);
+    analyseProject(project).forEach(function (a) {
       a.strips.concat([{ cells: a.overflow }]).forEach(function (s) {
         let prev = null;
         s.cells.forEach(function (c) {
           if (!c.key) { prev = null; return; }
           if (!neighbours[c.key]) { neighbours[c.key] = {}; order.push(c.key); }
-          if (prev && prev !== c.key) { neighbours[c.key][prev] = 1; neighbours[prev][c.key] = 1; }
+          if (prev && prev !== c.key) { neighbours[c.key][prev] = true; neighbours[prev][c.key] = true; }
           prev = c.key;
         });
       });
     });
+    return { map: neighbours, order: order };
+  }
+
+  /*
+   * Gives every street without a colour one that is not similar to any street next to it,
+   * alternating light and dark colours. Colours are stored in project.streets, so they never
+   * change by themselves; colours that are not in the palette any more are given again.
+   * Returns true if something was assigned.
+   */
+  function assignColors(project) {
+    let changed = false;
+    Object.keys(project.streets).forEach(function (k) {
+      if (!paletteEntry(project.streets[k].color)) { delete project.streets[k]; changed = true; }
+    });
+    const nb = streetNeighbours(project);
     const usage = {};
     Object.keys(project.streets).forEach(function (k) {
       const col = project.streets[k].color;
       usage[col] = (usage[col] || 0) + 1;
     });
-    let changed = false;
     const choices = PALETTE.filter(function (c) { return c.name !== 'bianco'; });
-    order.forEach(function (key) {
+    nb.order.forEach(function (key) {
       if (project.streets[key]) return;
-      const taken = {};
-      Object.keys(neighbours[key]).forEach(function (n) { if (project.streets[n]) taken[project.streets[n].color] = 1; });
-      const free = choices.filter(function (c) { return !taken[c.hex]; });
+      const near = Object.keys(nb.map[key]).filter(function (n) { return project.streets[n]; })
+        .map(function (n) { return project.streets[n].color; });
+      const darkNear = near.filter(function (h) { return paletteEntry(h).dark; }).length;
+      const wantDark = near.length ? darkNear * 2 < near.length : false;
+      const free = choices.filter(function (c) { return !near.some(function (h) { return similarColors(h, c.hex); }); });
       const pool = free.length ? free : choices;
-      pool.sort(function (x, y) { return (usage[x.hex] || 0) - (usage[y.hex] || 0) || choices.indexOf(x) - choices.indexOf(y); });
+      const score = function (c) { return (near.length && c.dark !== wantDark ? 100 : 0) + (usage[c.hex] || 0); };
+      pool.sort(function (x, y) { return score(x) - score(y) || choices.indexOf(x) - choices.indexOf(y); });
       project.streets[key] = { color: pool[0].hex };
       usage[pool[0].hex] = (usage[pool[0].hex] || 0) + 1;
       changed = true;
@@ -480,6 +578,12 @@
 
   function colorOf(project, key) {
     return key && project.streets[key] ? project.streets[key].color : 'FFFFFF';
+  }
+
+  // The colour of the writing on a street's colour.
+  function textColorOf(project, key) {
+    const p = paletteEntry(colorOf(project, key));
+    return p ? p.text : '111111';
   }
 
   // ---------------------------------------------------------------- map
@@ -646,11 +750,17 @@
     layoutRoute: layoutRoute,
     streetRuns: streetRuns,
     analyseSubzone: analyseSubzone,
+    analyseProject: analyseProject,
     allCells: allCells,
     findDuplicates: findDuplicates,
     rowsToRoute: rowsToRoute,
     assignColors: assignColors,
     colorOf: colorOf,
+    textColorOf: textColorOf,
+    similarColors: similarColors,
+    streetNeighbours: streetNeighbours,
+    paletteEntry: paletteEntry,
+    streetName: streetName,
     paletteName: paletteName,
     mapQuery: mapQuery,
     projectToText: projectToText,
