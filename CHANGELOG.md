@@ -1,5 +1,21 @@
 # Registro delle versioni
 
+## v0.7.0 · 2026-11-05 · Il disegno di tutto il mobile, la cartina del giro, un colore per via
+
+- **Disegno di tutto il mobile**: le sottozone una accanto all'altra, come il mobile vero (fila 1 in alto, fila 4
+  sulla scrivania), con una riga colorata sotto ogni casella che dice di quale sottozona è e una riga rossa dove il
+  confine passa dentro una fila. Si ingrandisce, si scarica come immagine, e toccando una casella si va alla sua riga.
+- **Cartina del giro**: le vie della sottozona nell'ordine del casello sulla mappa (OpenStreetMap), con il percorso
+  su strada e i chilometri (calcolo gratuito OSRM), facoltativamente partendo e tornando all'ufficio. Le vie trovate
+  restano salvate nel lavoro e la volta dopo sono subito pronte; quelle non trovate sono segnate in rosso. Alla mappa
+  vanno solo via, civico e comune.
+- **Un colore per via in ogni sottozona**: 71 colori, i più diversi per primi, tutti con la scritta a contrasto forte
+  (almeno 7:1). Nella stessa sottozona nessun colore si ripete (anche le vie che continuano nel mobile della sottozona
+  dopo); due vie vicine non hanno mai colori simili, nemmeno due tonalità dello stesso colore. Nella scelta a mano i
+  colori già usati e quelli simili alle vie accanto sono bloccati.
+- File: `app/src/core.js`, `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `tests/test_core.js`,
+  `Casellino.html`, `sito/`, `CHANGELOG.md`, `PROMEMORIA.md`, `prove/`.
+
 ## v0.6.0 · 2026-11-05 · Riga obliqua giusta, colori forti, la sottozona che continua nell'altra
 
 - **Riga obliqua al verso giusto**: `2/4` divide la casella con una riga da in basso a sinistra a in alto a destra; i

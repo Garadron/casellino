@@ -16,5 +16,5 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Più avanti (solo cose gratuite)
 
-1. **La mappa del giro con i chilometri**: si segna una via alla volta e le vie già segnate restano; il programma somma
-   i chilometri. Gratis con OpenStreetMap (mappa e strade) e un calcolo del percorso gratuito.
+1. Cartina del giro: poter spostare a mano sulla mappa un punto trovato male (dove OpenStreetMap non ha i civici, il
+   punto cade a metà della via) e cercare a mano le vie non trovate.

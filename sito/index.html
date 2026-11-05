@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.6.0';</script>
+<script>window.CASELLINO_VERSION = '0.7.0';</script>
 <style>
 :root {
   --bg: #f4f5f7;
@@ -305,6 +305,29 @@ table.help td:first-child { white-space: nowrap; }
   .subzone label.grow-m { flex: 1 1 160px; }
   table.help td:first-child { white-space: normal; }
 }
+
+/* folding cards: drawing of the whole frame, map of the round */
+details.fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::before { content: '▸'; color: var(--muted); }
+details.fold[open] > summary::before { content: '▾'; }
+details.fold > summary h2 { margin: 0; }
+details.fold[open] > summary { margin-bottom: 8px; }
+.overview-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.overview-wrap svg { display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+.zone-key { display: inline-flex; align-items: center; gap: 6px; }
+.zone-key i { display: inline-block; width: 18px; height: 6px; border-radius: 2px; }
+.depot-label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); max-width: 420px; }
+.route-map { height: 420px; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px; background: var(--bg); }
+.route-total { font-weight: 600; }
+.route-stops { font-size: 13px; padding-left: 20px; max-height: 320px; overflow-y: auto; }
+.route-stops li.bad, .route-stops li.bad button { color: var(--bad); }
+.route-stops li.muted button { color: var(--muted); }
+.stop-pin span { display: inline-block; min-width: 22px; padding: 2px 3px; border-radius: 10px; border: 1.5px solid #111;
+  font: 700 11px/1.2 Arial, sans-serif; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.stop-pin.depot { background: #111; color: #fff; border-radius: 50%; font: 700 12px/24px Arial, sans-serif; text-align: center; }
+@media (max-width: 560px) { .route-map { height: 320px; } }
 </style>
 </head>
 <body>
@@ -353,6 +376,30 @@ table.help td:first-child { white-space: nowrap; }
       <h2>Le strisce, come si leggono: da sinistra a destra, dall'alto in basso</h2>
       <div id="strips"></div>
     </div>
+
+    <details class="card fold" id="overview-card">
+      <summary><h2>Disegno di tutto il mobile</h2></summary>
+      <p class="small muted">Tutte le sottozone una accanto all'altra, come il mobile vero: fila 1 in alto, fila 4 sulla scrivania. La riga colorata sotto ogni casella dice di quale sottozona è; la riga rossa segna il confine dentro una fila. Tocca una casella per andare alla sua riga del giro.</p>
+      <p class="actions-inline">
+        <button type="button" id="btn-ov-fit">Adatta allo schermo</button>
+        <button type="button" id="btn-ov-big">Più grande</button>
+        <button type="button" id="btn-ov-png">Scarica il disegno</button>
+      </p>
+      <div class="overview-wrap" id="overview"></div>
+      <p class="small legend" id="overview-legend"></p>
+    </details>
+
+    <details class="card fold" id="map-card">
+      <summary><h2 id="map-title">Cartina del giro</h2></summary>
+      <p class="small muted">Le vie della sottozona nell'ordine del casello, sulla mappa, con i chilometri. È gratis, con OpenStreetMap; serve internet. La prima volta ci vuole circa un secondo per via; le vie trovate restano salvate e la volta dopo è subito pronta. Alla mappa vanno solo via, civico e comune.</p>
+      <label class="small depot-label">Partenza e arrivo, per esempio l'ufficio (se vuoi)
+        <input id="depot" autocomplete="off" placeholder="es. Via Esempio 1, Borgo Esempio"></label>
+      <p class="actions-inline"><button type="button" class="primary" id="btn-route">Calcola il giro</button>
+        <span class="small muted" id="route-status"></span></p>
+      <div class="route-map" id="route-map"></div>
+      <p class="route-total" id="route-total"></p>
+      <ol class="route-stops" id="route-stops"></ol>
+    </details>
   </section>
 
   <aside class="side" aria-label="Mappa e vie">
@@ -410,7 +457,8 @@ table.help td:first-child { white-space: nowrap; }
     <p><b>La regola delle strisce</b>: nella riga sotto c'è solo il nome della via (o piazza, cascina…), steso su tutte le sue caselle; nelle caselle di sopra ci sono solo i civici. Una casella che appartiene a un'altra via, in mezzo a una via, si scrive su una riga sua (per esempio <code>VIA DEI GELSI: 37</code>): prende il suo colore e il suo nome sotto.</p>
     <p>Di solito nelle vie i dispari sono da un lato e i pari dall'altro, tutti e due a salire (<code>1..15</code> e <code>2..16</code>); nelle piazze i numeri vanno in fila, uno dopo l'altro (<code>1-12 tutti</code>).</p>
     <p><b>Una sottozona più lunga del suo casello e della sua ala</b> continua da sola nell'ultima fila della sottozona dopo (per esempio la A nella fila 4 della B), come nel mobile vero: si scrive tutto nel giro della A, e la B comincia quella fila dopo.</p>
-    <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Due vie vicine non possono avere colori simili: nell'elenco delle vie i colori troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
+    <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Nella stessa sottozona <b>nessun colore si ripete</b>: ogni via ha il suo. Due vie vicine non hanno mai colori simili. Nell'elenco delle vie i colori già usati nella sottozona e quelli troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
+    <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate.</p>
     <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>
@@ -478,28 +526,82 @@ table.help td:first-child { white-space: nowrap; }
   const IT_LETTERS = 'ABCDEFGHILMNOPQRSTUVZ';
   const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-  // Strong colours for the strips. Each one has the text colour that reads best on it
-  // (contrast checked: from 6.9:1 up to 18.9:1) and a family: two streets next to each other
-  // never get colours of the same family or colours that look alike (see similarColors).
+  // Colours for the strips: 71, the most different ones first (so a small zone gets very
+  // distinct colours). Each one has the writing that reads best on it (contrast at least 7:1).
+  // No colour is used twice in the same sub-zone; streets next to each other never get colours
+  // that look alike (see similarColors).
   const PALETTE = [
-    { name: 'giallo', hex: 'FFE135', text: '111111', family: 'giallo', dark: false },
-    { name: 'blu', hex: '1F4E9E', text: 'FFFFFF', family: 'blu', dark: true },
-    { name: 'verde chiaro', hex: '8ED16B', text: '111111', family: 'verde', dark: false },
-    { name: 'rosso scuro', hex: '8B1A1A', text: 'FFF6C2', family: 'rosso', dark: true },
-    { name: 'azzurro', hex: '6CCFF6', text: '111111', family: 'azzurro', dark: false },
-    { name: 'viola', hex: '5B2A94', text: 'FFFFFF', family: 'viola', dark: true },
-    { name: 'arancione', hex: 'FF9A2E', text: '111111', family: 'arancio', dark: false },
-    { name: 'verde scuro', hex: '17673A', text: 'FFFFFF', family: 'verde', dark: true },
-    { name: 'rosa', hex: 'F7A1CF', text: '111111', family: 'rosa', dark: false },
-    { name: 'nero', hex: '151515', text: 'FFFFFF', family: 'nero', dark: true },
-    { name: 'grigio', hex: 'CFCFCF', text: '111111', family: 'grigio', dark: false },
-    { name: 'marrone', hex: '6A3F22', text: 'FFFFFF', family: 'marrone', dark: true },
-    { name: 'bianco', hex: 'FFFFFF', text: '111111', family: 'bianco', dark: false },
-  ];
-  // Pairs that look too much alike to stay next to each other (besides same family).
-  const ALIKE = [
-    ['giallo', 'arancione'], ['blu', 'viola'], ['rosso scuro', 'marrone'], ['nero', 'marrone'],
-    ['azzurro', 'grigio'], ['azzurro', 'bianco'], ['rosa', 'grigio'], ['grigio', 'bianco'],
+    { name: 'giallo', hex: 'FFE135', text: '111111', dark: false },
+    { name: 'blu', hex: '1F4E9E', text: 'FFFFFF', dark: true },
+    { name: 'verde chiaro', hex: '8ED16B', text: '111111', dark: false },
+    { name: 'rosso scuro', hex: '8B1A1A', text: 'FFF6C2', dark: true },
+    { name: 'azzurro', hex: '6CCFF6', text: '111111', dark: false },
+    { name: 'viola', hex: '5B2A94', text: 'FFFFFF', dark: true },
+    { name: 'arancione', hex: 'FF9A2E', text: '111111', dark: false },
+    { name: 'verde scuro', hex: '166136', text: 'FFFFFF', dark: true },
+    { name: 'rosa', hex: 'F7A1CF', text: '111111', dark: false },
+    { name: 'nero', hex: '151515', text: 'FFFFFF', dark: true },
+    { name: 'grigio', hex: 'CFCFCF', text: '111111', dark: false },
+    { name: 'marrone', hex: '6A3F22', text: 'FFFFFF', dark: true },
+    { name: 'bianco', hex: 'FFFFFF', text: '111111', dark: false },
+    { name: 'fucsia', hex: 'A11773', text: 'FFFFFF', dark: true },
+    { name: 'indaco', hex: '1F1FD6', text: 'FFFFFF', dark: true },
+    { name: 'verde', hex: '1FD61F', text: '111111', dark: false },
+    { name: 'verde acqua chiaro', hex: '75F0D1', text: '111111', dark: false },
+    { name: 'corallo chiaro', hex: 'F08E75', text: '111111', dark: false },
+    { name: 'magenta', hex: '9517A1', text: 'FFFFFF', dark: true },
+    { name: 'fucsia scuro', hex: '791558', text: 'FFFFFF', dark: true },
+    { name: 'celeste scuro', hex: '155B79', text: 'FFFFFF', dark: true },
+    { name: 'ambra chiaro', hex: 'F0C775', text: '111111', dark: false },
+    { name: 'lampone', hex: 'A71848', text: 'FFFFFF', dark: true },
+    { name: 'lime scuro', hex: '4B5F10', text: 'FFFFFF', dark: true },
+    { name: 'blu chiaro', hex: '759EF0', text: '111111', dark: false },
+    { name: 'rosso', hex: 'AE1919', text: 'FFFFFF', dark: true },
+    { name: 'lime', hex: 'A8D61F', text: '111111', dark: false },
+    { name: 'indaco chiaro', hex: '9898F4', text: '111111', dark: false },
+    { name: 'magenta chiaro', hex: 'E575F0', text: '111111', dark: false },
+    { name: 'blu notte', hex: '0F2350', text: 'FFFFFF', dark: true },
+    { name: 'smeraldo', hex: '1FD66B', text: '111111', dark: false },
+    { name: 'grigio scuro', hex: '555555', text: 'FFFFFF', dark: true },
+    { name: 'indaco pastello', hex: 'C1C1F6', text: '111111', dark: false },
+    { name: 'verde bosco', hex: '126512', text: 'FFFFFF', dark: true },
+    { name: 'oro pastello', hex: 'F6EDC1', text: '111111', dark: false },
+    { name: 'nocciola', hex: 'C2956E', text: '111111', dark: false },
+    { name: 'fucsia chiaro', hex: 'F075C7', text: '111111', dark: false },
+    { name: 'turchese', hex: '1FD0D6', text: '111111', dark: false },
+    { name: 'verde pastello', hex: 'C1F6C1', text: '111111', dark: false },
+    { name: 'turchese scuro', hex: '126365', text: 'FFFFFF', dark: true },
+    { name: 'smeraldo chiaro', hex: '75F0A8', text: '111111', dark: false },
+    { name: 'lime chiaro', hex: 'D1F075', text: '111111', dark: false },
+    { name: 'rosa scuro', hex: '791537', text: 'FFFFFF', dark: true },
+    { name: 'verde acqua pastello', hex: 'C1F6E9', text: '111111', dark: false },
+    { name: 'rosa chiaro', hex: 'F0759E', text: '111111', dark: false },
+    { name: 'rosso pastello', hex: 'F6C1C1', text: '111111', dark: false },
+    { name: 'celeste', hex: '2CAAE0', text: '111111', dark: false },
+    { name: 'ambra scuro', hex: '725314', text: 'FFFFFF', dark: true },
+    { name: 'ambra', hex: 'D6991F', text: '111111', dark: false },
+    { name: 'grigio medio', hex: '9E9E9E', text: '111111', dark: false },
+    { name: 'marrone scuro', hex: '3E2414', text: 'FFFFFF', dark: true },
+    { name: 'magenta pastello', hex: 'F2C1F6', text: '111111', dark: false },
+    { name: 'verde acqua', hex: '1FD6A8', text: '111111', dark: false },
+    { name: 'oro', hex: 'D6B81F', text: '111111', dark: false },
+    { name: 'arancio', hex: 'E28839', text: '111111', dark: false },
+    { name: 'arancio chiaro', hex: 'F0AE75', text: '111111', dark: false },
+    { name: 'indaco scuro', hex: '151579', text: 'FFFFFF', dark: true },
+    { name: 'magenta scuro', hex: '711579', text: 'FFFFFF', dark: true },
+    { name: 'celeste pastello', hex: 'C1E6F6', text: '111111', dark: false },
+    { name: 'rosso chiaro', hex: 'F17C7C', text: '111111', dark: false },
+    { name: 'blu intenso', hex: '1B51BB', text: 'FFFFFF', dark: true },
+    { name: 'verde menta', hex: '75F075', text: '111111', dark: false },
+    { name: 'verde acqua scuro', hex: '105F4B', text: 'FFFFFF', dark: true },
+    { name: 'viola chiaro', hex: 'B58AF2', text: '111111', dark: false },
+    { name: 'viola intenso', hex: '6B1FD6', text: 'FFFFFF', dark: true },
+    { name: 'oro chiaro', hex: 'F0DB75', text: '111111', dark: false },
+    { name: 'arancio pastello', hex: 'F6DAC1', text: '111111', dark: false },
+    { name: 'turchese chiaro', hex: '75ECF0', text: '111111', dark: false },
+    { name: 'corallo scuro', hex: '792915', text: 'FFFFFF', dark: true },
+    { name: 'blu pastello', hex: 'C1D2F6', text: '111111', dark: false },
+    { name: 'blu scuro', hex: '153779', text: 'FFFFFF', dark: true },
   ];
 
   function norm(text) {
@@ -541,6 +643,8 @@ table.help td:first-child { white-space: nowrap; }
       subzones: [newSubzone('', '')],
       streets: {},      // streetKey -> { color: 'RRGGBB' }
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
+      geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
+      depot: '',        // where the round starts and ends (the office), optional
     };
   }
 
@@ -579,6 +683,14 @@ table.help td:first-child { white-space: nowrap; }
         if (/^[0-9A-F]{6}$/.test(c)) out.streets[k] = { color: c };
       });
     }
+    if (p.geo && typeof p.geo === 'object') {
+      Object.keys(p.geo).forEach(function (q) {
+        const g = p.geo[q];
+        if (g && g.found === 'no') out.geo[q] = { found: 'no' };
+        else if (g && isFinite(g.lat) && isFinite(g.lon)) out.geo[q] = { lat: +g.lat, lon: +g.lon, found: g.found === 'via' ? 'via' : 'civico' };
+      });
+    }
+    out.depot = String(p.depot || '');
     if (p.streetLists && typeof p.streetLists === 'object') {
       Object.keys(p.streetLists).forEach(function (k) {
         if (Array.isArray(p.streetLists[k])) out.streetLists[norm(k)] = p.streetLists[k].map(String);
@@ -962,12 +1074,29 @@ table.help td:first-child { white-space: nowrap; }
     return p ? p.name : '#' + hex;
   }
 
-  // True when two colours must not be used for streets next to each other.
+  function toLab(hex) {
+    const v = [0, 2, 4].map(function (i) {
+      const c = parseInt(String(hex).slice(i, i + 2), 16) / 255;
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    const x = (0.4124 * v[0] + 0.3576 * v[1] + 0.1805 * v[2]) / 0.95047;
+    const y = 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    const z = (0.0193 * v[0] + 0.1192 * v[1] + 0.9505 * v[2]) / 1.08883;
+    const f = function (t) { return t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116; };
+    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+  }
+
+  // True when two colours must not be used for streets next to each other: they look alike
+  // (CIELAB distance under 45) or they are two shades of the same hue (two greens, two blues).
   function similarColors(hexA, hexB) {
-    const a = paletteEntry(hexA), b = paletteEntry(hexB);
-    if (!a || !b) return String(hexA).toUpperCase() === String(hexB).toUpperCase();
-    if (a === b || a.family === b.family) return true;
-    return ALIKE.some(function (x) { return (x[0] === a.name && x[1] === b.name) || (x[0] === b.name && x[1] === a.name); });
+    if (String(hexA).toUpperCase() === String(hexB).toUpperCase()) return true;
+    const a = toLab(hexA), b = toLab(hexB);
+    if (Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < 45) return true;
+    const ca = Math.hypot(a[1], a[2]), cb = Math.hypot(b[1], b[2]);
+    if (ca < 20 || cb < 20) return false; // greys, black, white: only the distance counts
+    let d = Math.abs(Math.atan2(a[2], a[1]) - Math.atan2(b[2], b[1])) * 180 / Math.PI;
+    if (d > 180) d = 360 - d;
+    return d < 25;
   }
 
   // Streets that touch each other somewhere on the strips: key -> { otherKey: true }.
@@ -988,10 +1117,41 @@ table.help td:first-child { white-space: nowrap; }
     return { map: neighbours, order: order };
   }
 
+  // The streets of each sub-zone's route (wherever its pigeonholes ended up): no colour may
+  // repeat inside one of these groups.
+  function subzoneStreets(project) {
+    return analyseProject(project).map(function (a) {
+      const keys = [];
+      allCells(a).forEach(function (c) { if (c.key && keys.indexOf(c.key) < 0) keys.push(c.key); });
+      return keys;
+    });
+  }
+
+  // The streets standing in each sub-zone's frame, including pigeonholes of the previous
+  // sub-zone that continue there: colours are kept different there too, when possible.
+  function frameStreets(project) {
+    return analyseProject(project).map(function (a) {
+      const keys = [];
+      a.strips.forEach(function (s) { s.cells.forEach(function (c) { if (c.key && keys.indexOf(c.key) < 0) keys.push(c.key); }); });
+      return keys;
+    });
+  }
+
+  // For one street: the streets that must not share its colour (same sub-zone) -> { key: true }.
+  function sameZoneStreets(groups, key) {
+    const out = {};
+    groups.forEach(function (g) {
+      if (g.indexOf(key) < 0) return;
+      g.forEach(function (k) { if (k !== key) out[k] = true; });
+    });
+    return out;
+  }
+
   /*
-   * Gives every street without a colour one that is not similar to any street next to it,
-   * alternating light and dark colours. Colours are stored in project.streets, so they never
-   * change by themselves; colours that are not in the palette any more are given again.
+   * Gives every street without a colour one that is not used by another street of the same
+   * sub-zone and not similar to any street next to it, alternating light and dark colours.
+   * Colours are stored in project.streets, so they never change by themselves; a colour that is
+   * not in the palette any more, or that repeats in a sub-zone (older files), is given again.
    * Returns true if something was assigned.
    */
   function assignColors(project) {
@@ -999,6 +1159,16 @@ table.help td:first-child { white-space: nowrap; }
     Object.keys(project.streets).forEach(function (k) {
       if (!paletteEntry(project.streets[k].color)) { delete project.streets[k]; changed = true; }
     });
+    const groups = subzoneStreets(project);
+    groups.forEach(function (g) {
+      const taken = {};
+      g.forEach(function (k) {
+        const col = project.streets[k] && project.streets[k].color;
+        if (!col) return;
+        if (taken[col]) { delete project.streets[k]; changed = true; } else taken[col] = true;
+      });
+    });
+    const frames = frameStreets(project);
     const nb = streetNeighbours(project);
     const usage = {};
     Object.keys(project.streets).forEach(function (k) {
@@ -1006,16 +1176,31 @@ table.help td:first-child { white-space: nowrap; }
       usage[col] = (usage[col] || 0) + 1;
     });
     const choices = PALETTE.filter(function (c) { return c.name !== 'bianco'; });
-    nb.order.forEach(function (key) {
+    // in the order of the routes, sub-zone after sub-zone: the end of a route that continues in
+    // the next frame gets its colours before the streets of that frame, which then avoid them
+    const order = [];
+    groups.forEach(function (g) { g.forEach(function (k) { if (order.indexOf(k) < 0) order.push(k); }); });
+    nb.order.forEach(function (k) { if (order.indexOf(k) < 0) order.push(k); });
+    order.forEach(function (key) {
       if (project.streets[key]) return;
-      const near = Object.keys(nb.map[key]).filter(function (n) { return project.streets[n]; })
+      const near = Object.keys(nb.map[key] || {}).filter(function (n) { return project.streets[n]; })
         .map(function (n) { return project.streets[n].color; });
-      const darkNear = near.filter(function (h) { return paletteEntry(h).dark; }).length;
+      const zone = sameZoneStreets(groups, key);
+      const used = {};
+      Object.keys(zone).forEach(function (k) { if (project.streets[k]) used[project.streets[k].color] = true; });
+      const inFrame = {};
+      Object.keys(sameZoneStreets(frames, key)).forEach(function (k) { if (project.streets[k]) inFrame[project.streets[k].color] = true; });
+      const darkNear = near.filter(function (hx) { return paletteEntry(hx).dark; }).length;
       const wantDark = near.length ? darkNear * 2 < near.length : false;
-      const free = choices.filter(function (c) { return !near.some(function (h) { return similarColors(h, c.hex); }); });
-      const pool = free.length ? free : choices;
-      const score = function (c) { return (near.length && c.dark !== wantDark ? 100 : 0) + (usage[c.hex] || 0); };
-      pool.sort(function (x, y) { return score(x) - score(y) || choices.indexOf(x) - choices.indexOf(y); });
+      const notNear = function (c) { return !near.some(function (hx) { return similarColors(hx, c.hex); }); };
+      let pool = choices.filter(function (c) { return !used[c.hex] && notNear(c); });
+      if (!pool.length) pool = choices.filter(function (c) { return !used[c.hex]; });
+      if (!pool.length) pool = choices.filter(notNear);
+      if (!pool.length) pool = choices;
+      const score = function (c) {
+        return (inFrame[c.hex] ? 5000 : 0) + (near.length && c.dark !== wantDark ? 1000 : 0) + (usage[c.hex] || 0) * 100 + choices.indexOf(c);
+      };
+      pool.sort(function (x, y) { return score(x) - score(y); });
       project.streets[key] = { color: pool[0].hex };
       usage[pool[0].hex] = (usage[pool[0].hex] || 0) + 1;
       changed = true;
@@ -1049,6 +1234,46 @@ table.help td:first-child { white-space: nowrap; }
     const m = /^(\d+)(\s*[A-Z](?![A-Z]))?/i.exec(String(top || '').trim());
     const number = m ? (m[1] + (m[2] ? m[2].trim() : '')) : '';
     return (s + (number ? ' ' + number : '') + (town ? ', ' + town : '')).replace(/\s+/g, ' ').trim();
+  }
+
+  // ---------------------------------------------------------------- the round on the map
+
+  /*
+   * The stops of a sub-zone's round, in the order of its pigeonholes (the order of the frame):
+   * one stop for each piece of street written on a line of the route. Names that are not a
+   * street ("?") are left out. Each stop has the map queries to try: with the first house number,
+   * then the street alone.
+   */
+  function routeStops(project, k) {
+    const a = analyseProject(project)[k];
+    if (!a) return [];
+    const stops = [];
+    let last = null;
+    allCells(a).forEach(function (c) {
+      if (!c.key || /^\?/.test(String(c.street).trim()) || !streetName(c.street)) { last = null; return; }
+      if (last && last.line === c.line && last.key === c.key) { last.cells++; return; }
+      const number = /^\d+\s*[A-Z]?$/i.test(String(c.top).trim()) ? c.top : '';
+      last = { line: c.line, key: c.key, street: c.street, town: c.town, cells: 1,
+        queries: [mapQuery(c.street, number, c.town), mapQuery(c.street, '', c.town), mapQuery(bareName(c.street), '', c.town)]
+          .filter(function (q, i, arr) { return q && arr.indexOf(q) === i; }) };
+      stops.push(last);
+    });
+    return stops;
+  }
+
+  // The name without the word for the kind of street ("VIA DEI TIGLI" -> "DEI TIGLI"): a last try on
+  // the map, when the street is written there with another word or with the full first name.
+  function bareName(street) {
+    const words = norm(street).split(' ');
+    return words.length > 1 && streetType(street) !== 'altro' && streetType(street) !== 'cascina' ? words.slice(1).join(' ') : '';
+  }
+
+  // Distance in km between two points (straight line), used when the road route is not available.
+  function airKm(a, b) {
+    const R = 6371, toRad = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * toRad, dLon = (b.lon - a.lon) * toRad;
+    const x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * toRad) * Math.cos(b.lat * toRad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.sqrt(x));
   }
 
   // ---------------------------------------------------------------- text format
@@ -1205,11 +1430,16 @@ table.help td:first-child { white-space: nowrap; }
     colorOf: colorOf,
     textColorOf: textColorOf,
     similarColors: similarColors,
+    subzoneStreets: subzoneStreets,
+    frameStreets: frameStreets,
+    sameZoneStreets: sameZoneStreets,
     streetNeighbours: streetNeighbours,
     paletteEntry: paletteEntry,
     streetName: streetName,
     paletteName: paletteName,
     mapQuery: mapQuery,
+    routeStops: routeStops,
+    airKm: airKm,
     projectToText: projectToText,
     textToProject: textToProject,
     streetType: streetType,
@@ -1882,6 +2112,7 @@ table.help td:first-child { white-space: nowrap; }
   function renderProjectFields() {
     $('zone').value = state.project.zone;
     $('owner').value = state.project.owner;
+    $('depot').value = state.project.depot || '';
   }
 
   function openSubzone(i) {
@@ -1891,6 +2122,9 @@ table.help td:first-child { white-space: nowrap; }
     renderTabs();
     renderSubzone();
     refreshSide();
+    const total = $('route-total');
+    if (total) total.textContent = '';
+    showKnownRound();
   }
 
   function renderTabs() {
@@ -2039,6 +2273,7 @@ table.help td:first-child { white-space: nowrap; }
 
     renderAllStrips(a);
     renderNow();
+    renderOverviewLater();
   }
 
   function stripBox(s, p) {
@@ -2420,6 +2655,7 @@ table.help td:first-child { white-space: nowrap; }
       return;
     }
     const near = C.streetNeighbours(p).map;
+    const groups = C.subzoneStreets(p);
     Object.keys(byTown).forEach(function (t) {
       if (Object.keys(byTown).length > 1) ul.append(h('li', { class: 'town-head' }, t || 'Comune non scritto'));
       const official = (p.streetLists[C.norm(t)] || []).map(comparable);
@@ -2428,11 +2664,13 @@ table.help td:first-child { white-space: nowrap; }
         const color = C.colorOf(p, k);
         const sel = h('select', { 'aria-label': 'Colore di ' + u.street });
         const others = Object.keys(near[k] || {});
+        const sameZone = Object.keys(C.sameZoneStreets(groups, k));
+        const nameOf = function (o) { return usage[o] ? usage[o].street : "un'altra via"; };
         C.PALETTE.forEach(function (c) {
-          const clash = others.find(function (o) { return C.similarColors(C.colorOf(p, o), c.hex); });
-          const clashName = clash && usage[clash] ? usage[clash].street : '';
-          sel.append(h('option', { value: c.hex, selected: c.hex === color, disabled: !!clash && c.hex !== color },
-            c.name + (clash ? ' (troppo simile a ' + (clashName || 'una via vicina') + ')' : '')));
+          const taken = sameZone.find(function (o) { return C.colorOf(p, o) === c.hex; });
+          const clash = !taken && others.find(function (o) { return C.similarColors(C.colorOf(p, o), c.hex); });
+          const why = taken ? ' (già usato da ' + nameOf(taken) + ')' : (clash ? ' (troppo simile a ' + nameOf(clash) + ', vicina)' : '');
+          sel.append(h('option', { value: c.hex, selected: c.hex === color, disabled: !!(taken || clash) && c.hex !== color }, c.name + why));
         });
         sel.addEventListener('change', function () {
           p.streets[k] = { color: sel.value };
@@ -2463,6 +2701,330 @@ table.help td:first-child { white-space: nowrap; }
       ul.append(h('li', null, h('b', null, x.street + ' ' + x.number), ' · ' + x.where.join('; ')));
     });
     if (d.length > 60) ul.append(h('li', { class: 'muted' }, 'e altri ' + (d.length - 60)));
+  }
+
+  // ------------------------------------------------------------ drawing of the whole frame
+
+  // One colour per sub-zone for the line under its pigeonholes (not a street colour).
+  const ZONE_TINTS = ['#1565C0', '#E65100', '#2E7D32', '#6A1B9A', '#AD1457', '#00838F'];
+  let overviewBig = false;
+
+  function overviewSvg() {
+    const p = state.project;
+    const all = C.analyseProject(p);
+    const U = 10, TOP = 16, BOT = 10, BAR = 4, ROWH = TOP + BOT + BAR, GAPR = 12, GAPM = 8, GAPZ = 40, HEAD = 36, LEFT = 22;
+    const frames = p.subzones.map(function (s, k) {
+      const mods = C.MODULES.filter(function (m) { return s.modules[m]; });
+      const w = mods.reduce(function (acc, m, j) { return acc + C.MODULE_SLOTS[m] * U + (j ? GAPM : 0); }, 0);
+      return { s: s, k: k, mods: mods, w: w };
+    }).filter(function (f) { return f.mods.length; });
+    const width = LEFT + frames.reduce(function (acc, f, j) { return acc + f.w + (j ? GAPZ : 0); }, 0) + 6;
+    const height = HEAD + C.ROWS_PER_MODULE * (ROWH + GAPR) + 2;
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('xmlns', NS);
+    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svg.setAttribute('font-family', 'Arial, sans-serif');
+    svg.setAttribute('font-weight', '700');
+    const add = function (parent, tag, attrs, text) {
+      const e = document.createElementNS(NS, tag);
+      Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+      if (text !== undefined) e.textContent = text;
+      parent.append(e);
+      return e;
+    };
+    add(svg, 'rect', { x: 0, y: 0, width: width, height: height, fill: '#ffffff' });
+    for (let i = 0; i < C.ROWS_PER_MODULE; i++) {
+      add(svg, 'text', { x: 4, y: HEAD + i * (ROWH + GAPR) + 17, 'font-size': 11, fill: '#555' }, String(i + 1));
+    }
+    let x0 = LEFT;
+    frames.forEach(function (f, j) {
+      if (j) x0 += GAPZ;
+      const tint = ZONE_TINTS[f.k % ZONE_TINTS.length];
+      add(svg, 'rect', { x: x0, y: 2, width: f.w, height: 16, rx: 3, fill: tint });
+      add(svg, 'text', { x: x0 + 6, y: 14, 'font-size': 11, fill: '#ffffff' },
+        'Sottozona ' + (f.s.name || f.k + 1) + (f.s.town ? ' · ' + f.s.town : ''));
+      let mx = x0;
+      f.mods.forEach(function (m, mj) {
+        if (mj) mx += GAPM;
+        const cap = C.MODULE_SLOTS[m];
+        add(svg, 'text', { x: mx, y: 31, 'font-size': 9, fill: '#555' }, C.MODULE_NAMES[m] + ' · ' + cap);
+        for (let i = 0; i < C.ROWS_PER_MODULE; i++) {
+          const y = HEAD + i * (ROWH + GAPR);
+          const lay = all[f.k][m][i].layout;
+          add(svg, 'rect', { x: mx, y: y, width: cap * U, height: TOP + BOT, fill: '#f1f1f1', stroke: '#b5b5b5', 'stroke-width': 0.5 });
+          let prevOwner = null;
+          lay.cells.forEach(function (c) {
+            if (c.start >= cap) return;
+            const end = Math.min(c.end, cap - 1);
+            const cx = mx + c.start * U, cw = (end - c.start + 1) * U;
+            const owner = c.foreign ? c.fromIndex : f.k;
+            const bg = '#' + C.colorOf(p, c.key), ink = '#' + C.textColorOf(p, c.key);
+            const g = add(svg, 'g', { 'data-k': owner, 'data-line': c.line, style: 'cursor:pointer' });
+            add(g, 'title', {}, (c.street || 'senza via') + (c.top ? ' ' + c.top : '') + (c.second ? '/' + c.second : '') +
+              ' · ' + (p.subzones[owner].name || '') + ' · fila ' + (i + 1) + ' casella ' + (c.start + 1));
+            add(g, 'rect', { x: cx, y: y, width: cw, height: TOP, fill: bg, stroke: '#333', 'stroke-width': 0.4 });
+            const label = c.second ? c.top + '/' + c.second : c.top;
+            if (label && label.length * 3.8 <= cw - 1) {
+              add(g, 'text', { x: cx + cw / 2, y: y + 11, 'font-size': 6.5, 'text-anchor': 'middle', fill: ink }, label);
+            }
+            add(g, 'rect', { x: cx, y: y + TOP + BOT, width: cw, height: BAR, fill: ZONE_TINTS[owner % ZONE_TINTS.length] });
+            if (prevOwner !== null && prevOwner !== owner) {
+              add(svg, 'line', { x1: cx, y1: y - 4, x2: cx, y2: y + ROWH + 4, stroke: '#d93025', 'stroke-width': 2.5 });
+            }
+            prevOwner = owner;
+          });
+          lay.runs.forEach(function (r) {
+            const rx = mx + r.start * U, rw = (r.end - r.start + 1) * U;
+            add(svg, 'rect', { x: rx, y: y + TOP, width: rw, height: BOT, fill: '#' + C.colorOf(p, r.key), stroke: '#333', 'stroke-width': 0.3 });
+            if (r.street.length * 3.4 <= rw - 2) {
+              add(svg, 'text', { x: rx + rw / 2, y: y + TOP + 7.5, 'font-size': 6, 'text-anchor': 'middle', fill: '#' + C.textColorOf(p, r.key) }, r.street);
+            }
+          });
+        }
+        mx += cap * U;
+      });
+      x0 += f.w;
+    });
+    return { svg: svg, width: width, height: height, frames: frames };
+  }
+
+  function renderOverview() {
+    const card = $('overview-card');
+    if (!card || !card.open) return;
+    const box = $('overview');
+    box.textContent = '';
+    const d = overviewSvg();
+    if (!d.frames.length) { box.append(h('p', { class: 'muted' }, 'Non c\'è ancora niente da disegnare.')); return; }
+    d.svg.setAttribute('width', overviewBig ? String(Math.round(d.width * 1.6)) : '100%');
+    if (overviewBig) d.svg.setAttribute('height', String(Math.round(d.height * 1.6)));
+    d.svg.addEventListener('click', function (e) {
+      const g = e.target.closest && e.target.closest('g[data-k]');
+      if (!g) return;
+      const k = +g.getAttribute('data-k'), line = +g.getAttribute('data-line');
+      if (k !== state.current) openSubzone(k);
+      setTimeout(function () { goToLine(line); }, 50);
+    });
+    box.append(d.svg);
+    const legend = $('overview-legend');
+    legend.textContent = '';
+    d.frames.forEach(function (f) {
+      legend.append(h('span', { class: 'zone-key' },
+        h('i', { style: 'background:' + ZONE_TINTS[f.k % ZONE_TINTS.length] }), 'Sottozona ' + (f.s.name || f.k + 1)));
+    });
+    legend.append(h('span', { class: 'zone-key' }, h('i', { style: 'background:#d93025;width:4px' }),
+      'confine tra due sottozone dentro una fila'));
+  }
+  const renderOverviewLater = debounce(renderOverview, 400);
+
+  function downloadOverview() {
+    const d = overviewSvg();
+    const scale = 2;
+    d.svg.setAttribute('width', String(d.width * scale));
+    d.svg.setAttribute('height', String(d.height * scale));
+    const xml = new XMLSerializer().serializeToString(d.svg);
+    const img = new Image();
+    const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+    img.onload = function () {
+      const canvas = h('canvas', { width: d.width * scale, height: d.height * scale });
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(function (blob) { download(fileBaseName() + ' - disegno.png', blob, 'image/png'); });
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); toast('Non riesco a creare l\'immagine.'); };
+    img.src = url;
+  }
+
+  // ------------------------------------------------------------ the round on the map (free: OpenStreetMap)
+
+  let leafletReady = null;
+  let routeMap = null, routeLayer = null;
+  let routeBusy = false;
+  let lastAsk = 0;
+  const pause = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+  function loadLeaflet() {
+    if (leafletReady) return leafletReady;
+    leafletReady = new Promise(function (resolve, reject) {
+      document.head.append(h('link', { rel: 'stylesheet', href: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' }));
+      const js = h('script', { src: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' });
+      js.onload = function () { resolve(window.L); };
+      js.onerror = function () { leafletReady = null; reject(new Error('la mappa non si carica')); };
+      document.head.append(js);
+    });
+    return leafletReady;
+  }
+
+  // Asks OpenStreetMap where an address is: one request per second at most (their rule).
+  async function geocode(q) {
+    const wait = 1100 - (Date.now() - lastAsk);
+    if (wait > 0) await pause(wait);
+    lastAsk = Date.now();
+    // no extra headers: a plain request needs no cross-site pre-check
+    const res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=it&accept-language=it&q=' +
+      encodeURIComponent(q));
+    if (!res.ok) throw new Error('il servizio delle mappe non risponde (' + res.status + ')');
+    const j = await res.json();
+    return j.length ? { lat: +j[0].lat, lon: +j[0].lon } : null;
+  }
+
+  // The point of a stop: first with the house number, then the street alone. Found points stay
+  // saved in the work (project.geo), so they are not asked again.
+  async function locate(stop) {
+    const geo = state.project.geo;
+    for (let i = 0; i < stop.queries.length; i++) {
+      const q = stop.queries[i];
+      const known = geo[q];
+      if (known && known.found !== 'no') return known;
+      if (known) continue;
+      const g = await geocode(q);
+      geo[q] = g ? { lat: g.lat, lon: g.lon, found: i === 0 && stop.queries.length > 1 ? 'civico' : 'via' } : { found: 'no' };
+      storeSave();
+      if (g) return geo[q];
+    }
+    return null;
+  }
+
+  function knownPoint(stop) {
+    for (let i = 0; i < stop.queries.length; i++) {
+      const g = state.project.geo[stop.queries[i]];
+      if (g && g.found !== 'no') return g;
+    }
+    return null;
+  }
+
+  // The road route between the points, by car, with the free OSRM service (80 points at a time).
+  async function roadRoute(points) {
+    let km = 0, minutes = 0, line = [], onRoads = true;
+    for (let a = 0; a < points.length - 1; a += 79) {
+      const chunk = points.slice(a, a + 80);
+      if (chunk.length < 2) break;
+      try {
+        const coords = chunk.map(function (x) { return x.lon.toFixed(6) + ',' + x.lat.toFixed(6); }).join(';');
+        const res = await fetch('https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&geometries=geojson');
+        const j = await res.json();
+        if (!res.ok || j.code !== 'Ok') throw new Error('percorso non trovato');
+        km += j.routes[0].distance / 1000;
+        minutes += j.routes[0].duration / 60;
+        line = line.concat(j.routes[0].geometry.coordinates.map(function (c) { return [c[1], c[0]]; }));
+      } catch (e) {
+        onRoads = false;
+        for (let i = 1; i < chunk.length; i++) km += C.airKm(chunk[i - 1], chunk[i]);
+        line = line.concat(chunk.map(function (x) { return [x.lat, x.lon]; }));
+      }
+    }
+    return { km: km, minutes: minutes, line: line, onRoads: onRoads };
+  }
+
+  function renderStopList(stops) {
+    const ol = $('route-stops');
+    ol.textContent = '';
+    stops.forEach(function (s, i) {
+      const g = s.point;
+      const state_ = g ? (g.found === 'civico' ? 'trovata con il civico' : 'trovata la via') : (s.asked ? 'non trovata' : 'da cercare');
+      ol.append(h('li', { class: g ? '' : (s.asked ? 'bad' : 'muted') },
+        h('button', { type: 'button', class: 'link', onclick: function () {
+          if (g && routeMap) routeMap.setView([g.lat, g.lon], 17);
+          goToLine(s.line);
+        } }, (i + 1) + '. ' + s.queries[0]), ' · ' + state_));
+    });
+  }
+
+  async function ensureMap() {
+    const L = await loadLeaflet();
+    if (!routeMap) {
+      routeMap = L.map($('route-map'), { zoomControl: true });
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(routeMap);
+      routeMap.setView([45.46, 9.19], 10);
+    }
+    if (!routeLayer) routeLayer = L.layerGroup().addTo(routeMap);
+    setTimeout(function () { routeMap.invalidateSize(); }, 50);
+    return L;
+  }
+
+  function drawRound(L, stops, depot, line) {
+    routeLayer.clearLayers();
+    const bounds = [];
+    if (line && line.length > 1) L.polyline(line, { color: '#2c6db3', weight: 4, opacity: 0.8 }).addTo(routeLayer);
+    if (depot) {
+      L.marker([depot.lat, depot.lon], { icon: L.divIcon({ className: 'stop-pin depot', html: 'U', iconSize: [24, 24] }) })
+        .bindTooltip('Partenza e arrivo').addTo(routeLayer);
+      bounds.push([depot.lat, depot.lon]);
+    }
+    stops.forEach(function (s, i) {
+      if (!s.point) return;
+      const html = '<span style="background:#' + C.colorOf(state.project, s.key) + ';color:#' + C.textColorOf(state.project, s.key) + '">' + (i + 1) + '</span>';
+      L.marker([s.point.lat, s.point.lon], { icon: L.divIcon({ className: 'stop-pin', html: html, iconSize: [26, 20] }) })
+        .bindTooltip((i + 1) + '. ' + s.queries[0]).addTo(routeLayer);
+      bounds.push([s.point.lat, s.point.lon]);
+    });
+    if (bounds.length) routeMap.fitBounds(bounds, { padding: [20, 20] });
+  }
+
+  // Shows on the map the points already found, without asking anything on the internet.
+  async function showKnownRound() {
+    const card = $('map-card');
+    if (!card || !card.open) return;
+    $('map-title').textContent = 'Cartina del giro' + (sz().name ? ' della ' + sz().name : '');
+    const stops = C.routeStops(state.project, state.current);
+    stops.forEach(function (s) { s.point = knownPoint(s); s.asked = s.queries.every(function (q) { return state.project.geo[q]; }); });
+    renderStopList(stops);
+    const found = stops.filter(function (s) { return s.point; }).length;
+    $('route-status').textContent = stops.length ? found + ' tappe su ' + stops.length + ' già sulla mappa.' : 'Scrivi prima il giro.';
+    try {
+      const L = await ensureMap();
+      drawRound(L, stops, null, null);
+    } catch (e) {
+      $('route-status').textContent = 'La mappa si vede solo con internet.';
+    }
+  }
+
+  async function calcRound() {
+    if (routeBusy) return;
+    routeBusy = true;
+    const status = $('route-status');
+    const total = $('route-total');
+    const k = state.current;
+    try {
+      const stops = C.routeStops(state.project, k);
+      if (!stops.length) { status.textContent = 'Scrivi prima il giro.'; return; }
+      const L = await ensureMap();
+      let depot = null;
+      const dq = state.project.depot.trim();
+      if (dq) {
+        status.textContent = 'Cerco la partenza…';
+        depot = await locate({ queries: [dq] });
+      }
+      for (let i = 0; i < stops.length; i++) {
+        if (state.current !== k) return; // the user opened another sub-zone
+        const s = stops[i];
+        s.point = knownPoint(s);
+        if (!s.point) {
+          status.textContent = 'Cerco ' + (i + 1) + ' di ' + stops.length + ': ' + s.queries[0];
+          s.point = await locate(s);
+        }
+        s.asked = true;
+        if (i % 5 === 0 || i === stops.length - 1) renderStopList(stops);
+      }
+      const points = stops.filter(function (s) { return s.point; }).map(function (s) { return s.point; });
+      if (depot) { points.unshift(depot); points.push(depot); }
+      status.textContent = 'Calcolo il percorso…';
+      const r = await roadRoute(points);
+      drawRound(L, stops, depot, r.line);
+      renderStopList(stops);
+      const found = stops.filter(function (s) { return s.point; }).length;
+      total.textContent = 'Giro' + (sz().name ? ' della ' + sz().name : '') + ': ' + r.km.toFixed(1).replace('.', ',') + ' km' +
+        (r.onRoads ? ' su strada, circa ' + Math.round(r.minutes) + ' minuti di guida senza le fermate' : ' in linea d\'aria (il calcolo su strada non ha risposto)') +
+        (depot ? ', partendo e tornando all\'ufficio' : '') + '. Tappe sulla mappa: ' + found + ' su ' + stops.length + '.';
+      status.textContent = found < stops.length ? 'Le tappe non trovate sono segnate in rosso: correggi il nome della via nel giro e ricalcola.' : 'Fatto.';
+      changed();
+    } catch (e) {
+      status.textContent = 'Non riesco a calcolare il giro: ' + e.message + '. Serve internet.';
+    } finally {
+      routeBusy = false;
+    }
   }
 
   // ------------------------------------------------------------ official street lists
@@ -2621,6 +3183,13 @@ table.help td:first-child { white-space: nowrap; }
       if (menu.open && !menu.contains(e.target)) menu.open = false;
     });
     window.addEventListener('resize', debounce(function () { if (state.els.ta) fitTextarea(state.els.ta); }, 200));
+    $('overview-card').addEventListener('toggle', renderOverview);
+    $('btn-ov-fit').addEventListener('click', function () { overviewBig = false; renderOverview(); });
+    $('btn-ov-big').addEventListener('click', function () { overviewBig = true; renderOverview(); });
+    $('btn-ov-png').addEventListener('click', downloadOverview);
+    $('map-card').addEventListener('toggle', showKnownRound);
+    $('btn-route').addEventListener('click', calcRound);
+    $('depot').addEventListener('input', function (e) { state.project.depot = e.target.value; changed(); });
   }
 
   // Offline use and "add to home screen" when the page is served from a web address.

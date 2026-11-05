@@ -62,6 +62,30 @@
       <h2>Le strisce, come si leggono: da sinistra a destra, dall'alto in basso</h2>
       <div id="strips"></div>
     </div>
+
+    <details class="card fold" id="overview-card">
+      <summary><h2>Disegno di tutto il mobile</h2></summary>
+      <p class="small muted">Tutte le sottozone una accanto all'altra, come il mobile vero: fila 1 in alto, fila 4 sulla scrivania. La riga colorata sotto ogni casella dice di quale sottozona è; la riga rossa segna il confine dentro una fila. Tocca una casella per andare alla sua riga del giro.</p>
+      <p class="actions-inline">
+        <button type="button" id="btn-ov-fit">Adatta allo schermo</button>
+        <button type="button" id="btn-ov-big">Più grande</button>
+        <button type="button" id="btn-ov-png">Scarica il disegno</button>
+      </p>
+      <div class="overview-wrap" id="overview"></div>
+      <p class="small legend" id="overview-legend"></p>
+    </details>
+
+    <details class="card fold" id="map-card">
+      <summary><h2 id="map-title">Cartina del giro</h2></summary>
+      <p class="small muted">Le vie della sottozona nell'ordine del casello, sulla mappa, con i chilometri. È gratis, con OpenStreetMap; serve internet. La prima volta ci vuole circa un secondo per via; le vie trovate restano salvate e la volta dopo è subito pronta. Alla mappa vanno solo via, civico e comune.</p>
+      <label class="small depot-label">Partenza e arrivo, per esempio l'ufficio (se vuoi)
+        <input id="depot" autocomplete="off" placeholder="es. Via Esempio 1, Borgo Esempio"></label>
+      <p class="actions-inline"><button type="button" class="primary" id="btn-route">Calcola il giro</button>
+        <span class="small muted" id="route-status"></span></p>
+      <div class="route-map" id="route-map"></div>
+      <p class="route-total" id="route-total"></p>
+      <ol class="route-stops" id="route-stops"></ol>
+    </details>
   </section>
 
   <aside class="side" aria-label="Mappa e vie">
@@ -119,7 +143,8 @@
     <p><b>La regola delle strisce</b>: nella riga sotto c'è solo il nome della via (o piazza, cascina…), steso su tutte le sue caselle; nelle caselle di sopra ci sono solo i civici. Una casella che appartiene a un'altra via, in mezzo a una via, si scrive su una riga sua (per esempio <code>VIA DEI GELSI: 37</code>): prende il suo colore e il suo nome sotto.</p>
     <p>Di solito nelle vie i dispari sono da un lato e i pari dall'altro, tutti e due a salire (<code>1..15</code> e <code>2..16</code>); nelle piazze i numeri vanno in fila, uno dopo l'altro (<code>1-12 tutti</code>).</p>
     <p><b>Una sottozona più lunga del suo casello e della sua ala</b> continua da sola nell'ultima fila della sottozona dopo (per esempio la A nella fila 4 della B), come nel mobile vero: si scrive tutto nel giro della A, e la B comincia quella fila dopo.</p>
-    <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Due vie vicine non possono avere colori simili: nell'elenco delle vie i colori troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
+    <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Nella stessa sottozona <b>nessun colore si ripete</b>: ogni via ha il suo. Due vie vicine non hanno mai colori simili. Nell'elenco delle vie i colori già usati nella sottozona e quelli troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
+    <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate.</p>
     <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>

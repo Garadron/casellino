@@ -192,6 +192,48 @@ test('colours: strong contrast, never alike next to each other, light and dark a
   }
 });
 
+test('colours never repeat in the same sub-zone, even with many streets', function () {
+  const p = Core.newProject();
+  const lines = [];
+  for (let i = 1; i <= 55; i++) lines.push('VIA NUMERO ' + i + ': 1, 3');
+  lines.push('VIA NUMERO 1: 5'); // the same street again: same colour, no new one
+  p.subzones[0].route = lines.join('\n');
+  const b = Core.newSubzone('1B', '');
+  b.route = 'VIA ALTRA: 1\nVIA SECONDA: 2';
+  p.subzones.push(b);
+  Core.assignColors(p);
+  const groups = Core.subzoneStreets(p);
+  groups.forEach(function (g) {
+    const colors = g.map(function (k) { return Core.colorOf(p, k); });
+    assert.strictEqual(new Set(colors).size, colors.length, 'colori ripetuti nella sottozona');
+  });
+  const cells = Core.allCells(Core.analyseProject(p)[0]);
+  for (let i = 1; i < cells.length; i++) {
+    if (cells[i].key === cells[i - 1].key) continue;
+    assert.ok(!Core.similarColors(Core.colorOf(p, cells[i - 1].key), Core.colorOf(p, cells[i].key)), cells[i].street);
+  }
+  // an older file with a repeated colour gets fixed
+  p.streets[groups[0][1]] = { color: Core.colorOf(p, groups[0][0]) };
+  Core.assignColors(p);
+  assert.notStrictEqual(Core.colorOf(p, groups[0][1]), Core.colorOf(p, groups[0][0]));
+});
+
+test('the stops of the round follow the frame, one per piece of street', function () {
+  const p = Core.newProject();
+  p.subzones[0].town = 'Borgo';
+  p.subzones[0].route = 'VIA A: 1, 3, 5\nVIA B: 2\n? NOMI: X\nVIA A: 7\nC.NA ALTA (2)';
+  const stops = Core.routeStops(p, 0);
+  assert.deepStrictEqual(stops.map(function (s) { return s.queries[0]; }),
+    ['VIA A 1, Borgo', 'VIA B 2, Borgo', 'VIA A 7, Borgo', 'Cascina ALTA, Borgo']);
+  assert.deepStrictEqual(stops[0].queries, ['VIA A 1, Borgo', 'VIA A, Borgo', 'A, Borgo']);
+  assert.strictEqual(stops[0].cells, 3);
+  assert.ok(Math.abs(Core.airKm({ lat: 45, lon: 9 }, { lat: 45.01, lon: 9 }) - 1.112) < 0.01);
+  // found points stay in the saved work
+  const saved = Core.sanitizeProject(JSON.parse(JSON.stringify(Object.assign(p, { geo: { 'VIA A 1, Borgo': { lat: 45, lon: 9, found: 'civico' }, x: { lat: 'a' } }, depot: 'Ufficio' }))));
+  assert.deepStrictEqual(saved.geo, { 'VIA A 1, Borgo': { lat: 45, lon: 9, found: 'civico' } });
+  assert.strictEqual(saved.depot, 'Ufficio');
+});
+
 test('one street, written in different ways, is one street', function () {
   assert.strictEqual(Core.streetKey('C.NA ALTA', 'Borgo'), Core.streetKey('CASCINA ALTA', 'borgo'));
   assert.strictEqual(Core.streetKey('V. DEI TIGLI?', 'Borgo'), Core.streetKey('VIA DEI TIGLI', 'Borgo'));

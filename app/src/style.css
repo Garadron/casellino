@@ -288,3 +288,26 @@ table.help td:first-child { white-space: nowrap; }
   .subzone label.grow-m { flex: 1 1 160px; }
   table.help td:first-child { white-space: normal; }
 }
+
+/* folding cards: drawing of the whole frame, map of the round */
+details.fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::before { content: '▸'; color: var(--muted); }
+details.fold[open] > summary::before { content: '▾'; }
+details.fold > summary h2 { margin: 0; }
+details.fold[open] > summary { margin-bottom: 8px; }
+.overview-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.overview-wrap svg { display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+.zone-key { display: inline-flex; align-items: center; gap: 6px; }
+.zone-key i { display: inline-block; width: 18px; height: 6px; border-radius: 2px; }
+.depot-label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); max-width: 420px; }
+.route-map { height: 420px; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px; background: var(--bg); }
+.route-total { font-weight: 600; }
+.route-stops { font-size: 13px; padding-left: 20px; max-height: 320px; overflow-y: auto; }
+.route-stops li.bad, .route-stops li.bad button { color: var(--bad); }
+.route-stops li.muted button { color: var(--muted); }
+.stop-pin span { display: inline-block; min-width: 22px; padding: 2px 3px; border-radius: 10px; border: 1.5px solid #111;
+  font: 700 11px/1.2 Arial, sans-serif; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.stop-pin.depot { background: #111; color: #fff; border-radius: 50%; font: 700 12px/24px Arial, sans-serif; text-align: center; }
+@media (max-width: 560px) { .route-map { height: 320px; } }
