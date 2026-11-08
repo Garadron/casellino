@@ -229,9 +229,40 @@ test('the stops of the round follow the frame, one per piece of street', functio
   assert.strictEqual(stops[0].cells, 3);
   assert.ok(Math.abs(Core.airKm({ lat: 45, lon: 9 }, { lat: 45.01, lon: 9 }) - 1.112) < 0.01);
   // found points stay in the saved work
-  const saved = Core.sanitizeProject(JSON.parse(JSON.stringify(Object.assign(p, { geo: { 'VIA A 1, Borgo': { lat: 45, lon: 9, found: 'civico' }, x: { lat: 'a' } }, depot: 'Ufficio' }))));
-  assert.deepStrictEqual(saved.geo, { 'VIA A 1, Borgo': { lat: 45, lon: 9, found: 'civico' } });
+  const saved = Core.sanitizeProject(JSON.parse(JSON.stringify(Object.assign(p, { geo: { 'VIA A 1, Borgo': { lat: 45, lon: 9, found: 'civico' },
+    'VIA B 2, Borgo': { lat: 45.1, lon: 9.1, found: 'mano' }, x: { lat: 'a' } }, depot: 'Ufficio' }))));
+  assert.deepStrictEqual(saved.geo, { 'VIA A 1, Borgo': { lat: 45, lon: 9, found: 'civico' }, 'VIA B 2, Borgo': { lat: 45.1, lon: 9.1, found: 'mano' } },
+    'a point moved by hand stays moved by hand');
   assert.strictEqual(saved.depot, 'Ufficio');
+});
+
+test('optimizing the round: shortest order from the office and back', function () {
+  const xs = [0, 5, 2, 9, 1, 7, 3, 8, 4, 6];               // the office at 0, stops on a straight road
+  const d = xs.map(function (a) { return xs.map(function (b) { return Math.abs(a - b); }); });
+  const order = Core.optimizeOrder(d);
+  assert.strictEqual(Core.tourCost(d, order), 18, 'out to 9 and back');
+  assert.deepStrictEqual(order.slice().sort(function (a, b) { return a - b; }), [1, 2, 3, 4, 5, 6, 7, 8, 9], 'every stop once');
+  // one-way streets: the matrix is not symmetric
+  const one = [[0, 1, 9], [9, 0, 1], [1, 9, 0]];
+  assert.deepStrictEqual(Core.optimizeOrder(one), [1, 2]);
+});
+
+test('optimizing the round: the route text in the new order', function () {
+  const p = Core.newProject();
+  const sz = p.subzones[0];
+  sz.town = 'Borgo';
+  sz.route = ['# inizio', 'VIA A: 1, 3', 'FINE STRISCIA', '# nota della B', 'VIA B: 2', '? NOMI: X', 'vuote 3',
+    'COMUNE: Villa', 'VIA C: 5', 'CONFINE: 1B'].join('\n');
+  const stops = Core.routeStops(p, 0);
+  assert.deepStrictEqual(stops.map(function (s) { return s.street + '@' + s.town; }), ['VIA A@Borgo', 'VIA B@Borgo', 'VIA C@Villa']);
+  const r = Core.reorderRoute(sz, stops, [2, 0, 1]);
+  // a note travels with the line under it
+  assert.strictEqual(r.route, ['COMUNE: Villa', 'VIA C: 5', 'COMUNE: Borgo', '# inizio', 'VIA A: 1, 3', '# nota della B', 'VIA B: 2', '? NOMI: X', ''].join('\n'));
+  assert.deepStrictEqual(r.dropped, ['FINE STRISCIA', 'vuote 3', 'CONFINE: 1B']);
+  // nothing is lost: the same pigeonholes, in another order
+  const before = Core.allCells(Core.analyseSubzone(sz)).map(function (c) { return c.street + c.top; }).sort();
+  const after = Core.allCells(Core.analyseSubzone(Object.assign({}, sz, { route: r.route }))).map(function (c) { return c.street + c.top; }).sort();
+  assert.deepStrictEqual(after, before.filter(function (x) { return x !== ''; }));
 });
 
 test('one street, written in different ways, is one street', function () {

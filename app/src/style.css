@@ -301,7 +301,8 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
 .zone-key { display: inline-flex; align-items: center; gap: 6px; }
 .zone-key i { display: inline-block; width: 18px; height: 6px; border-radius: 2px; }
-.depot-label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); max-width: 420px; }
+.project .depot-label { flex: 1 1 260px; }
+.project .depot-label input { width: 100%; }
 .route-map { height: 420px; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px; background: var(--bg); }
 .route-total { font-weight: 600; }
 .route-stops { font-size: 13px; padding-left: 20px; max-height: 320px; overflow-y: auto; }
@@ -359,3 +360,9 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
   border-radius: 8px; background: var(--accent-soft); border: 1px solid var(--accent); font-size: 14px; }
 textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
 .route-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* correcting the map, optimizing the round */
+.pin-btn { font-size: 12px; padding: 2px 8px; min-height: 0; border-radius: 12px; }
+.pin-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.optimize-result { margin-top: 6px; }
+.optimize-result p { margin: 4px 0; }

@@ -183,6 +183,7 @@
         if (s && typeof s.route === 'string') sz.route = s.route;
         else if (s && s.rows) sz.route = rowsToRoute(renameBigModule(s.rows), sz.modules, sz.town);
         sz.locked = s && Number(s.locked) > 0 ? Number(s.locked) : 0;
+        if (s && typeof s.routeBefore === 'string' && s.routeBefore) sz.routeBefore = s.routeBefore; // before the last optimization
         return sz;
       });
     }
@@ -196,7 +197,7 @@
       Object.keys(p.geo).forEach(function (q) {
         const g = p.geo[q];
         if (g && g.found === 'no') out.geo[q] = { found: 'no' };
-        else if (g && isFinite(g.lat) && isFinite(g.lon)) out.geo[q] = { lat: +g.lat, lon: +g.lon, found: g.found === 'via' ? 'via' : 'civico' };
+        else if (g && isFinite(g.lat) && isFinite(g.lon)) out.geo[q] = { lat: +g.lat, lon: +g.lon, found: g.found === 'via' || g.found === 'mano' ? g.found : 'civico' }; // 'mano' = moved by hand
       });
     }
     out.depot = String(p.depot || '');
@@ -1005,6 +1006,97 @@
     return 2 * R * Math.asin(Math.sqrt(x));
   }
 
+  // ---------------------------------------------------------------- optimizing the round ("gita")
+
+  // Length of a round: from the office (index 0) through the stops in `order`, back to the office.
+  function tourCost(dist, order) {
+    let cost = 0, at = 0;
+    order.forEach(function (k) { cost += dist[at][k]; at = k; });
+    return cost + dist[at][0];
+  }
+
+  /*
+   * The order of the stops 1..n with the shortest round from the office (0) and back, on a matrix of
+   * road distances (not symmetric: one-way streets). Nearest neighbour, then moving pieces of 1-3
+   * stops and reversing stretches while the round gets shorter. Good, not guaranteed best.
+   */
+  function optimizeOrder(dist) {
+    const n = dist.length - 1;
+    const left = [];
+    for (let k = 1; k <= n; k++) left.push(k);
+    let order = [], at = 0;
+    while (left.length) {
+      let best = 0;
+      for (let j = 1; j < left.length; j++) if (dist[at][left[j]] < dist[at][left[best]]) best = j;
+      at = left.splice(best, 1)[0];
+      order.push(at);
+    }
+    let cost = tourCost(dist, order), better = true;
+    while (better) {
+      better = false;
+      for (let i = 0; i < n - 1; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const tryOrder = order.slice(0, i).concat(order.slice(i, j + 1).reverse(), order.slice(j + 1));
+          const c = tourCost(dist, tryOrder);
+          if (c < cost - 1e-9) { order = tryOrder; cost = c; better = true; }
+        }
+      }
+      for (let len = 1; len <= 3; len++) {
+        for (let i = 0; i + len <= n; i++) {
+          const piece = order.slice(i, i + len), rest = order.slice(0, i).concat(order.slice(i + len));
+          for (let p = 0; p <= rest.length; p++) {
+            if (p === i) continue;
+            const tryOrder = rest.slice(0, p).concat(piece, rest.slice(p));
+            const c = tourCost(dist, tryOrder);
+            if (c < cost - 1e-9) { order = tryOrder; cost = c; better = true; break; }
+          }
+        }
+      }
+    }
+    return order;
+  }
+
+  // Lines that only say where pigeonholes stay empty or where a row ends: after a new order they mean nothing.
+  const LAYOUT_LINE = /^\s*(fine\s+striscia|fine\s+fila|striscia\s+vuota|vuot[ae](\s+\d+)?|confine\b.*)\s*$/i;
+
+  /*
+   * The route of a sub-zone with its stops in a new order (`order`: indexes into `stops`). Each stop
+   * takes its line, the notes just above it and the lines without a place on the map that follow it.
+   * Lines about empty pigeonholes are left out (returned in `dropped`); a COMUNE line is written where
+   * the town changes.
+   */
+  function reorderRoute(sz, stops, order) {
+    const lines = String(sz.route || '').split(/\r?\n/);
+    let current = -1;
+    const stopOfLine = {};
+    stops.forEach(function (s, k) { if (stopOfLine[s.line] === undefined) stopOfLine[s.line] = k; });
+    const blocks = stops.map(function () { return []; });
+    const head = [], dropped = [];
+    let notes = [];
+    lines.forEach(function (raw, i) {
+      const t = raw.trim();
+      if (!t) return;
+      if (LAYOUT_LINE.test(t)) { dropped.push(t); return; }
+      if (/^comune\s*:/i.test(t)) return;
+      if (t[0] === '#') { notes.push(raw); return; }
+      if (stopOfLine[i] !== undefined) current = stopOfLine[i];
+      const target = current < 0 ? head : blocks[current];
+      notes.forEach(function (x) { target.push(x); });
+      notes = [];
+      target.push(raw);
+    });
+    const out = head.slice();
+    let town = sz.town || '';
+    order.forEach(function (k) {
+      if (!blocks[k].length) return;
+      const t = stops[k].town || '';
+      if (norm(t) !== norm(town)) { out.push('COMUNE: ' + (t || sz.town || '')); town = t; }
+      blocks[k].forEach(function (x) { out.push(x); });
+    });
+    notes.forEach(function (x) { out.push(x); });
+    return { route: out.join('\n') + '\n', dropped: dropped };
+  }
+
   // ---------------------------------------------------------------- printing: strips packed on A4 sheets
 
   /*
@@ -1234,6 +1326,9 @@
     paletteName: paletteName,
     mapQuery: mapQuery,
     routeStops: routeStops,
+    tourCost: tourCost,
+    optimizeOrder: optimizeOrder,
+    reorderRoute: reorderRoute,
     printPieces: printPieces,
     packPages: packPages,
     airKm: airKm,

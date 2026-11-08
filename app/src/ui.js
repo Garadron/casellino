@@ -1082,17 +1082,29 @@
     return { km: km, minutes: minutes, line: line, onRoads: onRoads };
   }
 
-  function renderStopList(stops) {
+  // The stops of the open sub-zone on the map, and where the office is.
+  const round = { stops: [], depot: null, placing: null };
+
+  function depotQuery() { return (state.project.depot || '').trim(); }
+
+  function renderStopList() {
     const ol = $('route-stops');
     ol.textContent = '';
-    stops.forEach(function (s, i) {
+    round.stops.forEach(function (s, i) {
       const g = s.point;
-      const state_ = g ? (g.found === 'civico' ? 'trovata con il civico' : 'trovata la via') : (s.asked ? 'non trovata' : 'da cercare');
+      const how = g ? ({ civico: 'trovata con il civico', via: 'trovata la via', mano: 'messa a mano' })[g.found] || 'trovata'
+        : (s.asked ? 'non trovata' : 'da cercare');
+      const placing = round.placing === s;
       ol.append(h('li', { class: g ? '' : (s.asked ? 'bad' : 'muted') },
         h('button', { type: 'button', class: 'link', onclick: function () {
           if (g && routeMap) routeMap.setView([g.lat, g.lon], 17);
           goToLine(s.line);
-        } }, (i + 1) + '. ' + s.queries[0]), ' · ' + state_));
+        } }, (i + 1) + '. ' + s.queries[0]), ' · ' + how + ' ',
+        h('button', { type: 'button', class: 'pin-btn' + (placing ? ' on' : ''), onclick: function () {
+          round.placing = placing ? null : s;
+          renderStopList();
+          $('route-status').textContent = round.placing ? 'Tocca sulla mappa il punto giusto di «' + s.queries[0] + '».' : '';
+        } }, placing ? 'tocca la mappa…' : (g ? '📍 sposta' : '📍 mettila sulla mappa'))));
     });
   }
 
@@ -1104,29 +1116,62 @@
         maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(routeMap);
       routeMap.setView([45.46, 9.19], 10);
+      // a stop chosen in the list goes where the map is tapped
+      routeMap.on('click', function (e) {
+        if (!round.placing) return;
+        setPoint(round.placing.queries[0], e.latlng);
+        round.placing = null;
+      });
     }
     if (!routeLayer) routeLayer = L.layerGroup().addTo(routeMap);
     setTimeout(function () { routeMap.invalidateSize(); }, 50);
     return L;
   }
 
-  function drawRound(L, stops, depot, line) {
-    routeLayer.clearLayers();
-    const bounds = [];
-    if (line && line.length > 1) L.polyline(line, { color: '#2c6db3', weight: 4, opacity: 0.8 }).addTo(routeLayer);
-    if (depot) {
-      L.marker([depot.lat, depot.lon], { icon: L.divIcon({ className: 'stop-pin depot', html: 'U', iconSize: [24, 24] }) })
-        .bindTooltip('Partenza e arrivo').addTo(routeLayer);
-      bounds.push([depot.lat, depot.lon]);
-    }
-    stops.forEach(function (s, i) {
-      if (!s.point) return;
-      const html = '<span style="background:#' + C.colorOf(state.project, s.key) + ';color:#' + C.textColorOf(state.project, s.key) + '">' + (i + 1) + '</span>';
-      L.marker([s.point.lat, s.point.lon], { icon: L.divIcon({ className: 'stop-pin', html: html, iconSize: [26, 20] }) })
-        .bindTooltip((i + 1) + '. ' + s.queries[0]).addTo(routeLayer);
-      bounds.push([s.point.lat, s.point.lon]);
+  // A point corrected by hand: saved for that address, used from now on (round, optimization).
+  function setPoint(query, latlng) {
+    state.project.geo[query] = { lat: latlng.lat, lon: latlng.lng, found: 'mano' };
+    changed();
+    round.stops.forEach(function (s) { s.point = knownPoint(s); });
+    if (query === depotQuery()) round.depot = state.project.geo[query];
+    redraw(null, false);
+    renderStopList();
+    $('route-status').textContent = 'Punto corretto e salvato. Ricalcola il giro o l\'ottimizzazione per i chilometri.';
+  }
+
+  function redraw(line, fit, better) {
+    loadLeaflet().then(function (L) {
+      routeLayer.clearLayers();
+      const bounds = [];
+      if (line && line.length > 1) L.polyline(line, { color: '#2c6db3', weight: 4, opacity: 0.75 }).addTo(routeLayer);
+      if (better && better.length > 1) L.polyline(better, { color: '#2e7d32', weight: 5, opacity: 0.85, dashArray: '8 6' }).addTo(routeLayer);
+      if (round.depot) {
+        L.marker([round.depot.lat, round.depot.lon], { draggable: true,
+          icon: L.divIcon({ className: 'stop-pin depot', html: 'U', iconSize: [24, 24] }) })
+          .bindTooltip('Ufficio di partenza (trascinalo per correggerlo)')
+          .on('dragend', function (e) { setPoint(depotQuery(), e.target.getLatLng()); })
+          .addTo(routeLayer);
+        bounds.push([round.depot.lat, round.depot.lon]);
+      }
+      round.stops.forEach(function (s, i) {
+        if (!s.point) return;
+        const html = '<span style="background:#' + C.colorOf(state.project, s.key) + ';color:#' + C.textColorOf(state.project, s.key) + '">' + (i + 1) + '</span>';
+        L.marker([s.point.lat, s.point.lon], { draggable: true, icon: L.divIcon({ className: 'stop-pin', html: html, iconSize: [26, 20] }) })
+          .bindTooltip((i + 1) + '. ' + s.queries[0] + ' (trascinala per correggerla)')
+          .on('dragend', function (e) { setPoint(s.queries[0], e.target.getLatLng()); })
+          .addTo(routeLayer);
+        bounds.push([s.point.lat, s.point.lon]);
+      });
+      if (fit !== false && bounds.length) routeMap.fitBounds(bounds, { padding: [20, 20] });
     });
-    if (bounds.length) routeMap.fitBounds(bounds, { padding: [20, 20] });
+  }
+
+  function loadStops() {
+    round.stops = C.routeStops(state.project, state.current);
+    round.stops.forEach(function (s) { s.point = knownPoint(s); s.asked = s.queries.every(function (q) { return state.project.geo[q]; }); });
+    const dq = depotQuery();
+    round.depot = dq && state.project.geo[dq] && state.project.geo[dq].found !== 'no' ? state.project.geo[dq] : null;
+    round.placing = null;
   }
 
   // Shows on the map the points already found, without asking anything on the internet.
@@ -1134,18 +1179,43 @@
     const card = $('map-card');
     if (!card || !card.open) return;
     $('map-title').textContent = 'Cartina del giro' + (sz().name ? ' della ' + sz().name : '');
-    const stops = C.routeStops(state.project, state.current);
-    stops.forEach(function (s) { s.point = knownPoint(s); s.asked = s.queries.every(function (q) { return state.project.geo[q]; }); });
-    renderStopList(stops);
-    const found = stops.filter(function (s) { return s.point; }).length;
-    $('route-status').textContent = stops.length ? found + ' tappe su ' + stops.length + ' già sulla mappa.' : 'Scrivi prima il giro.';
+    loadStops();
+    renderStopList();
+    renderOptimizeUndo();
+    const found = round.stops.filter(function (s) { return s.point; }).length;
+    $('route-status').textContent = round.stops.length ? found + ' tappe su ' + round.stops.length + ' già sulla mappa.' : 'Scrivi prima il giro.';
     try {
-      const L = await ensureMap();
-      drawRound(L, stops, null, null);
+      await ensureMap();
+      redraw(null);
     } catch (e) {
       $('route-status').textContent = 'La mappa si vede solo con internet.';
     }
   }
+
+  // Finds on the map the office and every stop not found yet (one per second, OpenStreetMap's rule).
+  async function locateAll(k) {
+    const status = $('route-status');
+    loadStops();
+    const dq = depotQuery();
+    if (dq && !round.depot) {
+      status.textContent = 'Cerco l\'ufficio di partenza…';
+      round.depot = await locate({ queries: [dq] });
+    }
+    for (let i = 0; i < round.stops.length; i++) {
+      if (state.current !== k) return false; // another sub-zone was opened
+      const s = round.stops[i];
+      if (!s.point) {
+        status.textContent = 'Cerco ' + (i + 1) + ' di ' + round.stops.length + ': ' + s.queries[0];
+        s.point = await locate(s);
+      }
+      s.asked = true;
+      if (i % 5 === 0 || i === round.stops.length - 1) renderStopList();
+    }
+    renderStopList();
+    return true;
+  }
+
+  const kmText = function (km) { return km.toFixed(1).replace('.', ',') + ' km'; };
 
   async function calcRound() {
     if (routeBusy) return;
@@ -1154,43 +1224,120 @@
     const total = $('route-total');
     const k = state.current;
     try {
-      const stops = C.routeStops(state.project, k);
-      if (!stops.length) { status.textContent = 'Scrivi prima il giro.'; return; }
-      const L = await ensureMap();
-      let depot = null;
-      const dq = state.project.depot.trim();
-      if (dq) {
-        status.textContent = 'Cerco la partenza…';
-        depot = await locate({ queries: [dq] });
-      }
-      for (let i = 0; i < stops.length; i++) {
-        if (state.current !== k) return; // the user opened another sub-zone
-        const s = stops[i];
-        s.point = knownPoint(s);
-        if (!s.point) {
-          status.textContent = 'Cerco ' + (i + 1) + ' di ' + stops.length + ': ' + s.queries[0];
-          s.point = await locate(s);
-        }
-        s.asked = true;
-        if (i % 5 === 0 || i === stops.length - 1) renderStopList(stops);
-      }
-      const points = stops.filter(function (s) { return s.point; }).map(function (s) { return s.point; });
-      if (depot) { points.unshift(depot); points.push(depot); }
+      if (!C.routeStops(state.project, k).length) { status.textContent = 'Scrivi prima il giro.'; return; }
+      await ensureMap();
+      if (!(await locateAll(k))) return;
+      const points = round.stops.filter(function (s) { return s.point; }).map(function (s) { return s.point; });
+      if (round.depot) { points.unshift(round.depot); points.push(round.depot); }
       status.textContent = 'Calcolo il percorso…';
       const r = await roadRoute(points);
-      drawRound(L, stops, depot, r.line);
-      renderStopList(stops);
-      const found = stops.filter(function (s) { return s.point; }).length;
-      total.textContent = 'Giro' + (sz().name ? ' della ' + sz().name : '') + ': ' + r.km.toFixed(1).replace('.', ',') + ' km' +
+      redraw(r.line);
+      const found = round.stops.filter(function (s) { return s.point; }).length;
+      total.textContent = 'Giro' + (sz().name ? ' della ' + sz().name : '') + ': ' + kmText(r.km) +
         (r.onRoads ? ' su strada, circa ' + Math.round(r.minutes) + ' minuti di guida senza le fermate' : ' in linea d\'aria (il calcolo su strada non ha risposto)') +
-        (depot ? ', partendo e tornando all\'ufficio' : '') + '. Tappe sulla mappa: ' + found + ' su ' + stops.length + '.';
-      status.textContent = found < stops.length ? 'Le tappe non trovate sono segnate in rosso: correggi il nome della via nel giro e ricalcola.' : 'Fatto.';
+        (round.depot ? ', partendo e tornando all\'ufficio' : ', senza l\'ufficio (scrivilo in alto)') + '. Tappe sulla mappa: ' + found + ' su ' + round.stops.length + '.';
+      status.textContent = found < round.stops.length
+        ? 'Le tappe in rosso non sono state trovate: con «📍 mettila sulla mappa» le metti tu.'
+        : 'Fatto. Se una tappa è nel posto sbagliato, trascinala dove va.';
       changed();
     } catch (e) {
       status.textContent = 'Non riesco a calcolare il giro: ' + e.message + '. Serve internet.';
     } finally {
       routeBusy = false;
     }
+  }
+
+  // Road distances (metres) between every pair of points, free OSRM service; straight line x 1.3 if it does not answer.
+  async function distanceMatrix(points) {
+    if (points.length <= 100) {
+      try {
+        const coords = points.map(function (x) { return x.lon.toFixed(6) + ',' + x.lat.toFixed(6); }).join(';');
+        const res = await fetch('https://router.project-osrm.org/table/v1/driving/' + coords + '?annotations=distance');
+        const j = await res.json();
+        if (res.ok && j.code === 'Ok' && j.distances) {
+          return { onRoads: true, dist: j.distances.map(function (row, a) {
+            return row.map(function (d, b) { return d === null ? C.airKm(points[a], points[b]) * 1300 : d; });
+          }) };
+        }
+      } catch (e) { /* below: straight lines */ }
+    }
+    return { onRoads: false, dist: points.map(function (a) { return points.map(function (b) { return C.airKm(a, b) * 1300; }); }) };
+  }
+
+  // "Ottimizzazione gita": the order of the streets with the fewest kilometres, from the office and back.
+  async function optimizeRound() {
+    if (routeBusy) return;
+    routeBusy = true;
+    const status = $('route-status');
+    const box = $('optimize-result');
+    const k = state.current;
+    box.textContent = '';
+    try {
+      if (!depotQuery()) { status.textContent = 'Scrivi prima in alto l\'ufficio di partenza: il giro parte e torna lì.'; return; }
+      if (!C.routeStops(state.project, k).length) { status.textContent = 'Scrivi prima il giro.'; return; }
+      await ensureMap();
+      if (!(await locateAll(k))) return;
+      if (!round.depot) { status.textContent = 'Non trovo l\'ufficio di partenza sulla mappa: scrivilo meglio (via, numero, comune).'; return; }
+      const missing = round.stops.filter(function (s) { return !s.point; });
+      if (missing.length) {
+        status.textContent = 'Prima metti sulla mappa le tappe in rosso (' + missing.length + '): con «📍 mettila sulla mappa».';
+        return;
+      }
+      status.textContent = 'Calcolo le distanze fra tutte le tappe…';
+      const points = [round.depot].concat(round.stops.map(function (s) { return s.point; }));
+      const m = await distanceMatrix(points);
+      const now = round.stops.map(function (_, i) { return i + 1; });
+      status.textContent = 'Cerco l\'ordine migliore…';
+      await pause(30);
+      const best = C.optimizeOrder(m.dist);
+      const before = C.tourCost(m.dist, now) / 1000, after = C.tourCost(m.dist, best) / 1000;
+      const order = best.map(function (x) { return x - 1; });
+      const line = await roadRoute([round.depot].concat(order.map(function (i) { return round.stops[i].point; }), [round.depot]));
+      redraw(null, true, line.line);
+      const saved = before - after;
+      status.textContent = m.onRoads ? 'Fatto, con le distanze su strada.' : 'Fatto, con le distanze in linea d\'aria (il calcolo su strada non ha risposto).';
+      box.append(
+        h('p', null, h('b', null, 'Giro di adesso: ' + kmText(before) + ' · Ottimizzato: ' + kmText(after)),
+          saved > 0.05 ? ' (' + kmText(saved) + ' in meno, −' + Math.round(saved / before * 100) + '%)' : ' (il giro è già buono)'),
+        h('p', { class: 'small muted' }, 'Sulla mappa il percorso ottimizzato è la linea verde tratteggiata. Ordine nuovo: ' +
+          order.slice(0, 12).map(function (i) { return round.stops[i].street; }).join(' → ') + (order.length > 12 ? ' → …' : '')),
+        saved > 0.05 ? h('p', { class: 'actions-inline' },
+          h('button', { type: 'button', class: 'primary', onclick: function () { applyOrder(order); } }, 'Applica il nuovo ordine al giro')) : null);
+    } catch (e) {
+      status.textContent = 'Non riesco a ottimizzare: ' + e.message + '. Serve internet.';
+    } finally {
+      routeBusy = false;
+    }
+  }
+
+  function applyOrder(order) {
+    const s = sz();
+    const warn = s.locked ? '\n\nIl giro è bloccato: cambio solo l\'ordine delle vie, i civici restano quelli controllati.' : '';
+    if (!confirm('Riordino il giro della ' + (s.name || 'sottozona') + ' come l\'ottimizzazione? Cambia il posto delle vie nelle caselle. ' +
+      'Il giro di adesso resta salvato: «Torna al giro di prima» lo rimette.' + warn)) return;
+    const r = C.reorderRoute(s, round.stops, order);
+    s.routeBefore = s.route;
+    s.route = r.route;
+    changed();
+    renderSubzone();
+    refreshSide();
+    $('optimize-result').textContent = '';
+    showKnownRound();
+    toast('Giro riordinato.' + (r.dropped.length ? ' Ho tolto le righe delle caselle vuote (' + r.dropped.join(', ') + '): rimettile dove servono.' : ''));
+  }
+
+  function renderOptimizeUndo() {
+    const s = sz();
+    const box = $('optimize-undo');
+    box.textContent = '';
+    if (!s.routeBefore) return;
+    box.append(h('button', { type: 'button', onclick: function () {
+      if (!confirm('Rimetto il giro com\'era prima dell\'ultima ottimizzazione?')) return;
+      const now = s.route;
+      s.route = s.routeBefore;
+      s.routeBefore = now;
+      changed(); renderSubzone(); refreshSide(); showKnownRound();
+    } }, '↩ Torna al giro di prima'));
   }
 
   // ------------------------------------------------------------ reading strips from photos (free, on the device)
@@ -1847,6 +1994,7 @@
     $('btn-ov-png').addEventListener('click', downloadOverview);
     $('map-card').addEventListener('toggle', showKnownRound);
     $('btn-route').addEventListener('click', calcRound);
+    $('btn-optimize').addEventListener('click', optimizeRound);
     wirePhotos();
     $('btn-account').addEventListener('click', openAccount);
     window.addEventListener('online', function () { if (account.token) cloudSave(false); });

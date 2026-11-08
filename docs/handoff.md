@@ -2,6 +2,20 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 8 novembre 2026 · Tappa 4 chiusa: ufficio, cartina da correggere, ottimizzazione gita (v0.15.0)
+
+**Fatto.** `Core.optimizeOrder(dist)`: vicino più vicino, poi inversioni di tratti e spostamenti di 1-3 tappe finché il
+giro si accorcia (matrice non simmetrica, sensi unici). `Core.reorderRoute(sz, stops, order)`: ogni tappa porta la sua
+riga, le note sopra e le righe senza posto sulla mappa sotto; toglie le righe delle caselle vuote e rimette «COMUNE:»
+dove cambia. Pagina: ufficio in alto (`project.depot`); tappe e ufficio trascinabili, tappe rosse da mettere con un
+tocco; punti a mano in `project.geo` con `found: 'mano'`; `sz.routeBefore` per tornare indietro.
+**Casi limite.** Tappe non trovate: l'ottimizzazione chiede di metterle prima; più di 100 punti o OSRM fermo: distanze in
+linea d'aria x 1,3; giro bloccato: conferma.
+**Rischi.** L'euristica è buona ma non garantisce il minimo; la tabella OSRM gratuita accetta al massimo 100 punti
+(la 2A ne ha 68). Dove OpenStreetMap non ha il civico il punto cade a metà via: per questo si trascina.
+**Verifiche.** `tests/test_core.js` (36: giro migliore su punti in fila e sensi unici, riordino del testo senza perdere
+caselle, punti a mano che restano), serie completa verde, prova nel browser vero (Edge) con distanze OSRM vere.
+
 ## 8 novembre 2026 · Tappa 3 chiusa: bloccare il giro controllato (v0.14.0)
 
 **Fatto.** `subzone.locked` = quando è stato bloccato (0 = no), salvato nel JSON e nell'account. Bloccato: testo del giro e
@@ -43,6 +57,4 @@ byte per byte a prima; tolta l'opzione «salta i pezzi vuoti», mai chiesta.
 **Da decidere con Garadron.** Una prova di stampa vera sul mobile; se le caselle non combaciano, una regolazione della
 larghezza nel PDF (proposta, non fatta).
 
-**Prossime tappe** (note del telefono del 7 novembre, nel repository privato di Archivista, da cancellare a lavoro
-fatto): 4. ufficio di partenza e «Ottimizzazione gita» (#2, #3); 5. correggere i
-punti sulla cartina (#3).
+**Prossime tappe.** Le 4 note del 7 novembre sono fatte. Da Garadron: la prova di stampa sul mobile vero.

@@ -1,5 +1,22 @@
 # Registro delle versioni
 
+## v0.15.0 · 2026-11-08 · Ufficio di partenza, cartina da correggere e «Ottimizzazione gita»
+
+- **Ufficio di partenza** (centro di distribuzione): ora sta in alto, con Zona e Titolare; vale per tutto il lavoro. Il
+  giro sulla cartina parte e torna lì.
+- **Correggere la cartina**: ogni tappa (e l'ufficio) si trascina nel punto giusto; quelle non trovate, in rosso, si
+  mettono con «📍 mettila sulla mappa» e un tocco sulla mappa. I punti corretti a mano restano salvati e valgono per il
+  giro e per l'ottimizzazione.
+- **⚡ Ottimizzazione gita**: con le distanze su strada fra tutte le tappe (gratis, OSRM; in linea d'aria se non
+  risponde) cerca l'ordine delle vie con meno chilometri, dall'ufficio e ritorno, anche con i sensi unici. Mostra i km
+  di adesso e quelli ottimizzati e il percorso nuovo in verde; il giro cambia solo con «Applica il nuovo ordine».
+  «↩ Torna al giro di prima» lo rimette. Le righe delle caselle vuote (FINE STRISCIA, vuote…) dopo il riordino si
+  tolgono, e il programma lo dice. Su un giro bloccato chiede conferma: cambia l'ordine, non i civici.
+- Provato nel browser vero su un giro di prova di 6 vie: da 24,8 a 13,4 km, poi applicato e rimesso com'era.
+- Note del telefono #2 e #3.
+- File: `app/src/core.js`, `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `tests/test_core.js`,
+  `Casellino.html`, `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.14.0 · 2026-11-08 · Bloccare il giro controllato
 
 - **«🔒 Blocca il giro controllato»**: quando vie, cascine e civici di una sottozona sono controllati, il giro si blocca.
