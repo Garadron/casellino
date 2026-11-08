@@ -167,7 +167,7 @@
     box.textContent = '';
     const name = h('input', { class: 'name', value: s.name, placeholder: 'es. 2A', autocomplete: 'off' });
     name.addEventListener('input', function () { s.name = name.value; changed(); renderTabs(); });
-    const town = h('input', { class: 'town', value: s.town, placeholder: 'es. Borgo Esempio', autocomplete: 'off' });
+    const town = h('input', { class: 'town', value: s.town, placeholder: 'es. Borgo Esempio', autocomplete: 'off', readonly: !!s.locked });
     town.addEventListener('input', function () { s.town = town.value; changed(); refreshRoute(); refreshSide(); });
     const pick = h('div', { class: 'modules-pick', role: 'group', 'aria-label': 'Moduli' });
     const drawn = !!state.project.wall;
@@ -224,6 +224,7 @@
       placeholder: 'VIA DEI TIGLI: 1..15, 14..2\nVIA DELLE ROSE: 1/3, 5, 7 (2)\nCASCINA ALTA',
     });
     ta.value = s.route;
+    ta.readOnly = !!s.locked;
     const els = {
       ta: ta,
       used: h('span', { class: 'used' }),
@@ -250,10 +251,23 @@
     const empty = !state.project.subzones.some(function (x) { return x.route.trim(); });
     box.append(
       h('div', { class: 'row-head' }, h('h2', null, 'Il giro' + (s.name ? ' della ' + s.name : '')), els.meter, els.used),
-      h('p', { class: 'route-actions' },
-        h('button', { type: 'button', class: 'primary photo-btn', onclick: openPhotos }, '📷 Carica e leggi le foto delle strisce')),
+      s.locked
+        ? h('p', { class: 'locked-banner' },
+            '🔒 Giro controllato e bloccato (' + new Date(s.locked).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) +
+            '): vie e civici non si cambiano per sbaglio. ',
+            h('button', { type: 'button', onclick: function () {
+              if (!confirm('Sblocco il giro della ' + (s.name || 'sottozona') + '? Potrai di nuovo cambiare vie e civici.')) return;
+              s.locked = 0; changed(); renderSubzone();
+            } }, 'Sblocca'))
+        : h('p', { class: 'route-actions' },
+            h('button', { type: 'button', class: 'primary photo-btn', onclick: openPhotos }, '📷 Carica e leggi le foto delle strisce'),
+            h('button', { type: 'button', onclick: function () {
+              if (!confirm('Hai controllato tutte le vie, le cascine e i civici di questo giro? Lo blocco: non si potrà cambiare per sbaglio. (Si sblocca quando vuoi.)')) return;
+              s.locked = Date.now(); changed(); renderSubzone();
+            } }, '🔒 Blocca il giro controllato')),
       h('p', { class: 'small muted hint' },
-        'Scrivi il giro dall\'inizio alla fine, una via per riga, oppure fallo scrivere dalle foto qui sopra. Le caselle si riempiono come le righe di un libro: ' +
+        (s.locked ? '' : 'Scrivi il giro dall\'inizio alla fine, una via per riga, oppure fallo scrivere dalle foto qui sopra. ') +
+        'Le caselle si riempiono come le righe di un libro: ' +
         'da sinistra a destra e dall\'alto in basso (fila 1 di ogni modulo, poi fila 2…). ',
         h('button', { type: 'button', class: 'link', onclick: function () { $('dlg-help').showModal(); } }, 'Come si scrive'),
         empty ? ' · ' : null,
@@ -1357,6 +1371,7 @@
       const text = $('foto-result').value.trim();
       if (!text) return;
       const s = sz();
+      if (s.locked) { toast('Il giro è bloccato: sbloccalo per aggiungere quello letto dalle foto.'); return; }
       s.route = (s.route.replace(/\s+$/, '') + (s.route.trim() ? '\n' : '') + text + '\n');
       state.els.ta.value = s.route;
       fitTextarea(state.els.ta);

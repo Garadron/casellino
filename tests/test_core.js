@@ -443,6 +443,13 @@ test('map query sends only street, number, town', function () {
   assert.strictEqual(Core.mapQuery('', '12', 'Borgo'), '');
 });
 
+test('a locked route stays locked in the saved work', function () {
+  const p = Core.newProject();
+  p.subzones[0].locked = 1762560000000;
+  assert.strictEqual(Core.sanitizeProject(JSON.parse(JSON.stringify(p))).subzones[0].locked, 1762560000000);
+  assert.strictEqual(Core.sanitizeProject({ subzones: [{ name: 'x', locked: 'no' }] }).subzones[0].locked, 0);
+});
+
 test('sanitize keeps good data and drops bad colours', function () {
   const p = Core.sanitizeProject({ zone: 3, subzones: [{ name: 'X', route: 'a' }], streets: { k: { color: '#abcdef' }, z: { color: 'red' } } });
   assert.strictEqual(p.zone, '3');

@@ -67,6 +67,15 @@ function caretAt(ta, needle, offset) {
   assert.notStrictEqual(text('.route .used'), before, 'il conto cambia scrivendo');
   assert.ok(/VIA NUOVA/.test(text('#streets')), 'la via nuova compare nell\'elenco');
 
+  // lock the checked route: the text cannot change, then unlock
+  win.confirm = function () { return true; };
+  [...doc.querySelectorAll('.route-actions button')].find(function (b) { return /Blocca/.test(b.textContent); }).dispatchEvent(new win.Event('click'));
+  assert.ok(doc.querySelector('textarea.route-text').readOnly, 'giro bloccato');
+  assert.ok(/bloccato/.test(text('.locked-banner')));
+  assert.strictEqual(doc.querySelector('.photo-btn'), null, 'niente foto sul giro bloccato');
+  [...doc.querySelectorAll('.locked-banner button')][0].dispatchEvent(new win.Event('click'));
+  assert.strictEqual(doc.querySelector('textarea.route-text').readOnly, false, 'sbloccato');
+
   // the three ways to print
   ['btn-pdf', 'btn-excel', 'btn-excel-model'].forEach(function (id) { doc.getElementById(id).dispatchEvent(new win.Event('click')); });
   const toastText = doc.querySelector('.toast') ? doc.querySelector('.toast').textContent : '';

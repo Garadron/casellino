@@ -1,5 +1,14 @@
 # Registro delle versioni
 
+## v0.14.0 · 2026-11-08 · Bloccare il giro controllato
+
+- **«🔒 Blocca il giro controllato»**: quando vie, cascine e civici di una sottozona sono controllati, il giro si blocca.
+  Il testo del giro e il comune diventano di sola lettura, la lettura delle foto non aggiunge niente, e in cima al giro
+  c'è scritto quando è stato bloccato. «Sblocca» lo riapre, chiedendo conferma. Il blocco resta nel file e nell'account.
+- Nota del telefono #2 (prima parte).
+- File: `app/src/core.js`, `app/src/ui.js`, `app/src/style.css`, `tests/test_core.js`, `tests/test_pagina.js`,
+  `Casellino.html`, `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.13.0 · 2026-11-08 · Aprire gli Excel già fatti
 
 - **«Apri»** (e «Altro → Apri un Excel già fatto») legge anche gli Excel delle strisce, fatti con il modello (anche

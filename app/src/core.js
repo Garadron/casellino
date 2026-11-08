@@ -136,6 +136,7 @@
       town: town || '',
       modules: { alaA: false, casello: true, alaB: true },
       route: '',
+      locked: 0,   // when the route was checked and locked (time), 0 = not locked
     };
   }
 
@@ -181,6 +182,7 @@
         });
         if (s && typeof s.route === 'string') sz.route = s.route;
         else if (s && s.rows) sz.route = rowsToRoute(renameBigModule(s.rows), sz.modules, sz.town);
+        sz.locked = s && Number(s.locked) > 0 ? Number(s.locked) : 0;
         return sz;
       });
     }

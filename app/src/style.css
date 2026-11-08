@@ -353,3 +353,9 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
 /* the print menu, highlighted like the main button */
 .menu summary.primary-summary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 .print-menu .menu-list { min-width: 280px; }
+
+/* a checked and locked route */
+.locked-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; padding: 8px 12px;
+  border-radius: 8px; background: var(--accent-soft); border: 1px solid var(--accent); font-size: 14px; }
+textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
+.route-actions { display: flex; flex-wrap: wrap; gap: 8px; }
