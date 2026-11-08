@@ -56,6 +56,7 @@ per venderlo o farlo adottare da un'azienda serve il permesso scritto dell'autor
   - `node tests/test_pagina.js`: la pagina in un browser simulato (serve jsdom: `npm install jsdom` in una cartella
     qualsiasi, poi `JSDOM_PATH=<cartella>/node_modules/jsdom`);
   - `python tests/verifica_misure.py <file.xlsx>`: misure uguali al modello (da `tests/misure_modello.json`);
+  - `python tests/prova_foto_edge.py`: le foto delle strisce in Edge vero (serve `pip install websocket-client`);
   - `tools/prova_in_excel.ps1`: apre il file in Excel, confronta le misure con il modello e crea il PDF della stampa.
 - Il server degli account sta in `server/` (Cloudflare Worker + D1, piano gratuito): `cd server && npm install`,
   prova in locale con `npx wrangler dev --local --port 8799`, pubblica con `npx wrangler deploy`. La chiave segreta

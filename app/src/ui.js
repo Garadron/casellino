@@ -264,9 +264,11 @@
             h('button', { type: 'button', onclick: function () {
               if (!confirm('Sblocco il giro della ' + (s.name || 'sottozona') + '? Potrai di nuovo cambiare vie e civici.')) return;
               s.locked = 0; changed(); renderSubzone();
-            } }, 'Sblocca'))
+            } }, 'Sblocca'), ' ',
+            window.indexedDB ? h('button', { type: 'button', class: 'photos-view-btn', onclick: function () { openViewer(); } }, '🖼 Guarda le foto') : null)
         : h('p', { class: 'route-actions' },
             h('button', { type: 'button', class: 'primary photo-btn', onclick: openPhotos }, '📷 Carica e leggi le foto delle strisce'),
+            window.indexedDB ? h('button', { type: 'button', class: 'photos-view-btn', onclick: function () { openViewer(); } }, '🖼 Guarda le foto') : null,
             h('button', { type: 'button', title: 'I civici scelti (cursore o selezione) li consegna un collega, di un\'altra linea: nelle strisce la casella del numero è sottolineata. Premi di nuovo per togliere. Dal telefono: tocca la casella nella striscia.',
               onmousedown: function (e) { e.preventDefault(); }, onclick: toggleOtherLine }, '👥 Lo consegna un collega'),
             h('button', { type: 'button', onclick: function () {
@@ -284,6 +286,8 @@
       h('div', { class: 'now' }, els.nowTitle, els.nowWrap));
     fitTextarea(ta);
     refreshRoute();
+    renderPhotoButton();
+    if ($('dlg-photos').open) openViewer(0);   // another sub-zone: its photos
   }
 
   // Grows with the text, wrapped lines included, up to most of the screen, then scrolls.
@@ -1826,6 +1830,7 @@
     $('foto-files').addEventListener('change', function (e) {
       photo.files = Array.prototype.slice.call(e.target.files || []);
       if (photo.files.length) showPhoto(0);
+      if (photo.files.length && window.indexedDB) keepPhotos(photo.files).then(renderPhotoButton).catch(function () { /* only a convenience */ });
     });
     $('foto-rot').addEventListener('input', function (e) { photo.angle = +e.target.value; photo.rect = null; drawPhoto(); });
     const stage = $('foto-canvas');
@@ -1856,6 +1861,132 @@
       refreshRoute();
       refreshSide();
       toast('Aggiunto in fondo al giro: controlla le righe con «?».');
+    });
+  }
+
+
+  // ------------------------------------------------------------ the photos of the strips, to look at while writing
+
+  /*
+   * The photos chosen for a sub-zone stay on this device only (IndexedDB, smaller copies), never in the
+   * account or on the internet: they show the real strips. The viewer stays open beside the route
+   * (on the phone, in the top half), so the numbers can be copied while looking at them.
+   */
+  const viewer = { list: [], index: 0, zoom: 1, url: null };
+  let photoDbReady = null;
+  function photoDb() {
+    if (!window.indexedDB) return Promise.reject(new Error('questo browser non tiene le foto'));
+    if (!photoDbReady) {
+      photoDbReady = new Promise(function (ok, ko) {
+        const r = indexedDB.open('casellino-foto', 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore('foto', { keyPath: 'id', autoIncrement: true }).createIndex('sz', 'sz'); };
+        r.onsuccess = function () { ok(r.result); };
+        r.onerror = function () { photoDbReady = null; ko(r.error); };
+      });
+    }
+    return photoDbReady;
+  }
+  function photoStore(mode) { return photoDb().then(function (db) { return db.transaction('foto', mode).objectStore('foto'); }); }
+  const ask = function (req) { return new Promise(function (ok, ko) { req.onsuccess = function () { ok(req.result); }; req.onerror = function () { ko(req.error); }; }); };
+
+  async function photosOf(szId) {
+    const list = await ask((await photoStore('readonly')).index('sz').getAll(szId));
+    return list.sort(function (a, b) { return a.order - b.order; });
+  }
+  // A smaller copy (at most 2400 px on the long side): sharp enough to read, light on the device.
+  async function smallCopy(file) {
+    const img = await createImageBitmap(file);
+    const k = Math.min(1, 2400 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return new Promise(function (ok) { c.toBlob(function (b) { ok(b || file); }, 'image/jpeg', 0.85); });
+  }
+  // Keeps the photos of the open sub-zone (the same photo twice is kept once).
+  async function keepPhotos(files) {
+    const szId = sz().id;
+    const have = await photosOf(szId);
+    let order = have.length ? have[have.length - 1].order + 1 : 0, added = 0;
+    for (const f of files) {
+      const sign = f.name + '|' + f.size + '|' + f.lastModified;
+      if (have.some(function (x) { return x.sign === sign; })) continue;
+      const blob = await smallCopy(f);
+      await ask((await photoStore('readwrite')).add({ sz: szId, sign: sign, name: f.name, blob: blob, order: order++, added: Date.now() }));
+      added++;
+    }
+    return added;
+  }
+
+  async function openViewer(at) {
+    const dlg = $('dlg-photos');
+    try { viewer.list = await photosOf(sz().id); } catch (e) { toast('Le foto non si possono tenere su questo browser: ' + e.message); return; }
+    viewer.index = Math.max(0, Math.min(at === undefined ? viewer.index : at, viewer.list.length - 1));
+    viewer.zoom = 1;
+    if (!dlg.open) dlg.show();   // not modal: the route can be written while looking
+    document.body.classList.add('viewer-open');
+    showViewer();
+  }
+  function showViewer() {
+    const n = viewer.list.length;
+    const img = $('pv-img');
+    if (viewer.url) { URL.revokeObjectURL(viewer.url); viewer.url = null; }
+    $('pv-title').textContent = 'Foto delle strisce' + (sz().name ? ' della ' + sz().name : '');
+    $('pv-count').textContent = n ? (viewer.index + 1) + ' di ' + n : '';
+    $('pv-empty').hidden = n > 0;
+    img.hidden = !n;
+    ['pv-prev', 'pv-next', 'pv-del', 'pv-zoom-in', 'pv-zoom-out'].forEach(function (id) { $(id).disabled = !n; });
+    if (!n) return;
+    $('pv-prev').disabled = viewer.index === 0;
+    $('pv-next').disabled = viewer.index === n - 1;
+    viewer.url = URL.createObjectURL(viewer.list[viewer.index].blob);
+    img.src = viewer.url;
+    img.style.width = (viewer.zoom * 100) + '%';
+  }
+  function zoomViewer(z) {
+    const stage = $('pv-stage');
+    const cx = (stage.scrollLeft + stage.clientWidth / 2) / (stage.scrollWidth || 1);
+    const cy = (stage.scrollTop + stage.clientHeight / 2) / (stage.scrollHeight || 1);
+    viewer.zoom = Math.max(1, Math.min(5, z));
+    $('pv-img').style.width = (viewer.zoom * 100) + '%';
+    stage.scrollLeft = cx * stage.scrollWidth - stage.clientWidth / 2;   // the same spot stays in the middle
+    stage.scrollTop = cy * stage.scrollHeight - stage.clientHeight / 2;
+  }
+  function renderPhotoButton() {
+    const b = document.querySelector('.photos-view-btn');
+    if (!b || !window.indexedDB) return;
+    photosOf(sz().id).then(function (list) { b.textContent = '🖼 Guarda le foto' + (list.length ? ' (' + list.length + ')' : ''); }).catch(function () { /* none */ });
+  }
+  async function forgetAllPhotos() {
+    if (!window.indexedDB) return;
+    try { (await photoStore('readwrite')).clear(); } catch (e) { /* nothing kept */ }
+  }
+
+  function wireViewer() {
+    $('pv-close').addEventListener('click', function () { $('dlg-photos').close(); });
+    $('dlg-photos').addEventListener('close', function () { document.body.classList.remove('viewer-open'); });
+    $('pv-prev').addEventListener('click', function () { viewer.index--; viewer.zoom = 1; showViewer(); });
+    $('pv-next').addEventListener('click', function () { viewer.index++; viewer.zoom = 1; showViewer(); });
+    $('pv-zoom-in').addEventListener('click', function () { zoomViewer(viewer.zoom * 1.5); });
+    $('pv-zoom-out').addEventListener('click', function () { zoomViewer(viewer.zoom / 1.5); });
+    $('pv-img').addEventListener('dblclick', function () { zoomViewer(viewer.zoom > 1 ? 1 : 2.5); });
+    $('pv-add').addEventListener('change', async function (e) {
+      const files = Array.prototype.slice.call(e.target.files || []);
+      e.target.value = '';
+      if (!files.length) return;
+      $('pv-count').textContent = 'Salvo le foto…';
+      try {
+        const added = await keepPhotos(files);
+        await openViewer(viewer.list.length);
+        renderPhotoButton();
+        toast(added ? (added === 1 ? 'Foto aggiunta.' : added + ' foto aggiunte.') : 'Queste foto c\'erano già.');
+      } catch (err) { toast('Non riesco a tenere le foto: ' + err.message); showViewer(); }
+    });
+    $('pv-del').addEventListener('click', async function () {
+      const f = viewer.list[viewer.index];
+      if (!f || !confirm('Tolgo questa foto da questo dispositivo? (L\'originale nella galleria del telefono resta.)')) return;
+      await ask((await photoStore('readwrite')).delete(f.id));
+      await openViewer(Math.min(viewer.index, viewer.list.length - 2));
+      renderPhotoButton();
     });
   }
 
@@ -2171,6 +2302,8 @@
     renderAccountButton();
     if (forget) {
       try { localStorage.removeItem(STORE_KEY); } catch (e) { /* nothing saved */ }
+      forgetAllPhotos();
+      if ($('dlg-photos').open) $('dlg-photos').close();
       state.project = C.newProject();
       state.current = 0;
       renderAll();
@@ -2401,6 +2534,7 @@
     $('btn-route').addEventListener('click', calcRound);
     $('btn-optimize').addEventListener('click', optimizeRound);
     wirePhotos();
+    wireViewer();
     $('btn-account').addEventListener('click', openAccount);
     window.addEventListener('online', function () { if (account.token) cloudSave(false); });
     [['depot-town', 'comune'], ['depot-prov', 'provincia'], ['depot-street', 'via'], ['depot-number', 'civico']].forEach(function (f) {

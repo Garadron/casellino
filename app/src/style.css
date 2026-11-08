@@ -174,7 +174,8 @@ textarea.route-text {
 .strip-head .used.full { color: var(--ok); }
 p.bad { color: var(--bad); font-size: 14px; }
 .actions-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-a.btn {
+a.btn, label.btn {
+  cursor: pointer;
   display: inline-flex; align-items: center; min-height: 36px; padding: 7px 12px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--panel); color: var(--text); text-decoration: none;
 }
@@ -235,6 +236,23 @@ a.btn {
 /* mail for another line: the number is underlined with a thick line, in the colour of the writing */
 .cell.top.other { box-shadow: inset 0 -4px 0 var(--ink, #111); }
 .cell.top.other.unsure { box-shadow: inset 0 -4px 0 var(--ink, #111), inset 0 0 0 2px #d93025; }
+/* the photos of the strips: a window that stays open beside the route (top half on the phone) */
+.photo-viewer { position: fixed; inset: 70px 16px auto auto; width: min(620px, 46vw); height: min(72vh, 640px); margin: 0;
+  padding: 0; z-index: 60; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text, inherit);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.photo-viewer[open] { display: flex; flex-direction: column; }
+.pv-head, .pv-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; }
+.pv-head { border-bottom: 1px solid var(--line); }
+.pv-foot { border-top: 1px solid var(--line); }
+.pv-tools { margin-left: auto; display: flex; gap: 4px; }
+.pv-tools button { min-width: 36px; padding: 4px 8px; }
+.pv-stage { flex: 1; overflow: auto; background: #111; touch-action: pan-x pan-y pinch-zoom; }
+.pv-stage img { display: block; max-width: none; height: auto; }
+.pv-stage p { color: #ccc; padding: 12px; }
+@media (max-width: 760px) {
+  .photo-viewer { inset: 0 0 auto 0; width: 100%; height: 48vh; border-radius: 0 0 10px 10px; }
+  body.viewer-open { padding-top: 48vh; }   /* the route can always be brought under the photo */
+}
 .colleague-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .cell.sel { outline: 3px solid var(--accent); outline-offset: -3px; z-index: 2; }
 .cut { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #6b7480; pointer-events: none; }

@@ -1,5 +1,19 @@
 # Registro delle versioni
 
+## v0.23.0 · 2026-11-09 · Le foto delle strisce, da guardare mentre scrivi
+
+- **«🖼 Guarda le foto»** sopra il giro (anche quando è bloccato): una finestra che **resta aperta mentre scrivi**, sul
+  telefono nella metà in alto. Foto dopo foto (◀ ▶), più grande o più piccola (＋ －, doppio clic), «＋ Aggiungi foto»
+  anche senza farle leggere, «🗑 Togli questa foto» con conferma.
+- Le foto scelte per la lettura si tengono da sole, una volta sola anche se le scegli di nuovo, per sottozona.
+- **Restano solo su questo dispositivo** (una copia più leggera, al massimo 2400 punti di lato): non vanno
+  nell'account né su internet, perché mostrano le strisce vere. Uscendo dall'account e togliendo il lavoro dal
+  dispositivo, spariscono anche le foto.
+- Prova nuova nel browser vero: `python tests/prova_foto_edge.py` (Edge, in tempo reale: il browser simulato delle
+  altre prove non tiene le foto).
+- File: `app/src/ui.js` (finestra delle foto, `keepPhotos`, `photosOf`), `app/src/style.css`, `app/index.src.html`,
+  `tests/prova_foto_edge.py`, `README.md`, `Casellino.html`, `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.22.0 · 2026-11-09 · «Lo consegna un collega»: i civici di un'altra linea, sottolineati
 
 - Alcune caselle della zona tengono posta che consegna un collega di un'altra linea. Ora si segnano:

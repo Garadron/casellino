@@ -2,6 +2,16 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 9 novembre 2026 · Tappa 12 chiusa: le foto da guardare (v0.23.0)
+
+**Fatto.** IndexedDB `casellino-foto`, archivio `foto` { id, sz, sign, name, blob, order, added }, indice `sz`; copie
+JPEG 0,85 al massimo 2400 px (`smallCopy`), doppioni riconosciuti da nome+peso+data (`sign`). `dlg-photos` aperto con
+`show()` (non modale) così si scrive il giro; sul telefono metà alta e `body.viewer-open` lascia spazio sopra. Uscita
+dall'account con «togli il lavoro»: `forgetAllPhotos`.
+**Verifiche.** `tests/prova_foto_edge.py` (Edge via DevTools, tempo reale: la modalità con il tempo accelerato non
+aspetta IndexedDB e sembrava rotta), schermate su computer e telefono, serie completa.
+**Limiti.** Le foto non passano da un dispositivo all'altro (l'account gratuito non ha spazio per le foto).
+
 ## 9 novembre 2026 · Tappa 11 chiusa: «Lo consegna un collega» (v0.22.0)
 
 **Fatto.** `*` in fondo a un civico o a un nome da solo (prima o dopo «(2)») = `other: true` sulla casella
