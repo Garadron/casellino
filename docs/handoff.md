@@ -2,6 +2,17 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 8 novembre 2026 · Tappa 7 chiusa: il centro di partenza (v0.18.0)
+
+**Fatto.** `project.depotName` e `project.depotPoint` ({ lat, lon, found: 'mano' | 'gps' }). In `ui.js`: `depotQueries()`
+(l'indirizzo e la sua forma senza parentesi e trattini), `depotPoint()` (prima il punto a mano, poi `geo` dell'indirizzo:
+così valgono anche le correzioni vecchie salvate in `geo`), `findDepot`, `setDepotPoint` (con `addressOf`, la ricerca
+al contrario di Nominatim, solo se l'indirizzo è vuoto), `pickDepotOnMap` (`round.placing = 'depot'`), `useMyPosition`.
+Una sola coda per Nominatim (`nominatim()`), una richiesta al secondo.
+**Verifiche.** `tests/test_core.js` (37), `tests/test_pagina.js` (posizione finta, l'indirizzo scritto resta), in Edge
+vero: indirizzo con trattino e parentesi trovato da solo; tocco sulla mappa → «messo a mano» e indirizzo scritto.
+**Rischi.** La ricerca al contrario a volte dà civici strani: si scrive il numero solo se sembra un civico.
+
 ## 8 novembre 2026 · Tappa 6 chiusa: email e nome utente (v0.17.0)
 
 **Fatto.** Account: `email_impronta` (HMAC di `email:<email minuscola>`, non legata all'id, così un domani si cerca

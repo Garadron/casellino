@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.17.0';</script>
+<script>window.CASELLINO_VERSION = '0.18.0';</script>
 <style>
 :root {
   --bg: #f4f5f7;
@@ -319,7 +319,10 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .zone-key { display: inline-flex; align-items: center; gap: 6px; }
 .zone-key i { display: inline-block; width: 18px; height: 6px; border-radius: 2px; }
 .project .depot-label { flex: 1 1 260px; }
-.project .depot-label input { width: 100%; }
+.project .depot-label input, .project .depot-name input { width: 100%; }
+.project .depot-name { flex: 1 1 180px; }
+.depot-tools { flex: 1 1 100%; margin: -4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.depot-tools .bad { color: var(--bad); }
 .route-map { height: 420px; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px; background: var(--bg); }
 .route-total { font-weight: 600; }
 .route-stops { font-size: 13px; padding-left: 20px; max-height: 320px; overflow-y: auto; }
@@ -445,8 +448,14 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     <div class="card project">
       <label>Zona <input id="zone" autocomplete="off" placeholder="es. 9"></label>
       <label>Titolare <input id="owner" autocomplete="off" placeholder="il tuo nome"></label>
-      <label class="depot-label">Ufficio di partenza (centro di distribuzione)
+      <label class="depot-name">Nome del centro di partenza
+        <input id="depot-name" autocomplete="off" placeholder="es. Centro di Borgo Esempio"></label>
+      <label class="depot-label">Indirizzo del centro
         <input id="depot" autocomplete="off" placeholder="es. Via Esempio 1, Borgo Esempio"></label>
+      <p class="depot-tools small"><span id="depot-status" class="muted"></span>
+        <button type="button" class="pin-btn" id="btn-depot-find">🔎 Cerca sulla mappa</button>
+        <button type="button" class="pin-btn" id="btn-depot-map">🗺 Scegli sulla mappa</button>
+        <button type="button" class="pin-btn" id="btn-depot-gps">📡 Usa la mia posizione</button></p>
     </div>
 
     <div class="tabs" id="tabs" role="tablist"></div>
@@ -480,7 +489,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
         <button type="button" id="btn-optimize">⚡ Ottimizzazione gita</button>
         <span id="optimize-undo"></span>
         <span class="small muted" id="route-status"></span></p>
-      <p class="small muted">Il giro parte e torna all'ufficio di partenza scritto in alto. Una tappa nel posto sbagliato si trascina dove va; quelle in rosso si mettono sulla mappa dall'elenco.</p>
+      <p class="small muted">Il giro parte e torna al centro di partenza scritto in alto (se non si trova: «Scegli sulla mappa» o «Usa la mia posizione», lassù). Una tappa nel posto sbagliato si trascina dove va; quelle in rosso si mettono sulla mappa dall'elenco.</p>
       <div id="optimize-result" class="optimize-result"></div>
       <div class="route-map" id="route-map"></div>
       <p class="route-total" id="route-total"></p>
@@ -545,7 +554,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     <p><b>Una sottozona più lunga del suo casello e della sua ala</b> continua da sola nell'ultima fila della sottozona dopo (per esempio la A nella fila 4 della B), come nel mobile vero: si scrive tutto nel giro della A, e la B comincia quella fila dopo.</p>
     <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Nella stessa sottozona <b>nessun colore si ripete</b>: ogni via ha il suo. Due vie vicine non hanno mai colori simili. Nell'elenco delle vie i colori già usati nella sottozona e quelli troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
     <p><b>Un Excel già fatto</b> (fatto con il modello, anche vecchio): «Apri» o «Altro → Apri un Excel già fatto». Ogni foglio scritto diventa una sottozona, con il suo giro letto striscia per striscia: poi si corregge e si ristampa.</p>
-    <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. Lì si dice anche com'è fatto il mobile: i moduli da sinistra a destra (casello o ala) e di quale sottozona è ognuno, in qualsiasi ordine (ala, casello, ala, casello… oppure ala, ala, casello, casello…). Con la <b>matita</b> del colore di una sottozona si tocca la casella da cui comincia: da lì verso destra quella fila è sua (per esempio la B che prende metà dell'ultima fila della A). La gomma toglie il segno. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate. Una tappa nel posto sbagliato si trascina dove va. <b>Ottimizzazione gita</b> cerca l'ordine delle vie con meno chilometri, partendo e tornando all'ufficio di partenza scritto in alto; il giro cambia solo se premi «Applica», e «Torna al giro di prima» lo rimette.</p>
+    <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. Lì si dice anche com'è fatto il mobile: i moduli da sinistra a destra (casello o ala) e di quale sottozona è ognuno, in qualsiasi ordine (ala, casello, ala, casello… oppure ala, ala, casello, casello…). Con la <b>matita</b> del colore di una sottozona si tocca la casella da cui comincia: da lì verso destra quella fila è sua (per esempio la B che prende metà dell'ultima fila della A). La gomma toglie il segno. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate. Una tappa nel posto sbagliato si trascina dove va. <b>Ottimizzazione gita</b> cerca l'ordine delle vie con meno chilometri, partendo e tornando al centro di partenza scritto in alto (nome e indirizzo; se l'indirizzo non si trova, il punto si sceglie sulla mappa o con la posizione del telefono); il giro cambia solo se premi «Applica», e «Torna al giro di prima» lo rimette.</p>
     <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>
@@ -762,7 +771,9 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       streets: {},      // streetKey -> { color: 'RRGGBB' }
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
-      depot: '',        // where the round starts and ends (the office), optional
+      depot: '',        // address of the office where the round starts and ends, optional
+      depotName: '',    // its name, optional
+      depotPoint: null, // its point when put on the map by hand or with the device position: { lat, lon, found: 'mano' | 'gps' }
       wall: null,       // the frame drawn by the user (modules left to right, pencil marks), optional
       cloud: null,      // where it is saved in the account: { id, versione, aggiornato_il }, optional
     };
@@ -813,6 +824,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       });
     }
     out.depot = String(p.depot || '');
+    out.depotName = String(p.depotName || '');
+    const d = p.depotPoint;
+    out.depotPoint = d && isFinite(d.lat) && isFinite(d.lon) && d.lat !== null && d.lon !== null
+      ? { lat: +d.lat, lon: +d.lon, found: d.found === 'gps' ? 'gps' : 'mano' } : null;
     out.wall = sanitizeWall(p.wall, out.subzones);
     if (p.cloud && /^[A-Za-z0-9_-]{8,40}$/.test(String(p.cloud.id || ''))) {
       out.cloud = { id: String(p.cloud.id), versione: Number(p.cloud.versione) || 0, aggiornato_il: Number(p.cloud.aggiornato_il) || 0 };
@@ -3522,6 +3537,8 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     $('zone').value = state.project.zone;
     $('owner').value = state.project.owner;
     $('depot').value = state.project.depot || '';
+    $('depot-name').value = state.project.depotName || '';
+    renderDepotStatus();
   }
 
   function openSubzone(i) {
@@ -4421,16 +4438,25 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   }
 
   // Asks OpenStreetMap where an address is: one request per second at most (their rule).
-  async function geocode(q) {
+  async function nominatim(path) {
     const wait = 1100 - (Date.now() - lastAsk);
     if (wait > 0) await pause(wait);
     lastAsk = Date.now();
     // no extra headers: a plain request needs no cross-site pre-check
-    const res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=it&accept-language=it&q=' +
-      encodeURIComponent(q));
+    const res = await fetch('https://nominatim.openstreetmap.org/' + path + '&format=jsonv2&accept-language=it');
     if (!res.ok) throw new Error('il servizio delle mappe non risponde (' + res.status + ')');
-    const j = await res.json();
+    return res.json();
+  }
+  async function geocode(q) {
+    const j = await nominatim('search?limit=1&countrycodes=it&q=' + encodeURIComponent(q));
     return j.length ? { lat: +j[0].lat, lon: +j[0].lon } : null;
+  }
+  // The address of a point ("Via Esempio 1, Borgo Esempio"), or '' if there is none.
+  async function addressOf(p) {
+    const a = (await nominatim('reverse?zoom=18&lat=' + p.lat + '&lon=' + p.lon)).address || {};
+    if (!a.road) return '';
+    const number = /^\d{1,4}\s?[a-z]?$/i.test(a.house_number || '') ? ' ' + a.house_number : '';
+    return [a.road + number, a.village || a.town || a.city || a.hamlet || a.municipality].filter(Boolean).join(', ');
   }
 
   // The point of a stop: first with the house number, then the street alone. Found points stay
@@ -4484,7 +4510,102 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   // The stops of the open sub-zone on the map, and where the office is.
   const round = { stops: [], depot: null, placing: null };
 
-  function depotQuery() { return (state.project.depot || '').trim(); }
+  // The office: its address as written, and the same without "(...)" and " - " that the map search does not like.
+  function depotQueries() {
+    const q = (state.project.depot || '').trim();
+    if (!q) return [];
+    const plain = q.replace(/\([^)]*\)/g, ' ').replace(/\s+-\s+/g, ', ').replace(/\s+/g, ' ').replace(/[ ,]+$/, '').trim();
+    return plain && plain !== q ? [q, plain] : [q];
+  }
+  // Where the office is: put by hand or with the position, or found from the address.
+  function depotPoint() {
+    if (state.project.depotPoint) return state.project.depotPoint;
+    const qs = depotQueries();
+    for (let i = 0; i < qs.length; i++) {
+      const g = state.project.geo[qs[i]];
+      if (g && g.found !== 'no') return g;
+    }
+    return null;
+  }
+  const depotTapText = function () { return 'Tocca sulla mappa il punto di ' + depotWord() + ' (prima puoi ingrandire e spostare la mappa).'; };
+  const depotWord = function () { return state.project.depotName ? '«' + state.project.depotName + '»' : 'l\'ufficio'; };
+
+  function renderDepotStatus() {
+    const el = $('depot-status');
+    if (!el) return;
+    const p = depotPoint(), qs = depotQueries();
+    const notFound = !p && qs.length > 0 && qs.every(function (q) { return state.project.geo[q]; });
+    el.className = notFound ? 'bad' : 'muted';
+    if (p) el.textContent = '📍 Sulla mappa: ' + ({ mano: 'messo a mano', gps: 'dalla tua posizione', via: 'trovata la via, senza il numero' }[p.found] || 'trovato');
+    else el.textContent = notFound ? 'Indirizzo non trovato sulla mappa: scegli il punto o usa la tua posizione.' : 'Non ancora sulla mappa.';
+    $('btn-depot-find').textContent = state.project.depotPoint ? '🔎 Cerca dall\'indirizzo' : '🔎 Cerca sulla mappa';
+  }
+
+  // The office from its address (a point put by hand is replaced only when asked with the button).
+  async function findDepot(asked) {
+    const el = $('depot-status');
+    if (!depotQueries().length) { el.textContent = 'Scrivi prima l\'indirizzo, oppure scegli il punto sulla mappa.'; return; }
+    if (state.project.depotPoint && !asked) return;
+    if (asked) {
+      state.project.depotPoint = null;
+      depotQueries().forEach(function (q) { if (state.project.geo[q] && state.project.geo[q].found === 'no') delete state.project.geo[q]; });
+    }
+    el.className = 'muted';
+    el.textContent = 'Cerco l\'indirizzo sulla mappa…';
+    try {
+      round.depot = await locate({ queries: depotQueries() });
+      changed();
+    } catch (e) {
+      el.textContent = 'Non riesco a cercare: serve internet.';
+      return;
+    }
+    renderDepotStatus();
+    if (routeMap) redraw(null, false);
+  }
+
+  // The office put on the map, by hand or with the device position. Without an address, the address of the point is written.
+  async function setDepotPoint(latlng, how) {
+    state.project.depotPoint = { lat: latlng.lat, lon: latlng.lng, found: how };
+    round.depot = state.project.depotPoint;
+    changed();
+    renderDepotStatus();
+    if (routeMap) redraw(null, false);
+    if ((state.project.depot || '').trim()) return;
+    try {
+      const text = await addressOf(round.depot);
+      if (text && !(state.project.depot || '').trim()) {
+        state.project.depot = text;
+        $('depot').value = text;
+        changed();
+        toast('Ho scritto l\'indirizzo del punto: controllalo.');
+      }
+    } catch (e) { /* the point is enough */ }
+  }
+
+  async function pickDepotOnMap() {
+    const card = $('map-card');
+    card.open = true;  // its "toggle" shows the stops already found
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    try { await ensureMap(); } catch (e) { $('route-status').textContent = 'La mappa si vede solo con internet.'; return; }
+    round.placing = 'depot';
+    renderStopList();
+    if (round.depot) routeMap.setView([round.depot.lat, round.depot.lon], 16);
+    $('route-status').textContent = depotTapText();
+  }
+
+  function useMyPosition() {
+    const el = $('depot-status');
+    if (!navigator.geolocation) { el.textContent = 'Questo dispositivo non dà la posizione: scegli il punto sulla mappa.'; return; }
+    el.className = 'muted';
+    el.textContent = 'Chiedo la posizione al dispositivo…';
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      setDepotPoint({ lat: pos.coords.latitude, lng: pos.coords.longitude }, 'gps');
+      toast('Centro messo dove sei adesso. Se non eri lì, trascinalo sulla mappa.');
+    }, function () {
+      el.className = 'bad';
+      el.textContent = 'Posizione non disponibile (permesso negato o GPS spento): scegli il punto sulla mappa.';
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+  }
 
   function renderStopList() {
     const ol = $('route-stops');
@@ -4515,11 +4636,13 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
         maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(routeMap);
       routeMap.setView([45.46, 9.19], 10);
-      // a stop chosen in the list goes where the map is tapped
+      // a stop chosen in the list (or the office) goes where the map is tapped
       routeMap.on('click', function (e) {
         if (!round.placing) return;
-        setPoint(round.placing.queries[0], e.latlng);
+        if (round.placing === 'depot') setDepotPoint(e.latlng, 'mano');
+        else setPoint(round.placing.queries[0], e.latlng);
         round.placing = null;
+        renderStopList();
       });
     }
     if (!routeLayer) routeLayer = L.layerGroup().addTo(routeMap);
@@ -4532,7 +4655,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     state.project.geo[query] = { lat: latlng.lat, lon: latlng.lng, found: 'mano' };
     changed();
     round.stops.forEach(function (s) { s.point = knownPoint(s); });
-    if (query === depotQuery()) round.depot = state.project.geo[query];
+    round.depot = depotPoint();
     redraw(null, false);
     renderStopList();
     $('route-status').textContent = 'Punto corretto e salvato. Ricalcola il giro o l\'ottimizzazione per i chilometri.';
@@ -4547,8 +4670,8 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       if (round.depot) {
         L.marker([round.depot.lat, round.depot.lon], { draggable: true,
           icon: L.divIcon({ className: 'stop-pin depot', html: 'U', iconSize: [24, 24] }) })
-          .bindTooltip('Ufficio di partenza (trascinalo per correggerlo)')
-          .on('dragend', function (e) { setPoint(depotQuery(), e.target.getLatLng()); })
+          .bindTooltip((state.project.depotName || 'Ufficio di partenza') + ' (trascinalo per correggerlo)')
+          .on('dragend', function (e) { setDepotPoint(e.target.getLatLng(), 'mano'); })
           .addTo(routeLayer);
         bounds.push([round.depot.lat, round.depot.lon]);
       }
@@ -4568,9 +4691,8 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   function loadStops() {
     round.stops = C.routeStops(state.project, state.current);
     round.stops.forEach(function (s) { s.point = knownPoint(s); s.asked = s.queries.every(function (q) { return state.project.geo[q]; }); });
-    const dq = depotQuery();
-    round.depot = dq && state.project.geo[dq] && state.project.geo[dq].found !== 'no' ? state.project.geo[dq] : null;
-    round.placing = null;
+    round.depot = depotPoint();
+    if (round.placing !== 'depot') round.placing = null; // the stops are new objects; waiting for the office's point stays
   }
 
   // Shows on the map the points already found, without asking anything on the internet.
@@ -4583,6 +4705,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     renderOptimizeUndo();
     const found = round.stops.filter(function (s) { return s.point; }).length;
     $('route-status').textContent = round.stops.length ? found + ' tappe su ' + round.stops.length + ' già sulla mappa.' : 'Scrivi prima il giro.';
+    if (round.placing === 'depot') $('route-status').textContent = depotTapText();
     try {
       await ensureMap();
       redraw(null);
@@ -4595,10 +4718,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   async function locateAll(k) {
     const status = $('route-status');
     loadStops();
-    const dq = depotQuery();
-    if (dq && !round.depot) {
-      status.textContent = 'Cerco l\'ufficio di partenza…';
-      round.depot = await locate({ queries: [dq] });
+    if (depotQueries().length && !round.depot) {
+      status.textContent = 'Cerco ' + depotWord() + '…';
+      round.depot = await locate({ queries: depotQueries() });
+      renderDepotStatus();
     }
     for (let i = 0; i < round.stops.length; i++) {
       if (state.current !== k) return false; // another sub-zone was opened
@@ -4634,7 +4757,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       const found = round.stops.filter(function (s) { return s.point; }).length;
       total.textContent = 'Giro' + (sz().name ? ' della ' + sz().name : '') + ': ' + kmText(r.km) +
         (r.onRoads ? ' su strada, circa ' + Math.round(r.minutes) + ' minuti di guida senza le fermate' : ' in linea d\'aria (il calcolo su strada non ha risposto)') +
-        (round.depot ? ', partendo e tornando all\'ufficio' : ', senza l\'ufficio (scrivilo in alto)') + '. Tappe sulla mappa: ' + found + ' su ' + round.stops.length + '.';
+        (round.depot ? ', partendo e tornando a ' + depotWord() : ', senza l\'ufficio (scrivilo in alto)') + '. Tappe sulla mappa: ' + found + ' su ' + round.stops.length + '.';
       status.textContent = found < round.stops.length
         ? 'Le tappe in rosso non sono state trovate: con «📍 mettila sulla mappa» le metti tu.'
         : 'Fatto. Se una tappa è nel posto sbagliato, trascinala dove va.';
@@ -4672,11 +4795,11 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     const k = state.current;
     box.textContent = '';
     try {
-      if (!depotQuery()) { status.textContent = 'Scrivi prima in alto l\'ufficio di partenza: il giro parte e torna lì.'; return; }
+      if (!depotQueries().length && !state.project.depotPoint) { status.textContent = 'Scrivi prima in alto il centro di partenza, o mettilo sulla mappa: il giro parte e torna lì.'; return; }
       if (!C.routeStops(state.project, k).length) { status.textContent = 'Scrivi prima il giro.'; return; }
       await ensureMap();
       if (!(await locateAll(k))) return;
-      if (!round.depot) { status.textContent = 'Non trovo l\'ufficio di partenza sulla mappa: scrivilo meglio (via, numero, comune).'; return; }
+      if (!round.depot) { status.textContent = 'Non trovo ' + depotWord() + ' sulla mappa: in alto usa «Scegli sulla mappa» o «Usa la mia posizione».'; return; }
       const missing = round.stops.filter(function (s) { return !s.point; });
       if (missing.length) {
         status.textContent = 'Prima metti sulla mappa le tappe in rosso (' + missing.length + '): con «📍 mettila sulla mappa».';
@@ -5479,7 +5602,12 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     wirePhotos();
     $('btn-account').addEventListener('click', openAccount);
     window.addEventListener('online', function () { if (account.token) cloudSave(false); });
-    $('depot').addEventListener('input', function (e) { state.project.depot = e.target.value; changed(); });
+    $('depot').addEventListener('input', function (e) { state.project.depot = e.target.value; changed(); renderDepotStatus(); });
+    $('depot').addEventListener('change', function () { findDepot(false); });  // once written, it is looked for on the map
+    $('depot-name').addEventListener('input', function (e) { state.project.depotName = e.target.value; changed(); });
+    $('btn-depot-find').addEventListener('click', function () { findDepot(true); });
+    $('btn-depot-map').addEventListener('click', pickDepotOnMap);
+    $('btn-depot-gps').addEventListener('click', useMyPosition);
   }
 
   // Offline use and "add to home screen" when the page is served from a web address.

@@ -123,6 +123,8 @@
     $('zone').value = state.project.zone;
     $('owner').value = state.project.owner;
     $('depot').value = state.project.depot || '';
+    $('depot-name').value = state.project.depotName || '';
+    renderDepotStatus();
   }
 
   function openSubzone(i) {
@@ -1022,16 +1024,25 @@
   }
 
   // Asks OpenStreetMap where an address is: one request per second at most (their rule).
-  async function geocode(q) {
+  async function nominatim(path) {
     const wait = 1100 - (Date.now() - lastAsk);
     if (wait > 0) await pause(wait);
     lastAsk = Date.now();
     // no extra headers: a plain request needs no cross-site pre-check
-    const res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=it&accept-language=it&q=' +
-      encodeURIComponent(q));
+    const res = await fetch('https://nominatim.openstreetmap.org/' + path + '&format=jsonv2&accept-language=it');
     if (!res.ok) throw new Error('il servizio delle mappe non risponde (' + res.status + ')');
-    const j = await res.json();
+    return res.json();
+  }
+  async function geocode(q) {
+    const j = await nominatim('search?limit=1&countrycodes=it&q=' + encodeURIComponent(q));
     return j.length ? { lat: +j[0].lat, lon: +j[0].lon } : null;
+  }
+  // The address of a point ("Via Esempio 1, Borgo Esempio"), or '' if there is none.
+  async function addressOf(p) {
+    const a = (await nominatim('reverse?zoom=18&lat=' + p.lat + '&lon=' + p.lon)).address || {};
+    if (!a.road) return '';
+    const number = /^\d{1,4}\s?[a-z]?$/i.test(a.house_number || '') ? ' ' + a.house_number : '';
+    return [a.road + number, a.village || a.town || a.city || a.hamlet || a.municipality].filter(Boolean).join(', ');
   }
 
   // The point of a stop: first with the house number, then the street alone. Found points stay
@@ -1085,7 +1096,102 @@
   // The stops of the open sub-zone on the map, and where the office is.
   const round = { stops: [], depot: null, placing: null };
 
-  function depotQuery() { return (state.project.depot || '').trim(); }
+  // The office: its address as written, and the same without "(...)" and " - " that the map search does not like.
+  function depotQueries() {
+    const q = (state.project.depot || '').trim();
+    if (!q) return [];
+    const plain = q.replace(/\([^)]*\)/g, ' ').replace(/\s+-\s+/g, ', ').replace(/\s+/g, ' ').replace(/[ ,]+$/, '').trim();
+    return plain && plain !== q ? [q, plain] : [q];
+  }
+  // Where the office is: put by hand or with the position, or found from the address.
+  function depotPoint() {
+    if (state.project.depotPoint) return state.project.depotPoint;
+    const qs = depotQueries();
+    for (let i = 0; i < qs.length; i++) {
+      const g = state.project.geo[qs[i]];
+      if (g && g.found !== 'no') return g;
+    }
+    return null;
+  }
+  const depotTapText = function () { return 'Tocca sulla mappa il punto di ' + depotWord() + ' (prima puoi ingrandire e spostare la mappa).'; };
+  const depotWord = function () { return state.project.depotName ? '«' + state.project.depotName + '»' : 'l\'ufficio'; };
+
+  function renderDepotStatus() {
+    const el = $('depot-status');
+    if (!el) return;
+    const p = depotPoint(), qs = depotQueries();
+    const notFound = !p && qs.length > 0 && qs.every(function (q) { return state.project.geo[q]; });
+    el.className = notFound ? 'bad' : 'muted';
+    if (p) el.textContent = '📍 Sulla mappa: ' + ({ mano: 'messo a mano', gps: 'dalla tua posizione', via: 'trovata la via, senza il numero' }[p.found] || 'trovato');
+    else el.textContent = notFound ? 'Indirizzo non trovato sulla mappa: scegli il punto o usa la tua posizione.' : 'Non ancora sulla mappa.';
+    $('btn-depot-find').textContent = state.project.depotPoint ? '🔎 Cerca dall\'indirizzo' : '🔎 Cerca sulla mappa';
+  }
+
+  // The office from its address (a point put by hand is replaced only when asked with the button).
+  async function findDepot(asked) {
+    const el = $('depot-status');
+    if (!depotQueries().length) { el.textContent = 'Scrivi prima l\'indirizzo, oppure scegli il punto sulla mappa.'; return; }
+    if (state.project.depotPoint && !asked) return;
+    if (asked) {
+      state.project.depotPoint = null;
+      depotQueries().forEach(function (q) { if (state.project.geo[q] && state.project.geo[q].found === 'no') delete state.project.geo[q]; });
+    }
+    el.className = 'muted';
+    el.textContent = 'Cerco l\'indirizzo sulla mappa…';
+    try {
+      round.depot = await locate({ queries: depotQueries() });
+      changed();
+    } catch (e) {
+      el.textContent = 'Non riesco a cercare: serve internet.';
+      return;
+    }
+    renderDepotStatus();
+    if (routeMap) redraw(null, false);
+  }
+
+  // The office put on the map, by hand or with the device position. Without an address, the address of the point is written.
+  async function setDepotPoint(latlng, how) {
+    state.project.depotPoint = { lat: latlng.lat, lon: latlng.lng, found: how };
+    round.depot = state.project.depotPoint;
+    changed();
+    renderDepotStatus();
+    if (routeMap) redraw(null, false);
+    if ((state.project.depot || '').trim()) return;
+    try {
+      const text = await addressOf(round.depot);
+      if (text && !(state.project.depot || '').trim()) {
+        state.project.depot = text;
+        $('depot').value = text;
+        changed();
+        toast('Ho scritto l\'indirizzo del punto: controllalo.');
+      }
+    } catch (e) { /* the point is enough */ }
+  }
+
+  async function pickDepotOnMap() {
+    const card = $('map-card');
+    card.open = true;  // its "toggle" shows the stops already found
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    try { await ensureMap(); } catch (e) { $('route-status').textContent = 'La mappa si vede solo con internet.'; return; }
+    round.placing = 'depot';
+    renderStopList();
+    if (round.depot) routeMap.setView([round.depot.lat, round.depot.lon], 16);
+    $('route-status').textContent = depotTapText();
+  }
+
+  function useMyPosition() {
+    const el = $('depot-status');
+    if (!navigator.geolocation) { el.textContent = 'Questo dispositivo non dà la posizione: scegli il punto sulla mappa.'; return; }
+    el.className = 'muted';
+    el.textContent = 'Chiedo la posizione al dispositivo…';
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      setDepotPoint({ lat: pos.coords.latitude, lng: pos.coords.longitude }, 'gps');
+      toast('Centro messo dove sei adesso. Se non eri lì, trascinalo sulla mappa.');
+    }, function () {
+      el.className = 'bad';
+      el.textContent = 'Posizione non disponibile (permesso negato o GPS spento): scegli il punto sulla mappa.';
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+  }
 
   function renderStopList() {
     const ol = $('route-stops');
@@ -1116,11 +1222,13 @@
         maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(routeMap);
       routeMap.setView([45.46, 9.19], 10);
-      // a stop chosen in the list goes where the map is tapped
+      // a stop chosen in the list (or the office) goes where the map is tapped
       routeMap.on('click', function (e) {
         if (!round.placing) return;
-        setPoint(round.placing.queries[0], e.latlng);
+        if (round.placing === 'depot') setDepotPoint(e.latlng, 'mano');
+        else setPoint(round.placing.queries[0], e.latlng);
         round.placing = null;
+        renderStopList();
       });
     }
     if (!routeLayer) routeLayer = L.layerGroup().addTo(routeMap);
@@ -1133,7 +1241,7 @@
     state.project.geo[query] = { lat: latlng.lat, lon: latlng.lng, found: 'mano' };
     changed();
     round.stops.forEach(function (s) { s.point = knownPoint(s); });
-    if (query === depotQuery()) round.depot = state.project.geo[query];
+    round.depot = depotPoint();
     redraw(null, false);
     renderStopList();
     $('route-status').textContent = 'Punto corretto e salvato. Ricalcola il giro o l\'ottimizzazione per i chilometri.';
@@ -1148,8 +1256,8 @@
       if (round.depot) {
         L.marker([round.depot.lat, round.depot.lon], { draggable: true,
           icon: L.divIcon({ className: 'stop-pin depot', html: 'U', iconSize: [24, 24] }) })
-          .bindTooltip('Ufficio di partenza (trascinalo per correggerlo)')
-          .on('dragend', function (e) { setPoint(depotQuery(), e.target.getLatLng()); })
+          .bindTooltip((state.project.depotName || 'Ufficio di partenza') + ' (trascinalo per correggerlo)')
+          .on('dragend', function (e) { setDepotPoint(e.target.getLatLng(), 'mano'); })
           .addTo(routeLayer);
         bounds.push([round.depot.lat, round.depot.lon]);
       }
@@ -1169,9 +1277,8 @@
   function loadStops() {
     round.stops = C.routeStops(state.project, state.current);
     round.stops.forEach(function (s) { s.point = knownPoint(s); s.asked = s.queries.every(function (q) { return state.project.geo[q]; }); });
-    const dq = depotQuery();
-    round.depot = dq && state.project.geo[dq] && state.project.geo[dq].found !== 'no' ? state.project.geo[dq] : null;
-    round.placing = null;
+    round.depot = depotPoint();
+    if (round.placing !== 'depot') round.placing = null; // the stops are new objects; waiting for the office's point stays
   }
 
   // Shows on the map the points already found, without asking anything on the internet.
@@ -1184,6 +1291,7 @@
     renderOptimizeUndo();
     const found = round.stops.filter(function (s) { return s.point; }).length;
     $('route-status').textContent = round.stops.length ? found + ' tappe su ' + round.stops.length + ' già sulla mappa.' : 'Scrivi prima il giro.';
+    if (round.placing === 'depot') $('route-status').textContent = depotTapText();
     try {
       await ensureMap();
       redraw(null);
@@ -1196,10 +1304,10 @@
   async function locateAll(k) {
     const status = $('route-status');
     loadStops();
-    const dq = depotQuery();
-    if (dq && !round.depot) {
-      status.textContent = 'Cerco l\'ufficio di partenza…';
-      round.depot = await locate({ queries: [dq] });
+    if (depotQueries().length && !round.depot) {
+      status.textContent = 'Cerco ' + depotWord() + '…';
+      round.depot = await locate({ queries: depotQueries() });
+      renderDepotStatus();
     }
     for (let i = 0; i < round.stops.length; i++) {
       if (state.current !== k) return false; // another sub-zone was opened
@@ -1235,7 +1343,7 @@
       const found = round.stops.filter(function (s) { return s.point; }).length;
       total.textContent = 'Giro' + (sz().name ? ' della ' + sz().name : '') + ': ' + kmText(r.km) +
         (r.onRoads ? ' su strada, circa ' + Math.round(r.minutes) + ' minuti di guida senza le fermate' : ' in linea d\'aria (il calcolo su strada non ha risposto)') +
-        (round.depot ? ', partendo e tornando all\'ufficio' : ', senza l\'ufficio (scrivilo in alto)') + '. Tappe sulla mappa: ' + found + ' su ' + round.stops.length + '.';
+        (round.depot ? ', partendo e tornando a ' + depotWord() : ', senza l\'ufficio (scrivilo in alto)') + '. Tappe sulla mappa: ' + found + ' su ' + round.stops.length + '.';
       status.textContent = found < round.stops.length
         ? 'Le tappe in rosso non sono state trovate: con «📍 mettila sulla mappa» le metti tu.'
         : 'Fatto. Se una tappa è nel posto sbagliato, trascinala dove va.';
@@ -1273,11 +1381,11 @@
     const k = state.current;
     box.textContent = '';
     try {
-      if (!depotQuery()) { status.textContent = 'Scrivi prima in alto l\'ufficio di partenza: il giro parte e torna lì.'; return; }
+      if (!depotQueries().length && !state.project.depotPoint) { status.textContent = 'Scrivi prima in alto il centro di partenza, o mettilo sulla mappa: il giro parte e torna lì.'; return; }
       if (!C.routeStops(state.project, k).length) { status.textContent = 'Scrivi prima il giro.'; return; }
       await ensureMap();
       if (!(await locateAll(k))) return;
-      if (!round.depot) { status.textContent = 'Non trovo l\'ufficio di partenza sulla mappa: scrivilo meglio (via, numero, comune).'; return; }
+      if (!round.depot) { status.textContent = 'Non trovo ' + depotWord() + ' sulla mappa: in alto usa «Scegli sulla mappa» o «Usa la mia posizione».'; return; }
       const missing = round.stops.filter(function (s) { return !s.point; });
       if (missing.length) {
         status.textContent = 'Prima metti sulla mappa le tappe in rosso (' + missing.length + '): con «📍 mettila sulla mappa».';
@@ -2080,7 +2188,12 @@
     wirePhotos();
     $('btn-account').addEventListener('click', openAccount);
     window.addEventListener('online', function () { if (account.token) cloudSave(false); });
-    $('depot').addEventListener('input', function (e) { state.project.depot = e.target.value; changed(); });
+    $('depot').addEventListener('input', function (e) { state.project.depot = e.target.value; changed(); renderDepotStatus(); });
+    $('depot').addEventListener('change', function () { findDepot(false); });  // once written, it is looked for on the map
+    $('depot-name').addEventListener('input', function (e) { state.project.depotName = e.target.value; changed(); });
+    $('btn-depot-find').addEventListener('click', function () { findDepot(true); });
+    $('btn-depot-map').addEventListener('click', pickDepotOnMap);
+    $('btn-depot-gps').addEventListener('click', useMyPosition);
   }
 
   // Offline use and "add to home screen" when the page is served from a web address.

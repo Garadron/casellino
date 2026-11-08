@@ -19,7 +19,9 @@ telefono, e i tuoi dati restano sul tuo dispositivo.
    scrive».
    Se hai le foto delle strisce di oggi, **Leggi le strisce dalle foto** scrive una bozza del giro (gratis, dentro il
    dispositivo). Nel **disegno di tutto il mobile** metti i moduli nell'ordine giusto e, con la matita, segni dove una
-   sottozona entra nell'altra. La **cartina del giro** mette le vie sulla mappa e calcola i chilometri.
+   sottozona entra nell'altra. La **cartina del giro** mette le vie sulla mappa e calcola i chilometri, partendo e
+   tornando al **centro di partenza** scritto in alto (nome e indirizzo; se l'indirizzo non si trova, il punto si
+   sceglie sulla mappa o con la posizione del telefono).
 4. **Stampa**: il **PDF** (consigliato) o l'**Excel** riempiono il foglio A4 orizzontale. **Per moduli** (la scelta
    normale) è come il modello: le 4 file di un modulo una sotto l'altra, con «1 Fila… 4 Fila» a sinistra, 2 blocchi da
    22 caselle per foglio. **Per piani** mette una fila per riga, 10 righe per foglio. Ogni pezzo ha scritto sopra dove

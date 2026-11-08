@@ -22,6 +22,8 @@ const dom = new JSDOM(html, {
     win.URL.revokeObjectURL = function () {};
     win.HTMLAnchorElement.prototype.click = function () {};
     win.HTMLElement.prototype.scrollIntoView = function () {};
+    // the device position, as a phone at the office would give it
+    Object.defineProperty(win.navigator, 'geolocation', { value: { getCurrentPosition: function (ok) { ok({ coords: { latitude: 45.25, longitude: 9.35 } }); } } });
   },
 });
 const win = dom.window;
@@ -90,6 +92,21 @@ function caretAt(ta, needle, offset) {
   assert.strictEqual(blobs.length, 4);
   assert.notStrictEqual(blobs[3].size, blobs[0].size, 'per piani il PDF è diverso');
   assert.strictEqual(win.localStorage.getItem('casellino.stampa'), 'piani');
+
+  // the office: name, address, and its point from the device position (the address is kept)
+  doc.getElementById('depot-name').value = 'Centro di Borgo Esempio';
+  doc.getElementById('depot-name').dispatchEvent(new win.Event('input'));
+  doc.getElementById('depot').value = 'Via Esempio 1 - 00000 Borgo Esempio (Frazione)';
+  doc.getElementById('depot').dispatchEvent(new win.Event('input'));
+  assert.ok(/Non ancora sulla mappa/.test(text('#depot-status')));
+  doc.getElementById('btn-depot-gps').dispatchEvent(new win.Event('click'));
+  assert.ok(/dalla tua posizione/.test(text('#depot-status')), text('#depot-status'));
+  assert.ok(/Cerca dall/.test(text('#btn-depot-find')));
+  await wait(1200);  // saved on the device after a moment
+  const kept = JSON.parse(win.localStorage.getItem('casellino.progetto'));
+  assert.strictEqual(kept.depotName, 'Centro di Borgo Esempio');
+  assert.deepStrictEqual(kept.depotPoint, { lat: 45.25, lon: 9.35, found: 'gps' });
+  assert.strictEqual(kept.depot, 'Via Esempio 1 - 00000 Borgo Esempio (Frazione)', 'the address written stays');
 
   // the photo reader opens from the big button and from the menu
   doc.querySelector('.photo-btn').dispatchEvent(new win.Event('click'));

@@ -150,7 +150,9 @@
       streets: {},      // streetKey -> { color: 'RRGGBB' }
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
-      depot: '',        // where the round starts and ends (the office), optional
+      depot: '',        // address of the office where the round starts and ends, optional
+      depotName: '',    // its name, optional
+      depotPoint: null, // its point when put on the map by hand or with the device position: { lat, lon, found: 'mano' | 'gps' }
       wall: null,       // the frame drawn by the user (modules left to right, pencil marks), optional
       cloud: null,      // where it is saved in the account: { id, versione, aggiornato_il }, optional
     };
@@ -201,6 +203,10 @@
       });
     }
     out.depot = String(p.depot || '');
+    out.depotName = String(p.depotName || '');
+    const d = p.depotPoint;
+    out.depotPoint = d && isFinite(d.lat) && isFinite(d.lon) && d.lat !== null && d.lon !== null
+      ? { lat: +d.lat, lon: +d.lon, found: d.found === 'gps' ? 'gps' : 'mano' } : null;
     out.wall = sanitizeWall(p.wall, out.subzones);
     if (p.cloud && /^[A-Za-z0-9_-]{8,40}$/.test(String(p.cloud.id || ''))) {
       out.cloud = { id: String(p.cloud.id), versione: Number(p.cloud.versione) || 0, aggiornato_il: Number(p.cloud.aggiornato_il) || 0 };

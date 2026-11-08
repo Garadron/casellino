@@ -234,6 +234,12 @@ test('the stops of the round follow the frame, one per piece of street', functio
   assert.deepStrictEqual(saved.geo, { 'VIA A 1, Borgo': { lat: 45, lon: 9, found: 'civico' }, 'VIA B 2, Borgo': { lat: 45.1, lon: 9.1, found: 'mano' } },
     'a point moved by hand stays moved by hand');
   assert.strictEqual(saved.depot, 'Ufficio');
+  // the office: its name and its point put by hand or with the position
+  const office = Core.sanitizeProject({ subzones: [], depotName: 'Centro Esempio', depotPoint: { lat: 45.2, lon: 9.3, found: 'gps' } });
+  assert.strictEqual(office.depotName, 'Centro Esempio');
+  assert.deepStrictEqual(office.depotPoint, { lat: 45.2, lon: 9.3, found: 'gps' });
+  assert.strictEqual(Core.sanitizeProject({ subzones: [], depotPoint: { lat: null, lon: 9 } }).depotPoint, null);
+  assert.strictEqual(Core.newProject().depotPoint, null);
 });
 
 test('optimizing the round: shortest order from the office and back', function () {

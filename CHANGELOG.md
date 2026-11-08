@@ -1,5 +1,19 @@
 # Registro delle versioni
 
+## v0.18.0 · 2026-11-08 · Il centro di partenza: nome, indirizzo e punto sulla mappa
+
+- **Nome del centro** e **indirizzo del centro**, in alto, al posto della sola casella «Ufficio di partenza». Il nome
+  compare sulla cartina e nel totale del giro («partendo e tornando a …»).
+- Scritto l'indirizzo, il programma lo **cerca da solo** sulla mappa e dice com'è andata: «📍 Sulla mappa: trovato»,
+  «messo a mano», «dalla tua posizione», oppure «non trovato». Gli indirizzi scritti con il trattino e la frazione fra
+  parentesi («Via Esempio 1 - 00000 Borgo (Frazione)») si cercano anche senza.
+- **🗺 Scegli sulla mappa**: apre la cartina e il centro va dove tocchi. **📡 Usa la mia posizione**: se sei al centro,
+  il punto lo dà il telefono (se il dispositivo lo permette). Se l'indirizzo è vuoto, si scrive da solo dal punto
+  (OpenStreetMap, gratis); se c'è, resta com'è. **🔎 Cerca dall'indirizzo** torna a cercarlo dall'indirizzo.
+- Il punto messo a mano o con la posizione resta nel lavoro (`depotPoint`) e vale per il giro e l'ottimizzazione.
+- File: `app/src/core.js`, `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `tests/test_core.js`,
+  `tests/test_pagina.js`, `README.md`, `Casellino.html`, `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.17.0 · 2026-11-08 · Email nell'account, nome utente da cambiare
 
 - **L'email nella registrazione**: si chiede insieme a nome utente e password. Nel server resta nascosta: c'è solo la
