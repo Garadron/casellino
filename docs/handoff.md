@@ -2,6 +2,16 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 8 novembre 2026 · Tappa 8 chiusa: correggere i nomi dall'elenco (v0.19.0)
+
+**Fatto.** `Core.renameStreet(project, key, newName)`: rilegge ogni giro come `parseRoute` (COMUNE, righe di servizio,
+nome da solo con «(2)») e cambia solo il nome nelle righe con quella chiave; anche `routeBefore`; il colore passa alla
+chiave nuova (se la chiave nuova ha già un colore, resta quello). Pagina: nome e ✏️ nell'elenco Vie → `editStreetName`
+(conferme per unione e giro bloccato, `datalist` con l'elenco ufficiale).
+**Verifiche.** `tests/test_core.js` (38: altro comune intatto, C.NA = CASCINA, «(2)» resta), `tests/test_pagina.js`
+(il giro cambia, i civici restano, niente «null» nell'elenco), guardato in Edge.
+**Limite.** I punti sulla cartina sono salvati con il nome vecchio: la via si cerca di nuovo con il nome giusto.
+
 ## 8 novembre 2026 · Tappa 7 chiusa: il centro di partenza (v0.18.0)
 
 **Fatto.** `project.depotName` e `project.depotPoint` ({ lat, lon, found: 'mano' | 'gps' }). In `ui.js`: `depotQueries()`

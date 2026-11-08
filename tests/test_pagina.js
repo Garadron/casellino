@@ -93,6 +93,20 @@ function caretAt(ta, needle, offset) {
   assert.notStrictEqual(blobs[3].size, blobs[0].size, 'per piani il PDF è diverso');
   assert.strictEqual(win.localStorage.getItem('casellino.stampa'), 'piani');
 
+  // a street name corrected from the list of streets: the round changes, the numbers stay
+  assert.ok(!/null|undefined/.test(text('#streets')), "niente parole del programma nell'elenco");
+  const tigli = [...doc.querySelectorAll('#streets li')].find(function (li) { return /^VIA DEI TIGLI$/.test((li.querySelector('.nm') || {}).textContent || ''); });
+  tigli.querySelector('.pen').dispatchEvent(new win.Event('click'));
+  const box = tigli.querySelector('.rename-street input');
+  assert.strictEqual(box.value, 'VIA DEI TIGLI');
+  box.value = 'VIA DEI TIGLI ROSSI';
+  tigli.querySelector('.rename-street').dispatchEvent(new win.Event('submit', { cancelable: true }));
+  const route = doc.querySelector('textarea.route-text').value;
+  assert.ok(/^VIA DEI TIGLI ROSSI: 1\.\.15, 14\.\.2$/m.test(route), 'il giro ha il nome nuovo, con gli stessi civici');
+  assert.ok(!/^VIA DEI TIGLI:/m.test(route));
+  assert.ok([...doc.querySelectorAll('#streets .nm')].some(function (b) { return b.textContent === 'VIA DEI TIGLI ROSSI'; }), 'e anche l\'elenco');
+  assert.ok(/Nome corretto in \d+ righe/.test(doc.querySelector('.toast').textContent));
+
   // the office: name, address, and its point from the device position (the address is kept)
   doc.getElementById('depot-name').value = 'Centro di Borgo Esempio';
   doc.getElementById('depot-name').dispatchEvent(new win.Event('input'));

@@ -1,5 +1,17 @@
 # Registro delle versioni
 
+## v0.19.0 · 2026-11-08 · Correggere i nomi delle vie dall'elenco
+
+- Nell'elenco **Vie** si tocca un nome (o la matita ✏️) e si scrive quello giusto: cambia in **tutte le righe del giro**,
+  in ogni sottozona dello stesso comune, anche dove era scritto in un altro modo («C.NA ALTA» e «CASCINA ALTA»). I
+  civici restano, la via tiene il suo colore. Vale per vie, cascine, vicoli, nomi.
+- Se il nome nuovo c'è già, chiede se unirle in una via sola; se il giro è bloccato (controllato), chiede conferma.
+- Con l'elenco ufficiale delle vie del comune, mentre scrivi propone i nomi giusti.
+- Anche «Torna al giro di prima» dell'ottimizzazione tiene il nome corretto.
+- File: `app/src/core.js` (`renameStreet`), `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`,
+  `tests/test_core.js`, `tests/test_pagina.js`, `README.md`, `Casellino.html`, `sito/`, `docs/handoff.md`,
+  `CHANGELOG.md`, `prove/`.
+
 ## v0.18.0 · 2026-11-08 · Il centro di partenza: nome, indirizzo e punto sulla mappa
 
 - **Nome del centro** e **indirizzo del centro**, in alto, al posto della sola casella «Ufficio di partenza». Il nome

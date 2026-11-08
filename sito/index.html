@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.18.0';</script>
+<script>window.CASELLINO_VERSION = '0.19.0';</script>
 <style>
 :root {
   --bg: #f4f5f7;
@@ -261,7 +261,13 @@ a.btn {
 .streets li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .streets .sw { width: 24px; height: 24px; border-radius: 5px; border: 1px solid rgba(0,0,0,.25); flex: none; position: relative; display: flex; align-items: center; justify-content: center; font: 700 13px/1 Arial, sans-serif; }
 .streets .sw select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-.streets .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.streets .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border: 0; background: none; padding: 2px 0; min-height: 0; text-align: left; font: inherit; color: inherit; cursor: text; }
+.streets .nm:hover { text-decoration: underline dotted; }
+.streets .pen { border: 0; background: none; padding: 2px 4px; min-height: 0; font-size: 12px; opacity: .55; cursor: pointer; }
+.streets .pen:hover, .streets .pen:focus { opacity: 1; }
+.rename-street { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+.rename-street input { flex: 1 1 160px; min-width: 0; }
 .streets .n { color: var(--muted); font-variant-numeric: tabular-nums; }
 .streets .flag { color: var(--warn); font-size: 12px; }
 .streets .town-head { margin-top: 8px; font-weight: 600; font-size: 13px; color: var(--muted); }
@@ -555,7 +561,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Nella stessa sottozona <b>nessun colore si ripete</b>: ogni via ha il suo. Due vie vicine non hanno mai colori simili. Nell'elenco delle vie i colori già usati nella sottozona e quelli troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
     <p><b>Un Excel già fatto</b> (fatto con il modello, anche vecchio): «Apri» o «Altro → Apri un Excel già fatto». Ogni foglio scritto diventa una sottozona, con il suo giro letto striscia per striscia: poi si corregge e si ristampa.</p>
     <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. Lì si dice anche com'è fatto il mobile: i moduli da sinistra a destra (casello o ala) e di quale sottozona è ognuno, in qualsiasi ordine (ala, casello, ala, casello… oppure ala, ala, casello, casello…). Con la <b>matita</b> del colore di una sottozona si tocca la casella da cui comincia: da lì verso destra quella fila è sua (per esempio la B che prende metà dell'ultima fila della A). La gomma toglie il segno. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate. Una tappa nel posto sbagliato si trascina dove va. <b>Ottimizzazione gita</b> cerca l'ordine delle vie con meno chilometri, partendo e tornando al centro di partenza scritto in alto (nome e indirizzo; se l'indirizzo non si trova, il punto si sceglie sulla mappa o con la posizione del telefono); il giro cambia solo se premi «Applica», e «Torna al giro di prima» lo rimette.</p>
-    <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie.</p>
+    <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie. Nello stesso elenco, toccando un nome (o la matita ✏️) lo <b>correggi in tutto il giro</b>: cambia in ogni riga e in ogni sottozona dello stesso comune, i civici restano. Così, dopo la lettura delle foto, i nomi si sistemano da lì e nel giro si pensa solo ai numeri.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>
     <p>Apri la pagina dal suo indirizzo internet. Su iPhone: Condividi → «Aggiungi alla schermata Home». Su Android: menu ⋮ → «Installa app». Poi si apre come un'app e funziona anche senza internet (la mappa no). Ogni tanto usa «Salva file»: è la copia sicura del tuo lavoro.</p>
@@ -969,6 +975,45 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       });
     });
     return { items: items, warnings: warnings };
+  }
+
+  /*
+   * Writes a street (all the lines with that key, in every sub-zone, "C.NA X" and "CASCINA X" alike)
+   * with a new name; the numbers stay as they are, and the colour goes with the street.
+   * Returns { lines, zones } (lines changed, indexes of the sub-zones touched).
+   */
+  function renameStreet(project, key, newName) {
+    const name = String(newName || '').replace(/[:\r\n]/g, ' ').replace(/^#+/, '').replace(/\s+/g, ' ').trim();
+    const out = { lines: 0, zones: [] };
+    if (!name) return out;
+    const rewrite = function (text, baseTown) {
+      let town = baseTown || '', n = 0;
+      const lines = String(text || '').split('\n').map(function (raw) {
+        const line = raw.trim();
+        if (!line || line[0] === '#' || /^confine\s*:?/i.test(line) || /^vuot[ae](?:\s+\d{1,3})?$/i.test(line) ||
+          BREAKS.some(function (b) { return b[0].test(line); })) return raw;
+        const m = /^comune\s*:(.*)$/i.exec(line);
+        if (m) { town = m[1].trim() || baseTown || ''; return raw; }
+        const colon = line.indexOf(':');
+        const street = (colon < 0 ? line.replace(/\(\s*\d{1,2}\s*\)\s*$/, '') : line.slice(0, colon)).trim();
+        if (!street || streetKey(street, town) !== key) return raw;
+        const at = raw.indexOf(street);
+        n++;
+        return raw.slice(0, at) + name + raw.slice(at + street.length);
+      });
+      return { text: lines.join('\n'), n: n };
+    };
+    project.subzones.forEach(function (sz, i) {
+      const r = rewrite(sz.route, sz.town);
+      if (r.n) { sz.route = r.text; out.lines += r.n; out.zones.push(i); }
+      if (sz.routeBefore) sz.routeBefore = rewrite(sz.routeBefore, sz.town).text; // "back to the round before" keeps the new name
+    });
+    const newKey = streetName(name) + key.slice(key.indexOf('|'));
+    if (newKey !== key && project.streets[key]) {
+      if (!project.streets[newKey]) project.streets[newKey] = project.streets[key];
+      delete project.streets[key];
+    }
+    return out;
   }
 
   // The strips of a sub-zone in reading order: row 1 left to right, then row 2...
@@ -1947,7 +1992,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     SLOTS_PER_PAGE: SLOTS_PER_PAGE,
     PALETTE: PALETTE,
     norm: norm,
-    streetKey: streetKey,
+    streetKey: streetKey, renameStreet: renameStreet,
     newProject: newProject,
     newSubzone: newSubzone,
     sanitizeProject: sanitizeProject,
@@ -4078,11 +4123,12 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     const p = state.project;
     const usage = {};
     const order = [];
-    C.analyseProject(p).forEach(function (a) {
+    C.analyseProject(p).forEach(function (a, zi) {
       C.allCells(a).forEach(function (c) {
         if (!c.key) return;
-        if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0 }; order.push(c.key); }
+        if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0, zones: {} }; order.push(c.key); }
         usage[c.key].n += c.span;
+        usage[c.key].zones[zi] = true;
       });
     });
     const byTown = {};
@@ -4134,13 +4180,53 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
           changed(); refreshRoute(); renderStreets();
         });
         const unknown = official.length && official.indexOf(comparable(u.street)) < 0;
-        ul.append(h('li', null,
+        let li = null;
+        const fix = function () { editStreetName(li, k, u, usage); };
+        li = h('li', null,
           h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, k), title: 'Cambia colore: ' + C.paletteName(color) }, 'A', sel),
-          h('span', { class: 'nm', title: u.street }, u.street),
+          h('button', { type: 'button', class: 'nm', title: 'Tocca per correggere il nome: ' + u.street, onclick: fix }, u.street),
           unknown ? h('span', { class: 'flag', title: 'Questo nome non è nell\'elenco delle vie del comune' }, 'non in elenco') : null,
-          h('span', { class: 'n' }, u.n)));
+          h('span', { class: 'n' }, u.n),
+          h('button', { type: 'button', class: 'pen', title: 'Correggi il nome', 'aria-label': 'Correggi il nome di ' + u.street, onclick: fix }, '✏️'));
+        ul.append(li);
       });
     });
+  }
+
+  // Correcting a name from the list: it changes in every line of the round, the numbers stay.
+  function editStreetName(li, key, u, usage) {
+    const p = state.project;
+    const official = p.streetLists[C.norm(u.town)] || [];
+    const input = h('input', { value: u.street, autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Nome giusto di ' + u.street,
+      list: official.length ? 'official-streets' : null });
+    const form = h('form', { class: 'rename-street' }, input,
+      official.length ? h('datalist', { id: 'official-streets' }, official.map(function (n) { return h('option', { value: n }); })) : null,
+      h('button', { type: 'submit', class: 'primary' }, 'Salva'),
+      h('button', { type: 'button', onclick: renderStreets }, 'Annulla'));
+    input.addEventListener('keydown', function (e) { if (e.key === 'Escape') renderStreets(); });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const name = input.value.replace(/\s+/g, ' ').trim();
+      if (!name || name === u.street) { renderStreets(); return; }
+      const newKey = C.streetKey(name, u.town);
+      const same = newKey !== key && usage[newKey];
+      if (same && !confirm('«' + usage[newKey].street + '» c\'è già: le unisco in una via sola, con il suo colore?')) return;
+      const locked = Object.keys(u.zones).map(Number).filter(function (i) { return p.subzones[i].locked; });
+      if (locked.length && !confirm('Il giro della ' + locked.map(function (i) { return p.subzones[i].name || 'sottozona ' + (i + 1); }).join(' e della ') +
+        ' è bloccato (controllato). Correggo il nome anche lì? Cambia solo il nome, non i civici.')) return;
+      const r = C.renameStreet(p, key, name);
+      const ta = state.els.ta;
+      if (ta) { const top = ta.scrollTop; ta.value = sz().route; fitTextarea(ta); ta.scrollTop = top; }
+      changed();
+      refreshRoute();
+      renderStreets();
+      renderDuplicates();
+      toast('Nome corretto in ' + r.lines + (r.lines === 1 ? ' riga' : ' righe') + ' del giro' + (same ? ', e unito a quello che c\'era già.' : '.'));
+    });
+    li.textContent = '';
+    li.append(form);
+    input.focus();
+    input.select();
   }
 
   // Same street written as "C.NA X" or "CASCINA X", "V. X" or "VIA X".

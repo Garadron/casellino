@@ -350,6 +350,45 @@
     return { items: items, warnings: warnings };
   }
 
+  /*
+   * Writes a street (all the lines with that key, in every sub-zone, "C.NA X" and "CASCINA X" alike)
+   * with a new name; the numbers stay as they are, and the colour goes with the street.
+   * Returns { lines, zones } (lines changed, indexes of the sub-zones touched).
+   */
+  function renameStreet(project, key, newName) {
+    const name = String(newName || '').replace(/[:\r\n]/g, ' ').replace(/^#+/, '').replace(/\s+/g, ' ').trim();
+    const out = { lines: 0, zones: [] };
+    if (!name) return out;
+    const rewrite = function (text, baseTown) {
+      let town = baseTown || '', n = 0;
+      const lines = String(text || '').split('\n').map(function (raw) {
+        const line = raw.trim();
+        if (!line || line[0] === '#' || /^confine\s*:?/i.test(line) || /^vuot[ae](?:\s+\d{1,3})?$/i.test(line) ||
+          BREAKS.some(function (b) { return b[0].test(line); })) return raw;
+        const m = /^comune\s*:(.*)$/i.exec(line);
+        if (m) { town = m[1].trim() || baseTown || ''; return raw; }
+        const colon = line.indexOf(':');
+        const street = (colon < 0 ? line.replace(/\(\s*\d{1,2}\s*\)\s*$/, '') : line.slice(0, colon)).trim();
+        if (!street || streetKey(street, town) !== key) return raw;
+        const at = raw.indexOf(street);
+        n++;
+        return raw.slice(0, at) + name + raw.slice(at + street.length);
+      });
+      return { text: lines.join('\n'), n: n };
+    };
+    project.subzones.forEach(function (sz, i) {
+      const r = rewrite(sz.route, sz.town);
+      if (r.n) { sz.route = r.text; out.lines += r.n; out.zones.push(i); }
+      if (sz.routeBefore) sz.routeBefore = rewrite(sz.routeBefore, sz.town).text; // "back to the round before" keeps the new name
+    });
+    const newKey = streetName(name) + key.slice(key.indexOf('|'));
+    if (newKey !== key && project.streets[key]) {
+      if (!project.streets[newKey]) project.streets[newKey] = project.streets[key];
+      delete project.streets[key];
+    }
+    return out;
+  }
+
   // The strips of a sub-zone in reading order: row 1 left to right, then row 2...
   function stripOrder(sz) {
     const out = [];
@@ -1326,7 +1365,7 @@
     SLOTS_PER_PAGE: SLOTS_PER_PAGE,
     PALETTE: PALETTE,
     norm: norm,
-    streetKey: streetKey,
+    streetKey: streetKey, renameStreet: renameStreet,
     newProject: newProject,
     newSubzone: newSubzone,
     sanitizeProject: sanitizeProject,

@@ -664,11 +664,12 @@
     const p = state.project;
     const usage = {};
     const order = [];
-    C.analyseProject(p).forEach(function (a) {
+    C.analyseProject(p).forEach(function (a, zi) {
       C.allCells(a).forEach(function (c) {
         if (!c.key) return;
-        if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0 }; order.push(c.key); }
+        if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0, zones: {} }; order.push(c.key); }
         usage[c.key].n += c.span;
+        usage[c.key].zones[zi] = true;
       });
     });
     const byTown = {};
@@ -720,13 +721,53 @@
           changed(); refreshRoute(); renderStreets();
         });
         const unknown = official.length && official.indexOf(comparable(u.street)) < 0;
-        ul.append(h('li', null,
+        let li = null;
+        const fix = function () { editStreetName(li, k, u, usage); };
+        li = h('li', null,
           h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, k), title: 'Cambia colore: ' + C.paletteName(color) }, 'A', sel),
-          h('span', { class: 'nm', title: u.street }, u.street),
+          h('button', { type: 'button', class: 'nm', title: 'Tocca per correggere il nome: ' + u.street, onclick: fix }, u.street),
           unknown ? h('span', { class: 'flag', title: 'Questo nome non è nell\'elenco delle vie del comune' }, 'non in elenco') : null,
-          h('span', { class: 'n' }, u.n)));
+          h('span', { class: 'n' }, u.n),
+          h('button', { type: 'button', class: 'pen', title: 'Correggi il nome', 'aria-label': 'Correggi il nome di ' + u.street, onclick: fix }, '✏️'));
+        ul.append(li);
       });
     });
+  }
+
+  // Correcting a name from the list: it changes in every line of the round, the numbers stay.
+  function editStreetName(li, key, u, usage) {
+    const p = state.project;
+    const official = p.streetLists[C.norm(u.town)] || [];
+    const input = h('input', { value: u.street, autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Nome giusto di ' + u.street,
+      list: official.length ? 'official-streets' : null });
+    const form = h('form', { class: 'rename-street' }, input,
+      official.length ? h('datalist', { id: 'official-streets' }, official.map(function (n) { return h('option', { value: n }); })) : null,
+      h('button', { type: 'submit', class: 'primary' }, 'Salva'),
+      h('button', { type: 'button', onclick: renderStreets }, 'Annulla'));
+    input.addEventListener('keydown', function (e) { if (e.key === 'Escape') renderStreets(); });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const name = input.value.replace(/\s+/g, ' ').trim();
+      if (!name || name === u.street) { renderStreets(); return; }
+      const newKey = C.streetKey(name, u.town);
+      const same = newKey !== key && usage[newKey];
+      if (same && !confirm('«' + usage[newKey].street + '» c\'è già: le unisco in una via sola, con il suo colore?')) return;
+      const locked = Object.keys(u.zones).map(Number).filter(function (i) { return p.subzones[i].locked; });
+      if (locked.length && !confirm('Il giro della ' + locked.map(function (i) { return p.subzones[i].name || 'sottozona ' + (i + 1); }).join(' e della ') +
+        ' è bloccato (controllato). Correggo il nome anche lì? Cambia solo il nome, non i civici.')) return;
+      const r = C.renameStreet(p, key, name);
+      const ta = state.els.ta;
+      if (ta) { const top = ta.scrollTop; ta.value = sz().route; fitTextarea(ta); ta.scrollTop = top; }
+      changed();
+      refreshRoute();
+      renderStreets();
+      renderDuplicates();
+      toast('Nome corretto in ' + r.lines + (r.lines === 1 ? ' riga' : ' righe') + ' del giro' + (same ? ', e unito a quello che c\'era già.' : '.'));
+    });
+    li.textContent = '';
+    li.append(form);
+    input.focus();
+    input.select();
   }
 
   // Same street written as "C.NA X" or "CASCINA X", "V. X" or "VIA X".

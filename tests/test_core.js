@@ -395,6 +395,27 @@ test('printing: pieces of 22 slots packed on full A4 sheets, one shelf row per l
   assert.ok(piece.cells.every(function (c) { return c.end >= 22 && c.start <= 43; }));
 });
 
+test('correcting a street name from the list: every line, every sub-zone, same colour', function () {
+  const p = Core.sanitizeProject({ subzones: [
+    { name: 'A', town: 'Borgo', route: 'VIA DEI TIGLLI: 1..5\nC.NA ALTA (2)\nVIA DELLE ROSE: 2\n  via dei tiglli?: 7, 9\nCOMUNE: Villa\nVIA DEI TIGLLI: 1' },
+    { name: 'B', town: 'Borgo', route: 'VIA DEI TIGLLI: 11\nFINE FILA\nCASCINA ALTA: 4' },
+  ] });
+  const key = Core.streetKey('VIA DEI TIGLLI', 'Borgo');
+  p.streets[key] = { color: '8ED16B' };
+  const r = Core.renameStreet(p, key, 'VIA DEI TIGLI');
+  assert.deepStrictEqual(r, { lines: 3, zones: [0, 1] });
+  assert.strictEqual(p.subzones[0].route, 'VIA DEI TIGLI: 1..5\nC.NA ALTA (2)\nVIA DELLE ROSE: 2\n  VIA DEI TIGLI: 7, 9\nCOMUNE: Villa\nVIA DEI TIGLLI: 1',
+    'the numbers stay; the street with the same name in another town does not change');
+  assert.strictEqual(p.subzones[1].route, 'VIA DEI TIGLI: 11\nFINE FILA\nCASCINA ALTA: 4');
+  assert.deepStrictEqual(p.streets[Core.streetKey('VIA DEI TIGLI', 'Borgo')], { color: '8ED16B' }, 'the colour goes with it');
+  assert.strictEqual(p.streets[key], undefined);
+  // "C.NA ALTA" and "CASCINA ALTA" are one street: both get the new name, the span stays
+  Core.renameStreet(p, Core.streetKey('CASCINA ALTA', 'Borgo'), 'CASCINA ALTA DI SOPRA');
+  assert.ok(/\nCASCINA ALTA DI SOPRA \(2\)\n/.test(p.subzones[0].route));
+  assert.ok(/CASCINA ALTA DI SOPRA: 4$/.test(p.subzones[1].route));
+  assert.deepStrictEqual(Core.renameStreet(p, key, '  '), { lines: 0, zones: [] }, 'an empty name changes nothing');
+});
+
 test('printing by modules: the 4 rows of a module together, like the template, 2 blocks per sheet', function () {
   const p = Core.textToProject(EXAMPLE);
   const blocks = Core.printBlocks(p);
