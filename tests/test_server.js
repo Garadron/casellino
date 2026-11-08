@@ -1,3 +1,4 @@
+// © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 // Tests the account server against a running copy.
 // Run:  (cd server && npx wrangler dev --local --port 8799)  then  node tests/test_server.js [http://127.0.0.1:8799]
 'use strict';

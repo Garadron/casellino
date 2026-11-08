@@ -1,5 +1,14 @@
 # Registro delle versioni
 
+## v0.20.1 · 2026-11-08 · Il nome dell'autore in ogni file
+
+- Decisione di Garadron sul copyright: nei progetti pubblici solo nome, cognome, «Garadron» e licenza; i dati personali
+  e i documenti restano in un fascicolo privato, fuori da GitHub (lo prepara Archivista).
+- La riga «© 2026 Emmanuel Surace (Garadron)» ora c'è anche nei 17 file che non l'avevano (prove, strumenti, stile,
+  server). Il manifest dell'app è un file di dati senza commenti: il nome sta nella licenza.
+- File: `app/src/style.css`, `app/sw.js`, `server/`, `tests/`, `tools/`, `Casellino.html`, `sito/`, `CHANGELOG.md`,
+  `prove/`.
+
 ## v0.20.0 · 2026-11-08 · Indirizzo del centro in tre caselle, salvataggio quando si esce
 
 - **Indirizzo del centro come nei siti della fibra**: Comune, Via, N. La via si sceglie dall'elenco delle vie di quel

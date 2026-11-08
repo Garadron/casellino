@@ -1,3 +1,4 @@
+// © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 // Builds the .xlsx from a project text file (same format as "Esporta testo").
 // Usage: node tools/genera_excel.js <project.txt> <output.xlsx>
 'use strict';

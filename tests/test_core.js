@@ -1,3 +1,4 @@
+// © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 // Run with: node tests/test_core.js
 'use strict';
 const assert = require('assert');

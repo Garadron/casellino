@@ -1,3 +1,4 @@
+# © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 """Draws the app icons: a small casello seen from the front (rows of pigeonholes with their
 dividers) with the coloured strips under each row.
 

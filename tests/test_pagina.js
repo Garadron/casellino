@@ -1,3 +1,4 @@
+// © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 // Smoke test of the page in a simulated browser (jsdom).
 // Needs jsdom, installed anywhere:  npm install jsdom   (then JSDOM_PATH=<that folder>/node_modules/jsdom)
 // Run:  node tests/test_pagina.js

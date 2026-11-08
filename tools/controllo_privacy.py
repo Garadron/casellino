@@ -1,3 +1,4 @@
+# © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 """Stops a commit when a public file contains a forbidden word (real streets, names, employer).
 
 The list of words is private: dati/parole_vietate.txt (one per line, "*" = any ending, "#" = note).

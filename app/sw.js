@@ -1,3 +1,4 @@
+// © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 /*
  * Casellino - offline support when the page is served from a web address.
  * The page is fetched from the network first (so updates arrive), and from the

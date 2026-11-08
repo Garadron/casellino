@@ -1,3 +1,4 @@
+# © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 """Free dated proof (OpenTimestamps) for a file: writes <file>.ots next to it.
 
 The official "ots" command does not start on this Windows PC (it looks for an old OpenSSL

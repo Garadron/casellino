@@ -1,3 +1,4 @@
+# © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 """Builds the program from app/:
 
 - Casellino.html: one single file with the page, the style and the scripts inside. It works

@@ -1,3 +1,4 @@
+-- © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 -- Casellino: accounts, sessions, saved works, limits on attempts.
 CREATE TABLE account (
   id TEXT PRIMARY KEY,

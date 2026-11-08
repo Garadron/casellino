@@ -1,3 +1,4 @@
+// © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 // The account in the page, against a running copy of the server (simulated browser, jsdom).
 // Run:  (cd server && npx wrangler dev --local --port 8799)  then
 //       JSDOM_PATH=<folder>/node_modules/jsdom node tests/test_account_pagina.js [http://127.0.0.1:8799]

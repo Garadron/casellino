@@ -1,3 +1,4 @@
+# © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 """Checks that every sheet of a generated .xlsx has exactly the measurements of the template.
 
 Usage: python tests/verifica_misure.py <generated.xlsx>

@@ -1,10 +1,11 @@
+// © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 /*
  * Casellino - offline support when the page is served from a web address.
  * The page is fetched from the network first (so updates arrive), and from the
  * cache when there is no connection. Maps and street lists always need the network.
  */
 'use strict';
-const CACHE = 'casellino-0.20.0';
+const CACHE = 'casellino-0.20.1';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon-64.png'];
 
 self.addEventListener('install', function (event) {

@@ -1,3 +1,4 @@
+﻿# © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 # Opens a generated .xlsx in real Excel, compares sizes with the template and exports a PDF.
 # Usage: powershell -File tools\prova_in_excel.ps1 -Generato <file.xlsx> -Modello <template.xlsm> -Pdf <out.pdf>
 param(

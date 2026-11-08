@@ -1,3 +1,4 @@
+# © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 """Reads the measurements of the blank template and saves them in tests/misure_modello.json.
 
 Only numbers are saved (column widths, row heights, margins, paper), no streets or names,

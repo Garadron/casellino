@@ -1,3 +1,4 @@
+# © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
 # Casellino: account server. Free plan: Workers + D1, no card needed.
 name = "casellino"
 main = "src/worker.js"
