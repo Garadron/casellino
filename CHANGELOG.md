@@ -1,5 +1,19 @@
 # Registro delle versioni
 
+## v0.16.0 · 2026-11-08 · Stampa «per moduli», come il modello
+
+- **Stampa per moduli** (ora è quella normale): come nel modello, ogni blocco ha le 4 file del modulo una sotto l'altra,
+  con «1 Fila… 4 Fila» (o «1 Ala…») in grigio a sinistra; i blocchi da 22 caselle si mettono uno sotto l'altro sul
+  foglio A4 orizzontale, 2 per foglio. Un pezzo corto (per esempio le ultime 3 caselle del casello) divide la riga con
+  il pezzo corto dell'ala. Zona di prova 2A e 2B: 6 fogli.
+- **Per piani** resta come seconda scelta: una fila per riga, 10 righe per foglio (5 fogli).
+- La scelta sta in cima al menu «Stampa» e vale per il PDF e per l'Excel; il dispositivo se la ricorda.
+- Le misure delle caselle sono quelle del modello. Provato in Excel vero: 6 pagine, le 22 caselle e la colonna delle
+  file stanno nella larghezza del foglio.
+- File: `app/src/core.js`, `app/src/pdf.js`, `app/src/xlsx.js`, `app/src/ui.js`, `app/src/style.css`,
+  `app/index.src.html`, `tests/test_core.js`, `tests/test_pagina.js`, `Casellino.html`, `sito/`, `docs/handoff.md`,
+  `CHANGELOG.md`, `prove/`.
+
 ## v0.15.0 · 2026-11-08 · Ufficio di partenza, cartina da correggere e «Ottimizzazione gita»
 
 - **Ufficio di partenza** (centro di distribuzione): ora sta in alto, con Zona e Titolare; vale per tutto il lavoro. Il

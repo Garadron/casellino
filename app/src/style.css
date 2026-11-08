@@ -354,6 +354,9 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
 /* the print menu, highlighted like the main button */
 .menu summary.primary-summary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 .print-menu .menu-list { min-width: 280px; }
+.print-layout { border: 0; margin: 0 0 4px; padding: 0 4px 6px; border-bottom: 1px solid var(--line); }
+.print-layout legend { padding: 0; margin-bottom: 2px; }
+.print-layout label { display: flex; gap: 6px; align-items: baseline; padding: 3px 0; cursor: pointer; }
 
 /* a checked and locked route */
 .locked-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; padding: 8px 12px;

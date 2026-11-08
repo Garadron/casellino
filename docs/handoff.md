@@ -2,6 +2,17 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 8 novembre 2026 · Tappa 5 chiusa: stampa per moduli (v0.16.0)
+
+**Fatto.** `Core.printBlocks`: per ogni modulo e ogni tratto di 22 caselle un blocco con le 4 file. `Core.packPages`
+mette sulla stessa riga solo pezzi dello stesso `group` (foglio per i blocchi, foglio + fila per i piani). PDF
+(`buildPdf(project, title, layout)`) ed Excel compatto (`buildCompactFiles(project, layout)`): `'moduli'` (normale, 2
+blocchi per foglio, colonna A larga 23 px con «n Fila» ruotato) o `'piani'`. Il secondo blocco su una riga ha l'etichetta
+delle file nella casella libera prima di lui. La scelta nel menu Stampa, ricordata in `localStorage` (`casellino.stampa`).
+**Verifiche.** `tests/test_core.js` (37), `tests/test_pagina.js` (PDF per piani diverso, scelta ricordata), Excel vero:
+6 pagine, nessuna interruzione verticale. Alleggerimento: tolti `buildCompactXlsx` (non usato), i campi `sheet` e `m`
+dei pezzi, un parametro di `drawBlock`.
+
 ## 8 novembre 2026 · Tappa 4 chiusa: ufficio, cartina da correggere, ottimizzazione gita (v0.15.0)
 
 **Fatto.** `Core.optimizeOrder(dist)`: vicino più vicino, poi inversioni di tratti e spostamenti di 1-3 tappe finché il

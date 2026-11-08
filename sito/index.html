@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.15.0';</script>
+<script>window.CASELLINO_VERSION = '0.16.0';</script>
 <style>
 :root {
   --bg: #f4f5f7;
@@ -371,6 +371,9 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
 /* the print menu, highlighted like the main button */
 .menu summary.primary-summary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 .print-menu .menu-list { min-width: 280px; }
+.print-layout { border: 0; margin: 0 0 4px; padding: 0 4px 6px; border-bottom: 1px solid var(--line); }
+.print-layout legend { padding: 0; margin-bottom: 2px; }
+.print-layout label { display: flex; gap: 6px; align-items: baseline; padding: 3px 0; cursor: pointer; }
 
 /* a checked and locked route */
 .locked-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; padding: 8px 12px;
@@ -401,10 +404,15 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     <details class="menu print-menu">
       <summary class="primary-summary">Stampa</summary>
       <div class="menu-list">
+        <fieldset class="print-layout">
+          <legend class="small muted">Come mettere le strisce sul foglio</legend>
+          <label><input type="radio" name="print-layout" value="moduli" checked> Per moduli <span class="small muted">(come il modello: le 4 file insieme)</span></label>
+          <label><input type="radio" name="print-layout" value="piani"> Per piani <span class="small muted">(una fila per riga, meno fogli)</span></label>
+        </fieldset>
         <button type="button" id="btn-pdf">📄 PDF da stampare <span class="small muted">(consigliato)</span></button>
         <button type="button" id="btn-excel">📊 Excel</button>
         <button type="button" id="btn-excel-model">📊 Excel come il modello <span class="small muted">(un modulo per foglio)</span></button>
-        <p class="small muted version">PDF ed Excel riempiono il foglio A4: più strisce per foglio, ognuna con scritto dove va.</p>
+        <p class="small muted version">PDF ed Excel riempiono il foglio A4 orizzontale: più strisce per foglio, ognuna con scritto dove va.</p>
       </div>
     </details>
     <details class="menu">
@@ -1699,7 +1707,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   /*
    * The pieces to print: every row of every module, cut into pieces of SLOTS_PER_PAGE slots (the
    * same cuts as before, so the street names are already repeated on every piece). Each piece:
-   * { sheet, m, i, from, to, width, cells, runs, label: [lines] }. Cells keep their slot numbers.
+   * { group, i, from, to, width, cells, runs, label: [lines] }. Cells keep their slot numbers.
    */
   function printPieces(project) {
     const out = [];
@@ -1716,7 +1724,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
               const to = Math.min(cap, from + SLOTS_PER_PAGE) - 1;
               const cells = strip.cells.filter(function (c) { return c.start <= to && c.end >= from; });
               out.push({
-                sheet: sh.name, m: m, i: i, from: from, to: to, width: to - from + 1, word: word,
+                group: sh.name + '|' + i, i: i, from: from, to: to, width: to - from + 1,
                 cells: cells,
                 runs: (strip.runs || []).filter(function (r) { return r.start <= to && r.end >= from; }),
                 label: [sh.name, 'Fila ' + (i + 1), word, (from + 1) + '-' + (to + 1)],
@@ -1724,6 +1732,36 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
             }
           });
         }
+      });
+    });
+    return out;
+  }
+
+  /*
+   * The blocks to print "like the template": the 4 rows of a module one under the other (as on the
+   * frame), cut in pieces of SLOTS_PER_PAGE slots. Each block: { group, word, from, to, width,
+   * floors: [{ from, to, cells, runs }] x 4, label }.
+   */
+  function printBlocks(project) {
+    const out = [];
+    analyseProject(project).forEach(function (a) {
+      a.sheets.forEach(function (sh) {
+        MODULES.forEach(function (m) {
+          if (!sh.modules[m]) return;
+          const strips = [];
+          for (let i = 0; i < ROWS_PER_MODULE; i++) strips.push(sh.rows[m][i] || emptyLayout(m));
+          const cap = strips[0].capacity || MODULE_SLOTS[m];
+          const word = strips[0].m === 'ala' ? 'Ala' : MODULE_NAMES[m];
+          for (let from = 0; from < cap; from += SLOTS_PER_PAGE) {
+            const to = Math.min(cap, from + SLOTS_PER_PAGE) - 1;
+            const within = function (x) { return x.start <= to && x.end >= from; };
+            out.push({
+              group: sh.name, word: word, from: from, to: to, width: to - from + 1,
+              floors: strips.map(function (st) { return { from: from, to: to, cells: st.cells.filter(within), runs: (st.runs || []).filter(within) }; }),
+              label: [sh.name, word, (from + 1) + '-' + (to + 1)],
+            });
+          }
+        });
       });
     });
     return out;
@@ -1739,11 +1777,8 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     const lines = [];
     pieces.forEach(function (p) {
       const startOn = function (l) { return l.used ? l.used + 1 : 0; };
-      // only with pieces of the same row of the same sheet: what is on a line goes on one shelf
-      let line = lines.find(function (l) {
-        const first = l.pieces[0].piece;
-        return first.sheet === p.sheet && first.i === p.i && startOn(l) + p.width <= SLOTS_PER_PAGE;
-      });
+      // only with pieces of the same group (same sheet, and same shelf row when printing by rows)
+      let line = lines.find(function (l) { return l.pieces[0].piece.group === p.group && startOn(l) + p.width <= SLOTS_PER_PAGE; });
       if (!line) { line = { pieces: [], used: 0 }; lines.push(line); }
       const start = startOn(line);
       line.pieces.push({ piece: p, start: start });
@@ -1927,6 +1962,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     optimizeOrder: optimizeOrder,
     reorderRoute: reorderRoute,
     printPieces: printPieces,
+    printBlocks: printBlocks,
     packPages: packPages,
     airKm: airKm,
     projectToText: projectToText,
@@ -2256,29 +2292,36 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
    * pigeonholes), packed: every line of a sheet holds one row of one shelf, cut in pieces of 22
    * slots, with a thin line above each piece saying where it goes. 10 lines per A4 landscape sheet.
    */
-  const COMPACT = {
-    perPage: 10,
-    labelHeight: '8',
-  };
+  // 'piani': one shelf row per line (label row, numbers, streets), 10 lines per sheet.
+  // 'moduli' (default): blocks like the template, the 4 rows of a module under each other with
+  // "1 Fila"... in a narrow grey column on the left (column A, 23 px), 2 blocks per sheet.
+  const COMPACT = { perPage: 10, rows: 3, labelHeight: '8' };
+  const BLOCKS = { perPage: 2, rows: 10, gap: '14', labelWidth: '3.28515625' };
 
-  function compactGeometry(lines) {
+  function compactGeometry(lines, byFloor) {
+    const shape = byFloor ? COMPACT : BLOCKS;
     const rowHeights = {};
     const breaks = [];
     for (let k = 0; k < lines; k++) {
-      rowHeights[3 * k + 1] = COMPACT.labelHeight;
-      rowHeights[3 * k + 2] = GEOMETRY.rowHeights[4]; // the template's heights, never change them
-      rowHeights[3 * k + 3] = GEOMETRY.rowHeights[5];
-      if (k && k % COMPACT.perPage === 0) breaks.push(3 * k);
+      const base = shape.rows * k;
+      rowHeights[base + 1] = COMPACT.labelHeight;
+      for (let i = 0; i < (byFloor ? 1 : Core.ROWS_PER_MODULE); i++) {
+        rowHeights[base + 2 + 2 * i] = GEOMETRY.rowHeights[4]; // the template's heights, never change them
+        rowHeights[base + 3 + 2 * i] = GEOMETRY.rowHeights[5];
+      }
+      if (!byFloor) rowHeights[base + shape.rows] = BLOCKS.gap;
+      if (k && k % shape.perPage === 0) breaks.push(base);
     }
+    const slots = [byFloor ? 1 : 2, byFloor ? Core.SLOTS_PER_PAGE : Core.SLOTS_PER_PAGE + 1, GEOMETRY.defaultColWidth, true];
     return {
-      cols: [[1, Core.SLOTS_PER_PAGE, GEOMETRY.defaultColWidth, true]],
+      cols: byFloor ? [slots] : [[1, 1, BLOCKS.labelWidth, true], slots],
       defaultColWidth: GEOMETRY.defaultColWidth,
       defaultRowHeight: GEOMETRY.defaultRowHeight,
       rowHeights: rowHeights,
       margins: { left: '0', right: '0', top: '0.2', bottom: '0.2', header: '0', footer: '0' }, // as the template: 22 slots fit only with no side margins
       paperSize: GEOMETRY.paperSize,
       orientation: GEOMETRY.orientation,
-      dimension: 'A1:' + colName(Core.SLOTS_PER_PAGE) + Math.max(1, 3 * lines),
+      dimension: 'A1:' + colName(slots[1]) + Math.max(1, shape.rows * lines),
       rowBreaks: breaks,
       centered: true,
     };
@@ -2322,37 +2365,46 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     }
   }
 
-  function buildCompactFiles(project) {
+  function buildCompactFiles(project, layout) {
     Core.assignColors(project);
+    const byFloor = layout === 'piani';
+    const shape = byFloor ? COMPACT : BLOCKS;
+    const first = byFloor ? 1 : 2;   // column of the first slot
     const styles = new StyleBook();
     const strings = new StringTable();
-    const pages = Core.packPages(Core.printPieces(project), COMPACT.perPage);
+    const pages = Core.packPages(byFloor ? Core.printPieces(project) : Core.printBlocks(project), shape.perPage);
     const sb = new SheetBuilder(styles, strings);
     let line = 0;
     pages.forEach(function (page) {
       page.forEach(function (l) {
         l.pieces.forEach(function (x) {
-          const p = x.piece, row = 3 * line + 1, col = 1 + x.start;
-          sb.block(row, col, row, col + p.width - 1, p.label[0] + ' · ' + p.label[1] + ' · ' + p.label[2] + ' · caselle ' + p.label[3],
+          const p = x.piece, row = shape.rows * line + 1, col = first + x.start;
+          sb.block(row, byFloor ? col : col - 1, row, col + p.width - 1,
+            p.label.slice(0, -1).join(' · ') + ' · caselle ' + p.label[p.label.length - 1],
             { size: 7, bold: true, h: 'left', shrink: true, color: '444444' });
-          drawPiece(sb, project, p, row + 1, col);
+          if (byFloor) { drawPiece(sb, project, p, row + 1, col); return; }
+          // the floors of the block; "1 Fila"... in the column before it (A, or the free slot between two blocks)
+          const word = p.word === 'Casello' ? 'Fila' : 'Ala';
+          p.floors.forEach(function (f, i) {
+            const top = row + 1 + 2 * i;
+            sb.block(top, col - 1, top + 1, col - 1, (i + 1) + ' ' + word, { size: 8, bold: true, color: 'FFFFFF', fill: '7F7F7F', rot: 90,
+              border: { l: 'medium', r: 'medium', t: 'medium', b: 'medium' } });
+            drawPiece(sb, project, f, top, col);
+          });
         });
         line++;
       });
     });
-    const sheetXml = sb.xml(true, [], compactGeometry(line));
+    const geometry = compactGeometry(line, byFloor);
+    const sheetXml = sb.xml(true, [], geometry);
     const name = 'Strisce';
     const wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
       'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
       '<bookViews><workbookView activeTab="0"/></bookViews><sheets><sheet name="' + name + '" sheetId="1" r:id="rId1"/></sheets>' +
       '<definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">' + esc("'" + name + "'!$A$1:$" +
-        colName(Core.SLOTS_PER_PAGE) + '$' + Math.max(1, 3 * line)) + '</definedName></definedNames></workbook>';
+        geometry.dimension.split(':')[1].replace(/(\d+)$/, '$$$1')) + '</definedName></definedNames></workbook>';
     return { files: packageFiles(wb, [sheetXml], styles, strings), pages: pages.length, lines: line };
-  }
-
-  function buildCompactXlsx(project, date) {
-    return zip(buildCompactFiles(project).files, date);
   }
 
   // ------------------------------------------------------------------ workbook
@@ -2505,7 +2557,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   }
 
   return { GEOMETRY: GEOMETRY, LAYOUT: LAYOUT, COMPACT: COMPACT, colName: colName, buildWorkbookFiles: buildWorkbookFiles, buildXlsx: buildXlsx,
-    buildCompactFiles: buildCompactFiles, buildCompactXlsx: buildCompactXlsx, diagonalSize: diagonalSize, crc32: crc32, zip: zip };
+    buildCompactFiles: buildCompactFiles, diagonalSize: diagonalSize, crc32: crc32, zip: zip };
 });
 </script>
 <script>
@@ -2572,6 +2624,12 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   Canvas.prototype.text = function (x, baseline, size, s, hex) {
     this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
   };
+  // Text turned 90 degrees (read from bottom to top), centred in a box: the "1 Fila" labels.
+  Canvas.prototype.upText = function (x, y, w, h, s, size, hex) {
+    const tw = textWidth(s, size);
+    this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg 0 1 -1 0 ' + n(x + w / 2 + size * 0.36) + ' ' +
+      n(PAGE.h - (y + h / 2 + tw / 2)) + ' Tm ' + pdfString(s) + ' Tj ET');
+  };
   // Text centred in a box, made smaller until it fits (never cut).
   Canvas.prototype.centered = function (x, y, w, h, s, max, hex) {
     const size = Math.max(4, Math.min(max, (w - 4) / Math.max(1, textWidth(s, 1)), h * 0.8));
@@ -2603,7 +2661,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   function drawPiece(cv, project, piece, x0, y0) {
     const yTop = y0 + LABEL, yBottom = yTop + TOP, right = x0 + piece.width * SLOT;
     const xOf = function (slot) { return x0 + (slot - piece.from) * SLOT; };
-    cv.text(x0, y0 + LABEL - 2, 6.5, piece.label[0] + ' · ' + piece.label[1] + ' · ' + piece.label[2] + ' · caselle ' + piece.label[3], '444444');
+    if (piece.label) cv.text(x0, y0 + LABEL - 2, 6.5, piece.label.slice(0, -1).join(' · ') + ' · caselle ' + piece.label[piece.label.length - 1], '444444');
     piece.cells.forEach(function (c) {
       const a = Math.max(c.start, piece.from), b = Math.min(c.end, piece.to);
       const x = xOf(a), w = (b - a + 1) * SLOT;
@@ -2642,17 +2700,44 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     cv.line(right, yTop, right, yBottom + BOTTOM, MEDIUM);
   }
 
-  // The PDF file (bytes): one A4 landscape page for every 10 lines of strips.
-  function buildPdf(project, title) {
+  // A block "like the template": the 4 rows of a module, with "1 Fila", "2 Fila"... on the left.
+  const FLOOR_LABEL = 17, BLOCK_GAP = 14, BLOCKS_PER_PAGE = 2;
+  function drawBlock(cv, project, block, x, y0) {
+    const labelX = x - FLOOR_LABEL;
+    cv.text(x, y0 + LABEL - 2, 6.5, block.label[0] + ' · ' + block.label[1] + ' · caselle ' + block.label[2], '444444');
+    const word = block.word === 'Casello' ? 'Fila' : 'Ala';
+    block.floors.forEach(function (f, i) {
+      const y = y0 + i * (TOP + BOTTOM);
+      cv.fill(labelX, y + LABEL, FLOOR_LABEL, TOP + BOTTOM, '7F7F7F');
+      cv.upText(labelX, y + LABEL, FLOOR_LABEL, TOP + BOTTOM, (i + 1) + ' ' + word, 8, 'FFFFFF');
+      cv.line(labelX, y + LABEL + TOP + BOTTOM, labelX + FLOOR_LABEL, y + LABEL + TOP + BOTTOM, MEDIUM);
+      drawPiece(cv, project, Object.assign({ width: block.width }, f), x, y);
+    });
+    cv.line(labelX, y0 + LABEL, labelX + FLOOR_LABEL, y0 + LABEL, MEDIUM);
+    cv.line(labelX, y0 + LABEL, labelX, y0 + LABEL + 4 * (TOP + BOTTOM), MEDIUM);
+  }
+
+  /*
+   * The PDF file (bytes). layout 'moduli' (default): blocks like the template, 2 per A4 landscape page;
+   * 'piani': one shelf row per line, 10 lines per page.
+   */
+  function buildPdf(project, title, layout) {
     Core.assignColors(project);
-    const pages = Core.packPages(Core.printPieces(project), PER_PAGE);
-    const lineH = LABEL + TOP + BOTTOM;
-    const x0 = (PAGE.w - Core.SLOTS_PER_PAGE * SLOT) / 2;
-    const y0 = (PAGE.h - PER_PAGE * lineH) / 2;
+    const byFloor = layout === 'piani';
+    const pages = byFloor ? Core.packPages(Core.printPieces(project), PER_PAGE) : Core.packPages(Core.printBlocks(project), BLOCKS_PER_PAGE);
+    const lineH = byFloor ? LABEL + TOP + BOTTOM : LABEL + 4 * (TOP + BOTTOM) + BLOCK_GAP;
+    const perPage = byFloor ? PER_PAGE : BLOCKS_PER_PAGE;
+    const labelW = byFloor ? 0 : FLOOR_LABEL;
+    const x0 = (PAGE.w - labelW - Core.SLOTS_PER_PAGE * SLOT) / 2 + labelW;   // where slot 0 starts
+    const y0 = (PAGE.h - perPage * lineH + (byFloor ? 0 : BLOCK_GAP)) / 2;
     const streams = pages.map(function (page, k) {
       const cv = new Canvas();
       page.forEach(function (line, j) {
-        line.pieces.forEach(function (x) { drawPiece(cv, project, x.piece, x0 + x.start * SLOT, y0 + j * lineH); });
+        line.pieces.forEach(function (x) {
+          const at = x0 + x.start * SLOT;
+          if (byFloor) drawPiece(cv, project, x.piece, at, y0 + j * lineH);
+          else drawBlock(cv, project, x.piece, at, y0 + j * lineH);
+        });
       });
       cv.text(x0, PAGE.h - 5, 6, (title || 'Casellino') + ' · foglio ' + (k + 1) + ' di ' + pages.length +
         ' · stampa a dimensioni reali (100%), A4 orizzontale', '777777');
@@ -5157,18 +5242,24 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
 
   // ------------------------------------------------------------ files
 
-  // Printing: PDF and compact Excel fill the A4 sheet with strips; the template Excel keeps one module per sheet.
+  // Printing: PDF and compact Excel fill the A4 sheet with strips ('moduli': the 4 rows of a module
+  // together, like the template; 'piani': one shelf row per line); the template Excel keeps one module per sheet.
+  const LAYOUT_KEY = 'casellino.stampa';
+  function printLayout() {
+    const on = document.querySelector('input[name="print-layout"]:checked');
+    return on ? on.value : 'moduli';
+  }
   function exportPrint(kind) {
     document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
     try {
       const xlsxType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
       let sheets;
       if (kind === 'pdf') {
-        const r = window.CasellinoPdf.buildPdf(state.project, fileBaseName());
+        const r = window.CasellinoPdf.buildPdf(state.project, fileBaseName(), printLayout());
         download(fileBaseName() + '.pdf', r.bytes, 'application/pdf');
         sheets = r.pages;
       } else if (kind === 'excel') {
-        const r = X.buildCompactFiles(state.project);
+        const r = X.buildCompactFiles(state.project, printLayout());
         download(fileBaseName() + '.xlsx', X.zip(r.files), xlsxType);
         sheets = r.pages;
       } else {
@@ -5253,6 +5344,14 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     $('btn-pdf').addEventListener('click', function () { exportPrint('pdf'); });
     $('btn-excel').addEventListener('click', function () { exportPrint('excel'); });
     $('btn-excel-model').addEventListener('click', function () { exportPrint('model'); });
+    try {   // the last layout chosen on this device
+      const saved = localStorage.getItem(LAYOUT_KEY);
+      const radio = saved && document.querySelector('input[name="print-layout"][value="' + saved + '"]');
+      if (radio) radio.checked = true;
+    } catch (e) { /* storage blocked: the default stays */ }
+    document.querySelectorAll('input[name="print-layout"]').forEach(function (r) {
+      r.addEventListener('change', function () { try { localStorage.setItem(LAYOUT_KEY, r.value); } catch (e) { /* optional */ } });
+    });
     $('btn-save').addEventListener('click', saveFile);
     $('btn-open').addEventListener('click', function () { $('file-input').click(); });
     $('file-input').addEventListener('change', function (e) {

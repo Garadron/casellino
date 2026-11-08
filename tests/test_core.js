@@ -389,16 +389,38 @@ test('printing: pieces of 22 slots packed on full A4 sheets, one shelf row per l
   assert.ok(piece.cells.every(function (c) { return c.end >= 22 && c.start <= 43; }));
 });
 
+test('printing by modules: the 4 rows of a module together, like the template, 2 blocks per sheet', function () {
+  const p = Core.textToProject(EXAMPLE);
+  const blocks = Core.printBlocks(p);
+  assert.deepStrictEqual(blocks.map(function (b) { return b.label.join(' '); }), ['9A Casello 1-22', '9A Casello 23-44',
+    '9A Casello 45-66', '9A Casello 67-88', '9A Casello 89-91', '9A Ala B 1-22', '9A Ala B 23-33']);
+  blocks.forEach(function (b) {
+    assert.strictEqual(b.floors.length, Core.ROWS_PER_MODULE);
+    b.floors.forEach(function (f) { assert.ok(f.cells.every(function (c) { return c.end >= b.from && c.start <= b.to; })); });
+  });
+  const lines = [].concat.apply([], Core.packPages(blocks, 2));
+  assert.deepStrictEqual(lines.map(function (l) { return l.pieces.map(function (x) { return x.piece.label[2] + '@' + x.start; }).join(' '); }),
+    ['1-22@0', '23-44@0', '45-66@0', '67-88@0', '89-91@0 23-33@4', '1-22@0'], 'the end of the ala fills the line of the end of the casello');
+});
+
 test('printing: the compact Excel keeps the template measures; the PDF is a valid file', function () {
   const p = Core.textToProject(EXAMPLE);
   const r = Xlsx.buildCompactFiles(p);
   const sheet = r.files.find(function (f) { return f.name === 'xl/worksheets/sheet1.xml'; }).data;
-  assert.ok(sheet.indexOf('<col min="1" max="22" width="' + Xlsx.GEOMETRY.defaultColWidth + '" customWidth="1"/>') >= 0, 'slot width of the template');
-  assert.ok(sheet.indexOf('<row r="2" ht="28.35" customHeight="1">') >= 0 && sheet.indexOf('<row r="3" ht="19.9" customHeight="1">') >= 0, 'row heights of the template');
+  assert.ok(sheet.indexOf('<col min="2" max="23" width="' + Xlsx.GEOMETRY.defaultColWidth + '" customWidth="1"/>') >= 0, 'slot width of the template');
+  assert.ok(sheet.indexOf('<row r="2" ht="28.35" customHeight="1">') >= 0 && sheet.indexOf('<row r="9" ht="19.9" customHeight="1">') >= 0, 'row heights of the template');
   assert.ok(sheet.indexOf('<printOptions horizontalCentered="1" verticalCentered="1"/>') >= 0);
-  assert.ok(sheet.indexOf('<rowBreaks count="2"') >= 0, 'a page break every 10 lines');
+  assert.ok(sheet.indexOf('<rowBreaks count="2"') >= 0, 'a page break every 2 blocks');
+  assert.ok(sheet.indexOf('<mergeCell ref="A2:A3"/>') >= 0, '"1 Fila" beside the first row of the block');
   assert.strictEqual(r.pages, 3);
+  const floors = Xlsx.buildCompactFiles(p, 'piani');
+  const sheet2 = floors.files.find(function (f) { return f.name === 'xl/worksheets/sheet1.xml'; }).data;
+  assert.ok(sheet2.indexOf('<col min="1" max="22" width="' + Xlsx.GEOMETRY.defaultColWidth + '" customWidth="1"/>') >= 0);
+  assert.ok(sheet2.indexOf('<row r="2" ht="28.35" customHeight="1">') >= 0 && sheet2.indexOf('<row r="3" ht="19.9" customHeight="1">') >= 0);
+  assert.strictEqual(floors.pages, 3);
+  assert.strictEqual(floors.lines, 24);
   const Pdf = require('../app/src/pdf.js');
+  assert.strictEqual(Pdf.buildPdf(p, 'Prova', 'piani').pages, 3);
   const pdf = Pdf.buildPdf(p, 'Prova');
   const text = Buffer.from(pdf.bytes).toString('latin1');
   assert.strictEqual(pdf.pages, 3);

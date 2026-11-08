@@ -318,29 +318,36 @@
    * pigeonholes), packed: every line of a sheet holds one row of one shelf, cut in pieces of 22
    * slots, with a thin line above each piece saying where it goes. 10 lines per A4 landscape sheet.
    */
-  const COMPACT = {
-    perPage: 10,
-    labelHeight: '8',
-  };
+  // 'piani': one shelf row per line (label row, numbers, streets), 10 lines per sheet.
+  // 'moduli' (default): blocks like the template, the 4 rows of a module under each other with
+  // "1 Fila"... in a narrow grey column on the left (column A, 23 px), 2 blocks per sheet.
+  const COMPACT = { perPage: 10, rows: 3, labelHeight: '8' };
+  const BLOCKS = { perPage: 2, rows: 10, gap: '14', labelWidth: '3.28515625' };
 
-  function compactGeometry(lines) {
+  function compactGeometry(lines, byFloor) {
+    const shape = byFloor ? COMPACT : BLOCKS;
     const rowHeights = {};
     const breaks = [];
     for (let k = 0; k < lines; k++) {
-      rowHeights[3 * k + 1] = COMPACT.labelHeight;
-      rowHeights[3 * k + 2] = GEOMETRY.rowHeights[4]; // the template's heights, never change them
-      rowHeights[3 * k + 3] = GEOMETRY.rowHeights[5];
-      if (k && k % COMPACT.perPage === 0) breaks.push(3 * k);
+      const base = shape.rows * k;
+      rowHeights[base + 1] = COMPACT.labelHeight;
+      for (let i = 0; i < (byFloor ? 1 : Core.ROWS_PER_MODULE); i++) {
+        rowHeights[base + 2 + 2 * i] = GEOMETRY.rowHeights[4]; // the template's heights, never change them
+        rowHeights[base + 3 + 2 * i] = GEOMETRY.rowHeights[5];
+      }
+      if (!byFloor) rowHeights[base + shape.rows] = BLOCKS.gap;
+      if (k && k % shape.perPage === 0) breaks.push(base);
     }
+    const slots = [byFloor ? 1 : 2, byFloor ? Core.SLOTS_PER_PAGE : Core.SLOTS_PER_PAGE + 1, GEOMETRY.defaultColWidth, true];
     return {
-      cols: [[1, Core.SLOTS_PER_PAGE, GEOMETRY.defaultColWidth, true]],
+      cols: byFloor ? [slots] : [[1, 1, BLOCKS.labelWidth, true], slots],
       defaultColWidth: GEOMETRY.defaultColWidth,
       defaultRowHeight: GEOMETRY.defaultRowHeight,
       rowHeights: rowHeights,
       margins: { left: '0', right: '0', top: '0.2', bottom: '0.2', header: '0', footer: '0' }, // as the template: 22 slots fit only with no side margins
       paperSize: GEOMETRY.paperSize,
       orientation: GEOMETRY.orientation,
-      dimension: 'A1:' + colName(Core.SLOTS_PER_PAGE) + Math.max(1, 3 * lines),
+      dimension: 'A1:' + colName(slots[1]) + Math.max(1, shape.rows * lines),
       rowBreaks: breaks,
       centered: true,
     };
@@ -384,37 +391,46 @@
     }
   }
 
-  function buildCompactFiles(project) {
+  function buildCompactFiles(project, layout) {
     Core.assignColors(project);
+    const byFloor = layout === 'piani';
+    const shape = byFloor ? COMPACT : BLOCKS;
+    const first = byFloor ? 1 : 2;   // column of the first slot
     const styles = new StyleBook();
     const strings = new StringTable();
-    const pages = Core.packPages(Core.printPieces(project), COMPACT.perPage);
+    const pages = Core.packPages(byFloor ? Core.printPieces(project) : Core.printBlocks(project), shape.perPage);
     const sb = new SheetBuilder(styles, strings);
     let line = 0;
     pages.forEach(function (page) {
       page.forEach(function (l) {
         l.pieces.forEach(function (x) {
-          const p = x.piece, row = 3 * line + 1, col = 1 + x.start;
-          sb.block(row, col, row, col + p.width - 1, p.label[0] + ' · ' + p.label[1] + ' · ' + p.label[2] + ' · caselle ' + p.label[3],
+          const p = x.piece, row = shape.rows * line + 1, col = first + x.start;
+          sb.block(row, byFloor ? col : col - 1, row, col + p.width - 1,
+            p.label.slice(0, -1).join(' · ') + ' · caselle ' + p.label[p.label.length - 1],
             { size: 7, bold: true, h: 'left', shrink: true, color: '444444' });
-          drawPiece(sb, project, p, row + 1, col);
+          if (byFloor) { drawPiece(sb, project, p, row + 1, col); return; }
+          // the floors of the block; "1 Fila"... in the column before it (A, or the free slot between two blocks)
+          const word = p.word === 'Casello' ? 'Fila' : 'Ala';
+          p.floors.forEach(function (f, i) {
+            const top = row + 1 + 2 * i;
+            sb.block(top, col - 1, top + 1, col - 1, (i + 1) + ' ' + word, { size: 8, bold: true, color: 'FFFFFF', fill: '7F7F7F', rot: 90,
+              border: { l: 'medium', r: 'medium', t: 'medium', b: 'medium' } });
+            drawPiece(sb, project, f, top, col);
+          });
         });
         line++;
       });
     });
-    const sheetXml = sb.xml(true, [], compactGeometry(line));
+    const geometry = compactGeometry(line, byFloor);
+    const sheetXml = sb.xml(true, [], geometry);
     const name = 'Strisce';
     const wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
       'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
       '<bookViews><workbookView activeTab="0"/></bookViews><sheets><sheet name="' + name + '" sheetId="1" r:id="rId1"/></sheets>' +
       '<definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">' + esc("'" + name + "'!$A$1:$" +
-        colName(Core.SLOTS_PER_PAGE) + '$' + Math.max(1, 3 * line)) + '</definedName></definedNames></workbook>';
+        geometry.dimension.split(':')[1].replace(/(\d+)$/, '$$$1')) + '</definedName></definedNames></workbook>';
     return { files: packageFiles(wb, [sheetXml], styles, strings), pages: pages.length, lines: line };
-  }
-
-  function buildCompactXlsx(project, date) {
-    return zip(buildCompactFiles(project).files, date);
   }
 
   // ------------------------------------------------------------------ workbook
@@ -567,5 +583,5 @@
   }
 
   return { GEOMETRY: GEOMETRY, LAYOUT: LAYOUT, COMPACT: COMPACT, colName: colName, buildWorkbookFiles: buildWorkbookFiles, buildXlsx: buildXlsx,
-    buildCompactFiles: buildCompactFiles, buildCompactXlsx: buildCompactXlsx, diagonalSize: diagonalSize, crc32: crc32, zip: zip };
+    buildCompactFiles: buildCompactFiles, diagonalSize: diagonalSize, crc32: crc32, zip: zip };
 });

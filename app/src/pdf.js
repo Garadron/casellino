@@ -61,6 +61,12 @@
   Canvas.prototype.text = function (x, baseline, size, s, hex) {
     this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
   };
+  // Text turned 90 degrees (read from bottom to top), centred in a box: the "1 Fila" labels.
+  Canvas.prototype.upText = function (x, y, w, h, s, size, hex) {
+    const tw = textWidth(s, size);
+    this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg 0 1 -1 0 ' + n(x + w / 2 + size * 0.36) + ' ' +
+      n(PAGE.h - (y + h / 2 + tw / 2)) + ' Tm ' + pdfString(s) + ' Tj ET');
+  };
   // Text centred in a box, made smaller until it fits (never cut).
   Canvas.prototype.centered = function (x, y, w, h, s, max, hex) {
     const size = Math.max(4, Math.min(max, (w - 4) / Math.max(1, textWidth(s, 1)), h * 0.8));
@@ -92,7 +98,7 @@
   function drawPiece(cv, project, piece, x0, y0) {
     const yTop = y0 + LABEL, yBottom = yTop + TOP, right = x0 + piece.width * SLOT;
     const xOf = function (slot) { return x0 + (slot - piece.from) * SLOT; };
-    cv.text(x0, y0 + LABEL - 2, 6.5, piece.label[0] + ' · ' + piece.label[1] + ' · ' + piece.label[2] + ' · caselle ' + piece.label[3], '444444');
+    if (piece.label) cv.text(x0, y0 + LABEL - 2, 6.5, piece.label.slice(0, -1).join(' · ') + ' · caselle ' + piece.label[piece.label.length - 1], '444444');
     piece.cells.forEach(function (c) {
       const a = Math.max(c.start, piece.from), b = Math.min(c.end, piece.to);
       const x = xOf(a), w = (b - a + 1) * SLOT;
@@ -131,17 +137,44 @@
     cv.line(right, yTop, right, yBottom + BOTTOM, MEDIUM);
   }
 
-  // The PDF file (bytes): one A4 landscape page for every 10 lines of strips.
-  function buildPdf(project, title) {
+  // A block "like the template": the 4 rows of a module, with "1 Fila", "2 Fila"... on the left.
+  const FLOOR_LABEL = 17, BLOCK_GAP = 14, BLOCKS_PER_PAGE = 2;
+  function drawBlock(cv, project, block, x, y0) {
+    const labelX = x - FLOOR_LABEL;
+    cv.text(x, y0 + LABEL - 2, 6.5, block.label[0] + ' · ' + block.label[1] + ' · caselle ' + block.label[2], '444444');
+    const word = block.word === 'Casello' ? 'Fila' : 'Ala';
+    block.floors.forEach(function (f, i) {
+      const y = y0 + i * (TOP + BOTTOM);
+      cv.fill(labelX, y + LABEL, FLOOR_LABEL, TOP + BOTTOM, '7F7F7F');
+      cv.upText(labelX, y + LABEL, FLOOR_LABEL, TOP + BOTTOM, (i + 1) + ' ' + word, 8, 'FFFFFF');
+      cv.line(labelX, y + LABEL + TOP + BOTTOM, labelX + FLOOR_LABEL, y + LABEL + TOP + BOTTOM, MEDIUM);
+      drawPiece(cv, project, Object.assign({ width: block.width }, f), x, y);
+    });
+    cv.line(labelX, y0 + LABEL, labelX + FLOOR_LABEL, y0 + LABEL, MEDIUM);
+    cv.line(labelX, y0 + LABEL, labelX, y0 + LABEL + 4 * (TOP + BOTTOM), MEDIUM);
+  }
+
+  /*
+   * The PDF file (bytes). layout 'moduli' (default): blocks like the template, 2 per A4 landscape page;
+   * 'piani': one shelf row per line, 10 lines per page.
+   */
+  function buildPdf(project, title, layout) {
     Core.assignColors(project);
-    const pages = Core.packPages(Core.printPieces(project), PER_PAGE);
-    const lineH = LABEL + TOP + BOTTOM;
-    const x0 = (PAGE.w - Core.SLOTS_PER_PAGE * SLOT) / 2;
-    const y0 = (PAGE.h - PER_PAGE * lineH) / 2;
+    const byFloor = layout === 'piani';
+    const pages = byFloor ? Core.packPages(Core.printPieces(project), PER_PAGE) : Core.packPages(Core.printBlocks(project), BLOCKS_PER_PAGE);
+    const lineH = byFloor ? LABEL + TOP + BOTTOM : LABEL + 4 * (TOP + BOTTOM) + BLOCK_GAP;
+    const perPage = byFloor ? PER_PAGE : BLOCKS_PER_PAGE;
+    const labelW = byFloor ? 0 : FLOOR_LABEL;
+    const x0 = (PAGE.w - labelW - Core.SLOTS_PER_PAGE * SLOT) / 2 + labelW;   // where slot 0 starts
+    const y0 = (PAGE.h - perPage * lineH + (byFloor ? 0 : BLOCK_GAP)) / 2;
     const streams = pages.map(function (page, k) {
       const cv = new Canvas();
       page.forEach(function (line, j) {
-        line.pieces.forEach(function (x) { drawPiece(cv, project, x.piece, x0 + x.start * SLOT, y0 + j * lineH); });
+        line.pieces.forEach(function (x) {
+          const at = x0 + x.start * SLOT;
+          if (byFloor) drawPiece(cv, project, x.piece, at, y0 + j * lineH);
+          else drawBlock(cv, project, x.piece, at, y0 + j * lineH);
+        });
       });
       cv.text(x0, PAGE.h - 5, 6, (title || 'Casellino') + ' · foglio ' + (k + 1) + ' di ' + pages.length +
         ' · stampa a dimensioni reali (100%), A4 orizzontale', '777777');

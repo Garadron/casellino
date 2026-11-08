@@ -1102,7 +1102,7 @@
   /*
    * The pieces to print: every row of every module, cut into pieces of SLOTS_PER_PAGE slots (the
    * same cuts as before, so the street names are already repeated on every piece). Each piece:
-   * { sheet, m, i, from, to, width, cells, runs, label: [lines] }. Cells keep their slot numbers.
+   * { group, i, from, to, width, cells, runs, label: [lines] }. Cells keep their slot numbers.
    */
   function printPieces(project) {
     const out = [];
@@ -1119,7 +1119,7 @@
               const to = Math.min(cap, from + SLOTS_PER_PAGE) - 1;
               const cells = strip.cells.filter(function (c) { return c.start <= to && c.end >= from; });
               out.push({
-                sheet: sh.name, m: m, i: i, from: from, to: to, width: to - from + 1, word: word,
+                group: sh.name + '|' + i, i: i, from: from, to: to, width: to - from + 1,
                 cells: cells,
                 runs: (strip.runs || []).filter(function (r) { return r.start <= to && r.end >= from; }),
                 label: [sh.name, 'Fila ' + (i + 1), word, (from + 1) + '-' + (to + 1)],
@@ -1127,6 +1127,36 @@
             }
           });
         }
+      });
+    });
+    return out;
+  }
+
+  /*
+   * The blocks to print "like the template": the 4 rows of a module one under the other (as on the
+   * frame), cut in pieces of SLOTS_PER_PAGE slots. Each block: { group, word, from, to, width,
+   * floors: [{ from, to, cells, runs }] x 4, label }.
+   */
+  function printBlocks(project) {
+    const out = [];
+    analyseProject(project).forEach(function (a) {
+      a.sheets.forEach(function (sh) {
+        MODULES.forEach(function (m) {
+          if (!sh.modules[m]) return;
+          const strips = [];
+          for (let i = 0; i < ROWS_PER_MODULE; i++) strips.push(sh.rows[m][i] || emptyLayout(m));
+          const cap = strips[0].capacity || MODULE_SLOTS[m];
+          const word = strips[0].m === 'ala' ? 'Ala' : MODULE_NAMES[m];
+          for (let from = 0; from < cap; from += SLOTS_PER_PAGE) {
+            const to = Math.min(cap, from + SLOTS_PER_PAGE) - 1;
+            const within = function (x) { return x.start <= to && x.end >= from; };
+            out.push({
+              group: sh.name, word: word, from: from, to: to, width: to - from + 1,
+              floors: strips.map(function (st) { return { from: from, to: to, cells: st.cells.filter(within), runs: (st.runs || []).filter(within) }; }),
+              label: [sh.name, word, (from + 1) + '-' + (to + 1)],
+            });
+          }
+        });
       });
     });
     return out;
@@ -1142,11 +1172,8 @@
     const lines = [];
     pieces.forEach(function (p) {
       const startOn = function (l) { return l.used ? l.used + 1 : 0; };
-      // only with pieces of the same row of the same sheet: what is on a line goes on one shelf
-      let line = lines.find(function (l) {
-        const first = l.pieces[0].piece;
-        return first.sheet === p.sheet && first.i === p.i && startOn(l) + p.width <= SLOTS_PER_PAGE;
-      });
+      // only with pieces of the same group (same sheet, and same shelf row when printing by rows)
+      let line = lines.find(function (l) { return l.pieces[0].piece.group === p.group && startOn(l) + p.width <= SLOTS_PER_PAGE; });
       if (!line) { line = { pieces: [], used: 0 }; lines.push(line); }
       const start = startOn(line);
       line.pieces.push({ piece: p, start: start });
@@ -1330,6 +1357,7 @@
     optimizeOrder: optimizeOrder,
     reorderRoute: reorderRoute,
     printPieces: printPieces,
+    printBlocks: printBlocks,
     packPages: packPages,
     airKm: airKm,
     projectToText: projectToText,

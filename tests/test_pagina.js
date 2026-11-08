@@ -82,6 +82,14 @@ function caretAt(ta, needle, offset) {
   assert.strictEqual(blobs.length, 3, 'PDF, Excel e Excel come il modello: ' + toastText);
   assert.strictEqual(blobs[0].type, 'application/pdf');
   assert.ok(blobs.every(function (b) { return b.size > 5000; }), 'file non vuoti');
+  // "per piani" instead of "per moduli": another PDF, and the choice is remembered
+  const piani = doc.querySelector('input[name="print-layout"][value="piani"]');
+  piani.checked = true;
+  piani.dispatchEvent(new win.Event('change'));
+  doc.getElementById('btn-pdf').dispatchEvent(new win.Event('click'));
+  assert.strictEqual(blobs.length, 4);
+  assert.notStrictEqual(blobs[3].size, blobs[0].size, 'per piani il PDF è diverso');
+  assert.strictEqual(win.localStorage.getItem('casellino.stampa'), 'piani');
 
   // the photo reader opens from the big button and from the menu
   doc.querySelector('.photo-btn').dispatchEvent(new win.Event('click'));

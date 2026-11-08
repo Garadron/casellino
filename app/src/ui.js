@@ -1850,18 +1850,24 @@
 
   // ------------------------------------------------------------ files
 
-  // Printing: PDF and compact Excel fill the A4 sheet with strips; the template Excel keeps one module per sheet.
+  // Printing: PDF and compact Excel fill the A4 sheet with strips ('moduli': the 4 rows of a module
+  // together, like the template; 'piani': one shelf row per line); the template Excel keeps one module per sheet.
+  const LAYOUT_KEY = 'casellino.stampa';
+  function printLayout() {
+    const on = document.querySelector('input[name="print-layout"]:checked');
+    return on ? on.value : 'moduli';
+  }
   function exportPrint(kind) {
     document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
     try {
       const xlsxType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
       let sheets;
       if (kind === 'pdf') {
-        const r = window.CasellinoPdf.buildPdf(state.project, fileBaseName());
+        const r = window.CasellinoPdf.buildPdf(state.project, fileBaseName(), printLayout());
         download(fileBaseName() + '.pdf', r.bytes, 'application/pdf');
         sheets = r.pages;
       } else if (kind === 'excel') {
-        const r = X.buildCompactFiles(state.project);
+        const r = X.buildCompactFiles(state.project, printLayout());
         download(fileBaseName() + '.xlsx', X.zip(r.files), xlsxType);
         sheets = r.pages;
       } else {
@@ -1946,6 +1952,14 @@
     $('btn-pdf').addEventListener('click', function () { exportPrint('pdf'); });
     $('btn-excel').addEventListener('click', function () { exportPrint('excel'); });
     $('btn-excel-model').addEventListener('click', function () { exportPrint('model'); });
+    try {   // the last layout chosen on this device
+      const saved = localStorage.getItem(LAYOUT_KEY);
+      const radio = saved && document.querySelector('input[name="print-layout"][value="' + saved + '"]');
+      if (radio) radio.checked = true;
+    } catch (e) { /* storage blocked: the default stays */ }
+    document.querySelectorAll('input[name="print-layout"]').forEach(function (r) {
+      r.addEventListener('change', function () { try { localStorage.setItem(LAYOUT_KEY, r.value); } catch (e) { /* optional */ } });
+    });
     $('btn-save').addEventListener('click', saveFile);
     $('btn-open').addEventListener('click', function () { $('file-input').click(); });
     $('file-input').addEventListener('change', function (e) {

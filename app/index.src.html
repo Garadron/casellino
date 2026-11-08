@@ -32,10 +32,15 @@
     <details class="menu print-menu">
       <summary class="primary-summary">Stampa</summary>
       <div class="menu-list">
+        <fieldset class="print-layout">
+          <legend class="small muted">Come mettere le strisce sul foglio</legend>
+          <label><input type="radio" name="print-layout" value="moduli" checked> Per moduli <span class="small muted">(come il modello: le 4 file insieme)</span></label>
+          <label><input type="radio" name="print-layout" value="piani"> Per piani <span class="small muted">(una fila per riga, meno fogli)</span></label>
+        </fieldset>
         <button type="button" id="btn-pdf">📄 PDF da stampare <span class="small muted">(consigliato)</span></button>
         <button type="button" id="btn-excel">📊 Excel</button>
         <button type="button" id="btn-excel-model">📊 Excel come il modello <span class="small muted">(un modulo per foglio)</span></button>
-        <p class="small muted version">PDF ed Excel riempiono il foglio A4: più strisce per foglio, ognuna con scritto dove va.</p>
+        <p class="small muted version">PDF ed Excel riempiono il foglio A4 orizzontale: più strisce per foglio, ognuna con scritto dove va.</p>
       </div>
     </details>
     <details class="menu">
