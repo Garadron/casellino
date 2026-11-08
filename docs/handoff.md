@@ -2,6 +2,18 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 8 novembre 2026 · Tappa 2 chiusa: aprire gli Excel già fatti (v0.13.0)
+
+**Fatto.** `app/src/importa.js`: apre lo zip (DecompressionStream del browser, niente librerie), legge workbook, stringhe,
+celle, celle unite e aree di stampa; ogni foglio con strisce diventa una sottozona; i moduli dalle aree di stampa (33 = ala,
+91 = casello) o dai posti del modello; disposizione diversa da [ala A, casello, ala B] → mobile disegnato.
+**Casi limite.** Cella unita sulle due righe (un nome senza via) → riga del giro senza due punti; testo con a capo
+(le caselle oblique dell'Excel di Casellino) → «a/b»; virgole e due punti nei testi tolti; .xls vecchio → messaggio.
+**Rischi.** Il comune non è nell'Excel: va scritto a mano. La continuazione di una sottozona nel mobile di un'altra
+torna nel giro dell'altra (l'Excel non dice di chi è).
+**Verifiche.** Andata e ritorno identica (normale e compresso) in `tests/test_core.js` (33), file vero del modello
+nel browser vero (Edge), serie completa verde. Alleggerimento: tolte due funzioni esportate che nessuno usava.
+
 ## 8 novembre 2026 · Tappa 1 chiusa: stampa compatta (v0.12.0)
 
 **Fatto.** Menu «Stampa»: PDF (scritto dal programma, `app/src/pdf.js`), Excel compatto e Excel come il modello. PDF ed
@@ -23,6 +35,6 @@ byte per byte a prima; tolta l'opzione «salta i pezzi vuoti», mai chiesta.
 **Da decidere con Garadron.** Una prova di stampa vera sul mobile; se le caselle non combaciano, una regolazione della
 larghezza nel PDF (proposta, non fatta).
 
-**Prossime tappe** (note del telefono del 7 novembre, nel repository privato di Archivista #1-#4, da cancellare a
-lavoro fatto): 2. importare gli Excel già fatti; 3. bloccare il giro controllato; 4. ufficio di partenza e
-«Ottimizzazione gita»; 5. correggere i punti sulla cartina.
+**Prossime tappe** (note del telefono del 7 novembre, nel repository privato di Archivista, da cancellare a lavoro
+fatto): 3. bloccare il giro controllato (#2); 4. ufficio di partenza e «Ottimizzazione gita» (#2, #3); 5. correggere i
+punti sulla cartina (#3).

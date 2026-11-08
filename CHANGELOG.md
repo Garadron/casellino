@@ -1,5 +1,20 @@
 # Registro delle versioni
 
+## v0.13.0 · 2026-11-08 · Aprire gli Excel già fatti
+
+- **«Apri»** (e «Altro → Apri un Excel già fatto») legge anche gli Excel delle strisce, fatti con il modello (anche
+  quelli vecchi, .xlsx o .xlsm) o da Casellino come il modello. Ogni foglio scritto diventa una sottozona; i fogli vuoti
+  si saltano. I moduli si trovano dalle aree di stampa (33 caselle = ala, 91 = casello), o dai posti del modello.
+- Su ogni striscia: le caselle dalla riga dei civici (una cella unita = casella larga), le vie dalla riga sotto; le
+  caselle con due numeri tornano «2/4», i pezzi vuoti «vuota», «vuote N», «FINE STRISCIA», «STRISCIA VUOTA». Dopo si
+  scrive il comune di ogni sottozona, si corregge e si ristampa con le regole nuove.
+- Provato: un lavoro esportato e riaperto ha tutte le caselle al loro posto (anche con il file compresso come lo
+  scrive Excel); il file del modello originale si legge nel browser vero.
+- Gratis e dentro il dispositivo: lo zip dell'Excel lo apre il browser stesso.
+- Nota del telefono #4.
+- File: `app/src/importa.js` (nuovo), `app/src/ui.js`, `app/index.src.html`, `tests/test_core.js`, `Casellino.html`,
+  `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.12.0 · 2026-11-08 · Stampa in PDF ed Excel che riempiono il foglio A4
 
 - **Stampa** (al posto di «Crea Excel»): PDF da stampare (consigliato), Excel, oppure Excel come il modello.

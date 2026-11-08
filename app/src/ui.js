@@ -1719,6 +1719,7 @@
   }
 
   function openFile(file) {
+    if (/\.xls[xm]?$/i.test(file.name)) { openExcel(file); return; }
     const reader = new FileReader();
     reader.onload = function () {
       const text = String(reader.result || '');
@@ -1729,6 +1730,22 @@
     };
     reader.onerror = function () { toast('Non riesco a leggere il file.'); };
     reader.readAsText(file, 'utf-8');
+  }
+
+  // An Excel of strips made with the template (or by Casellino): it becomes the route of each sheet.
+  async function openExcel(file) {
+    if (/\.xls$/i.test(file.name)) { toast('Questo è un Excel vecchio (.xls): aprilo in Excel e salvalo come .xlsx, poi riprova.'); return; }
+    if (!isEmptyProject() && !confirm("Apro l'Excel «" + file.name + '» al posto del lavoro aperto? Se ti serve, prima usa «Salva file».')) return;
+    try {
+      const r = await window.CasellinoImporta.importExcel(new Uint8Array(await file.arrayBuffer()));
+      setProject(r.project);
+      toast('Letto «' + file.name + '»: ' + r.project.subzones.length + (r.project.subzones.length === 1 ? ' sottozona' : ' sottozone') +
+        '. Scrivi il comune di ognuna e controlla il giro.' + (r.skipped.length ? ' Fogli vuoti saltati: ' + r.skipped.join(', ') + '.' : ''));
+    } catch (e) {
+      toast(typeof DecompressionStream === 'undefined'
+        ? 'Questo browser è troppo vecchio per leggere gli Excel: aggiornalo o usa un altro browser.'
+        : "Non riesco a leggere l'Excel: " + e.message + '.');
+    }
   }
 
   function setProject(p) {
@@ -1788,6 +1805,7 @@
     $('btn-example').addEventListener('click', function () { closeMenu(); loadExample(); });
     $('btn-help').addEventListener('click', function () { closeMenu(); $('dlg-help').showModal(); });
     $('btn-photos').addEventListener('click', function () { closeMenu(); openPhotos(); });
+    $('btn-open-excel').addEventListener('click', function () { closeMenu(); $('file-input').click(); });
     $('dlg-import').addEventListener('close', function () {
       if ($('dlg-import').returnValue !== 'ok') return;
       const text = $('import-text').value;

@@ -467,4 +467,65 @@ test('xlsx package has the parts Excel needs', function () {
   assert.strictEqual(Xlsx.crc32(new TextEncoder().encode('123456789')), 0xCBF43926);
 });
 
-console.log(passed + ' prove superate' + (process.exitCode ? ', ALCUNE FALLITE' : ''));
+// ---------------------------------------------------------------- tests that wait (reading Excel files)
+
+// A zip compressed like the ones Excel writes (deflate), from a list of { name, data }.
+function deflatedZip(files) {
+  const zlib = require('zlib');
+  const parts = [], central = [];
+  let offset = 0;
+  files.forEach(function (f) {
+    const name = Buffer.from(f.name), data = Buffer.from(f.data), packed = zlib.deflateRawSync(data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(8, 8);
+    local.writeUInt32LE(Xlsx.crc32(data), 14); local.writeUInt32LE(packed.length, 18); local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    const cd = Buffer.alloc(46);
+    cd.writeUInt32LE(0x02014b50, 0); cd.writeUInt16LE(20, 4); cd.writeUInt16LE(20, 6); cd.writeUInt16LE(8, 10);
+    cd.writeUInt32LE(Xlsx.crc32(data), 16); cd.writeUInt32LE(packed.length, 20); cd.writeUInt32LE(data.length, 24);
+    cd.writeUInt16LE(name.length, 28); cd.writeUInt32LE(offset, 42);
+    parts.push(local, name, packed); central.push(cd, name);
+    offset += 30 + name.length + packed.length;
+  });
+  const size = central.reduce(function (a, b) { return a + b.length; }, 0);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(size, 12); end.writeUInt32LE(offset, 16);
+  return new Uint8Array(Buffer.concat(parts.concat(central, [end])));
+}
+
+async function asyncTests() {
+  const Importa = require('../app/src/importa.js');
+  // street names without the town: the Excel does not say it
+  const pigeonholes = function (project) {
+    return Core.analyseProject(project).map(function (a) {
+      return a.sheets.map(function (sh) {
+        return Core.MODULES.filter(function (m) { return sh.modules[m]; }).map(function (m) {
+          return sh.rows[m].map(function (st) {
+            return st.cells.map(function (c) { return c.start + ':' + c.span + ':' + Core.streetName(c.street) + ':' + c.top + (c.second ? '/' + c.second : ''); }).join(',');
+          }).join('|');
+        }).join('#');
+      }).join('&');
+    });
+  };
+  try {
+    const p = Core.textToProject(EXAMPLE);
+    p.subzones[0].town = '';
+    // Excel like the template -> Casellino: every pigeonhole in its place, with its street
+    const plain = await Importa.importExcel(Xlsx.buildXlsx(JSON.parse(JSON.stringify(p))));
+    assert.deepStrictEqual(pigeonholes(plain.project), pigeonholes(p), 'stesse caselle dopo andata e ritorno');
+    assert.strictEqual(plain.project.zone, '9');
+    assert.strictEqual(plain.project.owner, 'Mario Esempio');
+    assert.deepStrictEqual(plain.project.subzones[0].modules, { alaA: false, casello: true, alaB: true });
+    // the same, compressed as Excel does
+    const packed = await Importa.importExcel(deflatedZip(Xlsx.buildWorkbookFiles(JSON.parse(JSON.stringify(p)))));
+    assert.deepStrictEqual(pigeonholes(packed.project), pigeonholes(p), 'anche compresso');
+    // not an Excel
+    await assert.rejects(Importa.importExcel(new Uint8Array([1, 2, 3, 4])), /non è un Excel/);
+    passed++;
+  } catch (e) { console.error('FAIL Excel import\n  ' + e.message); process.exitCode = 1; }
+}
+
+asyncTests().then(function () {
+  console.log(passed + ' prove superate' + (process.exitCode ? ', ALCUNE FALLITE' : ''));
+});
