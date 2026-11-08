@@ -1,5 +1,22 @@
 # Registro delle versioni
 
+## v0.12.0 · 2026-11-08 · Stampa in PDF ed Excel che riempiono il foglio A4
+
+- **Stampa** (al posto di «Crea Excel»): PDF da stampare (consigliato), Excel, oppure Excel come il modello.
+- PDF ed Excel **riempiono il foglio A4 orizzontale**: 10 righe di strisce per foglio, larghe 22 caselle. Ogni fila
+  di ogni modulo si taglia in pezzi da 22 caselle, come prima; i pezzi corti della stessa fila (la fine del casello e la
+  fine dell'ala) stanno sulla stessa riga, con una casella vuota in mezzo per tagliare. Sopra ogni pezzo c'è scritto
+  dove va: «2A · Fila 1 · Casello · caselle 1-22». Per la zona 2: 5 fogli invece di 14.
+- Le misure delle caselle restano quelle del modello: 1,2435 cm di larghezza, 1 cm per i civici, 0,7 cm per le vie.
+  L'Excel lascia i margini laterali a zero come il modello (con i margini la 22ª casella non ci stava più) e centra la
+  pagina; provato nell'Excel del PC: 5 pagine, nessuna colonna sul foglio dopo.
+- Il PDF lo scrive il programma stesso, senza librerie esterne, anche senza internet; carattere standard dei PDF con le
+  stesse larghezze di Arial grassetto. In fondo a ogni foglio: «foglio 1 di 5, stampa a dimensioni reali (100%)».
+- Nota del telefono #1 (urgente).
+- File: `app/src/pdf.js` (nuovo), `app/src/xlsx.js`, `app/src/core.js`, `app/src/ui.js`, `app/src/style.css`,
+  `app/index.src.html`, `tests/test_core.js`, `tests/test_pagina.js`, `Casellino.html`, `sito/`, `README.md`,
+  `docs/handoff.md` (nuovo), `CHANGELOG.md`, `prove/`.
+
 ## v0.11.0 · 2026-11-06 · L'account: i lavori salvati e ritrovati da ogni dispositivo
 
 - **Accedi / Registrati** (in alto): con un nome utente e una password i lavori si salvano da soli nell'account mentre

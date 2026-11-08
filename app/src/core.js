@@ -1003,6 +1003,66 @@
     return 2 * R * Math.asin(Math.sqrt(x));
   }
 
+  // ---------------------------------------------------------------- printing: strips packed on A4 sheets
+
+  /*
+   * The pieces to print: every row of every module, cut into pieces of SLOTS_PER_PAGE slots (the
+   * same cuts as before, so the street names are already repeated on every piece). Each piece:
+   * { sheet, m, i, from, to, width, cells, runs, label: [lines] }. Cells keep their slot numbers.
+   */
+  function printPieces(project) {
+    const out = [];
+    analyseProject(project).forEach(function (a) {
+      a.sheets.forEach(function (sh) {
+        // row by row, so the pieces of one row stay together on the sheets
+        for (let i = 0; i < ROWS_PER_MODULE; i++) {
+          MODULES.forEach(function (m) {
+            if (!sh.modules[m]) return;
+            const strip = sh.rows[m][i] || emptyLayout(m);
+            const cap = strip.capacity || MODULE_SLOTS[m];
+            const word = strip.m === 'ala' ? 'Ala' : MODULE_NAMES[m];
+            for (let from = 0; from < cap; from += SLOTS_PER_PAGE) {
+              const to = Math.min(cap, from + SLOTS_PER_PAGE) - 1;
+              const cells = strip.cells.filter(function (c) { return c.start <= to && c.end >= from; });
+              out.push({
+                sheet: sh.name, m: m, i: i, from: from, to: to, width: to - from + 1, word: word,
+                cells: cells,
+                runs: (strip.runs || []).filter(function (r) { return r.start <= to && r.end >= from; }),
+                label: [sh.name, 'Fila ' + (i + 1), word, (from + 1) + '-' + (to + 1)],
+              });
+            }
+          });
+        }
+      });
+    });
+    return out;
+  }
+
+  /*
+   * Puts the pieces on lines as wide as SLOTS_PER_PAGE slots (the label of each piece goes in a thin
+   * line above it), keeping their order: a piece goes on the first line of the same shelf row with
+   * room, one empty slot after the piece before it (for cutting). Then lines are grouped in pages of
+   * `perPage` lines. Returns [[{ pieces: [{ piece, start }], used }]] (pages of lines).
+   */
+  function packPages(pieces, perPage) {
+    const lines = [];
+    pieces.forEach(function (p) {
+      const startOn = function (l) { return l.used ? l.used + 1 : 0; };
+      // only with pieces of the same row of the same sheet: what is on a line goes on one shelf
+      let line = lines.find(function (l) {
+        const first = l.pieces[0].piece;
+        return first.sheet === p.sheet && first.i === p.i && startOn(l) + p.width <= SLOTS_PER_PAGE;
+      });
+      if (!line) { line = { pieces: [], used: 0 }; lines.push(line); }
+      const start = startOn(line);
+      line.pieces.push({ piece: p, start: start });
+      line.used = start + p.width;
+    });
+    const pages = [];
+    for (let k = 0; k < lines.length; k += perPage) pages.push(lines.slice(k, k + perPage));
+    return pages;
+  }
+
   // ---------------------------------------------------------------- text format
 
   const MODULE_WORDS = { alaA: 'ala A', casello: 'casello', alaB: 'ala B' };
@@ -1172,6 +1232,8 @@
     paletteName: paletteName,
     mapQuery: mapQuery,
     routeStops: routeStops,
+    printPieces: printPieces,
+    packPages: packPages,
     airKm: airKm,
     projectToText: projectToText,
     textToProject: textToProject,

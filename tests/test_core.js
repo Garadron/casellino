@@ -335,6 +335,50 @@ test('photo of a strip: printed lines removed, one group of ink per pigeonhole',
   assert.deepStrictEqual(lines, ['VIA DEI TIGLI: 1, 3?', 'VIA DELLE ROSE: 2']);
 });
 
+test('printing: pieces of 22 slots packed on full A4 sheets, one shelf row per line', function () {
+  const p = Core.textToProject(EXAMPLE);
+  const pieces = Core.printPieces(p);
+  // casello 91 = 22+22+22+22+3, ala 33 = 22+11, 4 rows
+  assert.strictEqual(pieces.length, 4 * (5 + 2));
+  assert.deepStrictEqual(pieces.slice(0, 7).map(function (x) { return x.label.join(' '); }), [
+    '9A Fila 1 Casello 1-22', '9A Fila 1 Casello 23-44', '9A Fila 1 Casello 45-66', '9A Fila 1 Casello 67-88',
+    '9A Fila 1 Casello 89-91', '9A Fila 1 Ala B 1-22', '9A Fila 1 Ala B 23-33']);
+  const pages = Core.packPages(pieces, 10);
+  const lines = [].concat.apply([], pages);
+  assert.strictEqual(lines.length, 4 * 6, 'the end of the casello and the end of the ala share a line');
+  lines.forEach(function (l) {
+    assert.ok(l.used <= Core.SLOTS_PER_PAGE);
+    assert.ok(l.pieces.every(function (x) { return x.piece.i === l.pieces[0].piece.i; }), 'one shelf row per line');
+  });
+  const shared = lines.find(function (l) { return l.pieces.length === 2; });
+  assert.deepStrictEqual(shared.pieces.map(function (x) { return x.start; }), [0, 4], 'one free slot between the pieces');
+  assert.deepStrictEqual(pages.map(function (pg) { return pg.length; }), [10, 10, 4]);
+  // the slots of a piece are those of its strip
+  const piece = pieces[1];
+  assert.ok(piece.cells.every(function (c) { return c.end >= 22 && c.start <= 43; }));
+});
+
+test('printing: the compact Excel keeps the template measures; the PDF is a valid file', function () {
+  const p = Core.textToProject(EXAMPLE);
+  const r = Xlsx.buildCompactFiles(p);
+  const sheet = r.files.find(function (f) { return f.name === 'xl/worksheets/sheet1.xml'; }).data;
+  assert.ok(sheet.indexOf('<col min="1" max="22" width="' + Xlsx.GEOMETRY.defaultColWidth + '" customWidth="1"/>') >= 0, 'slot width of the template');
+  assert.ok(sheet.indexOf('<row r="2" ht="28.35" customHeight="1">') >= 0 && sheet.indexOf('<row r="3" ht="19.9" customHeight="1">') >= 0, 'row heights of the template');
+  assert.ok(sheet.indexOf('<printOptions horizontalCentered="1" verticalCentered="1"/>') >= 0);
+  assert.ok(sheet.indexOf('<rowBreaks count="2"') >= 0, 'a page break every 10 lines');
+  assert.strictEqual(r.pages, 3);
+  const Pdf = require('../app/src/pdf.js');
+  const pdf = Pdf.buildPdf(p, 'Prova');
+  const text = Buffer.from(pdf.bytes).toString('latin1');
+  assert.strictEqual(pdf.pages, 3);
+  assert.ok(/^%PDF-1\.4/.test(text) && /%%EOF\n$/.test(text));
+  assert.strictEqual((text.match(/\/Type \/Page /g) || []).length, 3);
+  const xref = +/startxref\n(\d+)/.exec(text)[1];
+  assert.strictEqual(text.slice(xref, xref + 4), 'xref', 'the table of contents is where it says');
+  assert.ok(text.indexOf('(VIA DEI TIGLI) Tj') >= 0);
+  assert.ok(Pdf.diagonalSize('5A', '5B', 35.25, 28.35) >= 8, 'two short numbers stay readable');
+});
+
 test('files of older versions with another word for the big module still open', function () {
   const p = Core.sanitizeProject({ subzones: [{ name: '1A', modules: { casellVecchio: false, alaB: true }, rows: { casellVecchio: ['V: 1', '', '', ''], alaB: ['W: 2', '', '', ''] } }] });
   assert.deepStrictEqual(p.subzones[0].modules, { alaA: false, casello: false, alaB: true });

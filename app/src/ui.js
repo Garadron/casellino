@@ -1688,14 +1688,28 @@
 
   // ------------------------------------------------------------ files
 
-  function exportExcel() {
+  // Printing: PDF and compact Excel fill the A4 sheet with strips; the template Excel keeps one module per sheet.
+  function exportPrint(kind) {
+    document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
     try {
-      const bytes = X.buildXlsx(state.project);
-      download(fileBaseName() + '.xlsx', bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      const xlsxType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      let sheets;
+      if (kind === 'pdf') {
+        const r = window.CasellinoPdf.buildPdf(state.project, fileBaseName());
+        download(fileBaseName() + '.pdf', r.bytes, 'application/pdf');
+        sheets = r.pages;
+      } else if (kind === 'excel') {
+        const r = X.buildCompactFiles(state.project);
+        download(fileBaseName() + '.xlsx', X.zip(r.files), xlsxType);
+        sheets = r.pages;
+      } else {
+        download(fileBaseName() + ' - come il modello.xlsx', X.buildXlsx(state.project), xlsxType);
+      }
       changed();
-      toast('Excel creato: stampalo su A4 orizzontale, al 100%, senza «adatta alla pagina».');
+      toast((sheets ? sheets + (sheets === 1 ? ' foglio' : ' fogli') + ' A4. ' : '') +
+        'Stampa su A4 orizzontale a dimensioni reali (100%), senza «adatta alla pagina».');
     } catch (e) {
-      toast('Non sono riuscito a creare l\'Excel: ' + e.message);
+      toast('Non sono riuscito a crearlo: ' + e.message);
     }
   }
 
@@ -1750,7 +1764,9 @@
   function wire() {
     $('zone').addEventListener('input', function (e) { state.project.zone = e.target.value; changed(); });
     $('owner').addEventListener('input', function (e) { state.project.owner = e.target.value; changed(); });
-    $('btn-excel').addEventListener('click', exportExcel);
+    $('btn-pdf').addEventListener('click', function () { exportPrint('pdf'); });
+    $('btn-excel').addEventListener('click', function () { exportPrint('excel'); });
+    $('btn-excel-model').addEventListener('click', function () { exportPrint('model'); });
     $('btn-save').addEventListener('click', saveFile);
     $('btn-open').addEventListener('click', function () { $('file-input').click(); });
     $('file-input').addEventListener('change', function (e) {
@@ -1758,7 +1774,7 @@
       if (f) openFile(f);
       e.target.value = '';
     });
-    const closeMenu = function () { document.querySelector('.menu').open = false; };
+    const closeMenu = function () { document.querySelectorAll('.menu').forEach(function (m) { m.open = false; }); };
     $('btn-new').addEventListener('click', function () {
       closeMenu();
       if (!isEmptyProject() && !confirm('Comincio da capo? Il lavoro aperto si perde, se non l\'hai salvato con «Salva file».')) return;
@@ -1789,8 +1805,7 @@
       changed(); renderStreets();
     });
     document.addEventListener('click', function (e) {
-      const menu = document.querySelector('.menu');
-      if (menu.open && !menu.contains(e.target)) menu.open = false;
+      document.querySelectorAll('.menu').forEach(function (menu) { if (menu.open && !menu.contains(e.target)) menu.open = false; });
     });
     window.addEventListener('resize', debounce(function () { if (state.els.ta) fitTextarea(state.els.ta); }, 200));
     $('overview-card').addEventListener('toggle', renderOverview);

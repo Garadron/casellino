@@ -67,9 +67,12 @@ function caretAt(ta, needle, offset) {
   assert.notStrictEqual(text('.route .used'), before, 'il conto cambia scrivendo');
   assert.ok(/VIA NUOVA/.test(text('#streets')), 'la via nuova compare nell\'elenco');
 
-  doc.getElementById('btn-excel').dispatchEvent(new win.Event('click'));
+  // the three ways to print
+  ['btn-pdf', 'btn-excel', 'btn-excel-model'].forEach(function (id) { doc.getElementById(id).dispatchEvent(new win.Event('click')); });
   const toastText = doc.querySelector('.toast') ? doc.querySelector('.toast').textContent : '';
-  assert.ok(blobs.length === 1 && blobs[0].size > 5000, 'Excel creato: ' + blobs.length + ' ' + toastText);
+  assert.strictEqual(blobs.length, 3, 'PDF, Excel e Excel come il modello: ' + toastText);
+  assert.strictEqual(blobs[0].type, 'application/pdf');
+  assert.ok(blobs.every(function (b) { return b.size > 5000; }), 'file non vuoti');
 
   // the photo reader opens from the big button and from the menu
   doc.querySelector('.photo-btn').dispatchEvent(new win.Event('click'));

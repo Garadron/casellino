@@ -20,8 +20,10 @@ telefono, e i tuoi dati restano sul tuo dispositivo.
    Se hai le foto delle strisce di oggi, **Leggi le strisce dalle foto** scrive una bozza del giro (gratis, dentro il
    dispositivo). Nel **disegno di tutto il mobile** metti i moduli nell'ordine giusto e, con la matita, segni dove una
    sottozona entra nell'altra. La **cartina del giro** mette le vie sulla mappa e calcola i chilometri.
-4. **Crea Excel**: esce il file da stampare (1,244 cm per casella), su A4 orizzontale, al 100%. Ogni foglio contiene 22
-   caselle.
+4. **Stampa**: il **PDF** (consigliato) o l'**Excel** riempiono il foglio A4 orizzontale: 10 righe di strisce per foglio,
+   ogni pezzo con scritto sopra dove va (per esempio «2A · Fila 1 · Casello · caselle 1-22»). Le caselle hanno le
+   misure del modello (1,2435 cm, righe di 1 cm e 0,7 cm). Si stampa a dimensioni reali (100%). C'è anche l'«Excel
+   come il modello», un modulo per foglio come prima.
 5. **Con un account** (pulsante «Accedi» in alto, gratis, basta nome utente e password) i lavori si salvano da soli e
    li ritrovi da qualsiasi telefono o computer. Alla registrazione ricevi un codice di recupero: scrivilo, serve se
    dimentichi la password. Sui computer non tuoi, quando esci, scegli di togliere il lavoro da lì.

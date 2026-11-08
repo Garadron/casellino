@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.11.0';</script>
+<script>window.CASELLINO_VERSION = '0.12.0';</script>
 <style>
 :root {
   --bg: #f4f5f7;
@@ -366,6 +366,10 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
 .recovery { border: 2px solid var(--warn); background: var(--warn-soft); border-radius: 10px; padding: 10px 12px; }
 .recovery .code { font: 700 24px/1.2 ui-monospace, Consolas, monospace; letter-spacing: .06em; margin: 6px 0; }
 .account-end { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* the print menu, highlighted like the main button */
+.menu summary.primary-summary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.print-menu .menu-list { min-width: 280px; }
 </style>
 </head>
 <body>
@@ -381,7 +385,15 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
     <button type="button" id="btn-account">Accedi</button>
     <button type="button" id="btn-open">Apri</button>
     <button type="button" id="btn-save">Salva file</button>
-    <button type="button" class="primary" id="btn-excel">Crea Excel</button>
+    <details class="menu print-menu">
+      <summary class="primary-summary">Stampa</summary>
+      <div class="menu-list">
+        <button type="button" id="btn-pdf">📄 PDF da stampare <span class="small muted">(consigliato)</span></button>
+        <button type="button" id="btn-excel">📊 Excel</button>
+        <button type="button" id="btn-excel-model">📊 Excel come il modello <span class="small muted">(un modulo per foglio)</span></button>
+        <p class="small muted version">PDF ed Excel riempiono il foglio A4: più strisce per foglio, ognuna con scritto dove va.</p>
+      </div>
+    </details>
     <details class="menu">
       <summary>Altro</summary>
       <div class="menu-list">
@@ -1569,6 +1581,66 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
     return 2 * R * Math.asin(Math.sqrt(x));
   }
 
+  // ---------------------------------------------------------------- printing: strips packed on A4 sheets
+
+  /*
+   * The pieces to print: every row of every module, cut into pieces of SLOTS_PER_PAGE slots (the
+   * same cuts as before, so the street names are already repeated on every piece). Each piece:
+   * { sheet, m, i, from, to, width, cells, runs, label: [lines] }. Cells keep their slot numbers.
+   */
+  function printPieces(project) {
+    const out = [];
+    analyseProject(project).forEach(function (a) {
+      a.sheets.forEach(function (sh) {
+        // row by row, so the pieces of one row stay together on the sheets
+        for (let i = 0; i < ROWS_PER_MODULE; i++) {
+          MODULES.forEach(function (m) {
+            if (!sh.modules[m]) return;
+            const strip = sh.rows[m][i] || emptyLayout(m);
+            const cap = strip.capacity || MODULE_SLOTS[m];
+            const word = strip.m === 'ala' ? 'Ala' : MODULE_NAMES[m];
+            for (let from = 0; from < cap; from += SLOTS_PER_PAGE) {
+              const to = Math.min(cap, from + SLOTS_PER_PAGE) - 1;
+              const cells = strip.cells.filter(function (c) { return c.start <= to && c.end >= from; });
+              out.push({
+                sheet: sh.name, m: m, i: i, from: from, to: to, width: to - from + 1, word: word,
+                cells: cells,
+                runs: (strip.runs || []).filter(function (r) { return r.start <= to && r.end >= from; }),
+                label: [sh.name, 'Fila ' + (i + 1), word, (from + 1) + '-' + (to + 1)],
+              });
+            }
+          });
+        }
+      });
+    });
+    return out;
+  }
+
+  /*
+   * Puts the pieces on lines as wide as SLOTS_PER_PAGE slots (the label of each piece goes in a thin
+   * line above it), keeping their order: a piece goes on the first line of the same shelf row with
+   * room, one empty slot after the piece before it (for cutting). Then lines are grouped in pages of
+   * `perPage` lines. Returns [[{ pieces: [{ piece, start }], used }]] (pages of lines).
+   */
+  function packPages(pieces, perPage) {
+    const lines = [];
+    pieces.forEach(function (p) {
+      const startOn = function (l) { return l.used ? l.used + 1 : 0; };
+      // only with pieces of the same row of the same sheet: what is on a line goes on one shelf
+      let line = lines.find(function (l) {
+        const first = l.pieces[0].piece;
+        return first.sheet === p.sheet && first.i === p.i && startOn(l) + p.width <= SLOTS_PER_PAGE;
+      });
+      if (!line) { line = { pieces: [], used: 0 }; lines.push(line); }
+      const start = startOn(line);
+      line.pieces.push({ piece: p, start: start });
+      line.used = start + p.width;
+    });
+    const pages = [];
+    for (let k = 0; k < lines.length; k += perPage) pages.push(lines.slice(k, k + perPage));
+    return pages;
+  }
+
   // ---------------------------------------------------------------- text format
 
   const MODULE_WORDS = { alaA: 'ala A', casello: 'casello', alaB: 'ala B' };
@@ -1738,6 +1810,8 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
     paletteName: paletteName,
     mapQuery: mapQuery,
     routeStops: routeStops,
+    printPieces: printPieces,
+    packPages: packPages,
     airKm: airKm,
     projectToText: projectToText,
     textToProject: textToProject,
@@ -1972,8 +2046,8 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
     return out;
   }
 
-  SheetBuilder.prototype.xml = function (printSelected, breaks) {
-    const g = GEOMETRY;
+  SheetBuilder.prototype.xml = function (printSelected, breaks, geometry) {
+    const g = geometry || GEOMETRY;
     let x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
       'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
@@ -2008,10 +2082,15 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
         this.merges.map(function (m) { return '<mergeCell ref="' + m + '"/>'; }).join('') + '</mergeCells>';
     }
     const mg = g.margins;
+    if (g.centered) x += '<printOptions horizontalCentered="1" verticalCentered="1"/>';
     x += '<pageMargins left="' + mg.left + '" right="' + mg.right + '" top="' + mg.top + '" bottom="' + mg.bottom +
       '" header="' + mg.header + '" footer="' + mg.footer + '"/>' +
       '<pageSetup paperSize="' + g.paperSize + '" orientation="' + g.orientation + '"/>' +
       '<headerFooter alignWithMargins="0"/>';
+    if (g.rowBreaks && g.rowBreaks.length) {
+      x += '<rowBreaks count="' + g.rowBreaks.length + '" manualBreakCount="' + g.rowBreaks.length + '">' +
+        g.rowBreaks.map(function (b) { return '<brk id="' + b + '" max="16383" man="1"/>'; }).join('') + '</rowBreaks>';
+    }
     if (breaks && breaks.length) {
       x += '<colBreaks count="' + breaks.length + '" manualBreakCount="' + breaks.length + '">' +
         breaks.map(function (b) { return '<brk id="' + b + '" max="1048575" man="1"/>'; }).join('') + '</colBreaks>';
@@ -2033,7 +2112,6 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
       if (!sheet.modules[m]) return;
       const L = LAYOUT[m];
       const slots = Core.MODULE_SLOTS[m];
-      const last = L.first + slots - 1;
 
       NUMBER_ROWS.forEach(function (r) {
         for (let s = 0; s < slots; s++) {
@@ -2049,45 +2127,116 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
         sb.block(top, L.labelRight, bottom, L.labelRight, (i + 1) + ' ' + L.word, Object.assign({ rot: 180 }, label));
 
         const lay = sheet.rows[m][i];
-        const edges = function (start, end) {
-          return { l: L.first + start === L.first ? 'medium' : 'thin', r: L.first + end === last ? 'medium' : 'thin' };
-        };
-        const usedTop = {}, usedBottom = {};
-
-        lay.cells.forEach(function (c) {
-          if (c.start >= slots) return;
-          const end = Math.min(c.end, slots - 1);
-          const color = Core.colorOf(project, c.key);
-          const ink = Core.textColorOf(project, c.key);
-          const e = edges(c.start, end);
-          if (c.second) {
-            const d = diagonalText(c.top, c.second, end - c.start + 1);
-            sb.block(top, L.first + c.start, top, L.first + end, d.text,
-              { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: ink } });
-          } else {
-            sb.block(top, L.first + c.start, top, L.first + end, c.top,
-              Object.assign({ bold: true, text: true, fill: color, color: ink, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
-          }
-          for (let s = c.start; s <= end; s++) usedTop[s] = true;
-        });
-        lay.runs.forEach(function (run) {
-          const e = edges(run.start, run.end);
-          sb.block(bottom, L.first + run.start, bottom, L.first + run.end, run.street,
-            { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
-          for (let s = run.start; s <= run.end; s++) usedBottom[s] = true;
-        });
-        // Slots left empty, and pigeonholes with no street, get a plain lower line.
-        for (let s = 0; s < slots; s++) {
-          const e = edges(s, s);
-          if (!usedTop[s]) sb.put(top, L.first + s, '', { size: 20, bold: true, text: true, shrink: true, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } });
-          if (!usedBottom[s]) {
-            sb.put(bottom, L.first + s, '', { size: 16, bold: true, text: true, shrink: true,
-              border: { l: s === 0 ? 'medium' : null, r: s === slots - 1 ? 'medium' : null, b: 'medium' } });
-          }
-        }
+        drawPiece(sb, project, { from: 0, to: slots - 1, cells: lay.cells, runs: lay.runs }, top, L.first);
       }
     });
     return sb.xml(selected, pageBreaks(sheet));
+  }
+
+  // ------------------------------------------------------------------ compact: strips packed on A4 sheets
+
+  /*
+   * The same strips as the template (same slot width, same row heights: they must match the
+   * pigeonholes), packed: every line of a sheet holds one row of one shelf, cut in pieces of 22
+   * slots, with a thin line above each piece saying where it goes. 10 lines per A4 landscape sheet.
+   */
+  const COMPACT = {
+    perPage: 10,
+    labelHeight: '8',
+  };
+
+  function compactGeometry(lines) {
+    const rowHeights = {};
+    const breaks = [];
+    for (let k = 0; k < lines; k++) {
+      rowHeights[3 * k + 1] = COMPACT.labelHeight;
+      rowHeights[3 * k + 2] = GEOMETRY.rowHeights[4]; // the template's heights, never change them
+      rowHeights[3 * k + 3] = GEOMETRY.rowHeights[5];
+      if (k && k % COMPACT.perPage === 0) breaks.push(3 * k);
+    }
+    return {
+      cols: [[1, Core.SLOTS_PER_PAGE, GEOMETRY.defaultColWidth, true]],
+      defaultColWidth: GEOMETRY.defaultColWidth,
+      defaultRowHeight: GEOMETRY.defaultRowHeight,
+      rowHeights: rowHeights,
+      margins: { left: '0', right: '0', top: '0.2', bottom: '0.2', header: '0', footer: '0' }, // as the template: 22 slots fit only with no side margins
+      paperSize: GEOMETRY.paperSize,
+      orientation: GEOMETRY.orientation,
+      dimension: 'A1:' + colName(Core.SLOTS_PER_PAGE) + Math.max(1, 3 * lines),
+      rowBreaks: breaks,
+      centered: true,
+    };
+  }
+
+  // One piece of strip (slots piece.from..piece.to): house numbers on row `top`, street names under it.
+  function drawPiece(sb, project, piece, top, col0) {
+    const bottom = top + 1;
+    const col = function (slot) { return col0 + slot - piece.from; };
+    const edges = function (a, b) { return { l: a === piece.from ? 'medium' : 'thin', r: b === piece.to ? 'medium' : 'thin' }; };
+    const usedTop = {}, usedBottom = {};
+    piece.cells.forEach(function (c) {
+      const a = Math.max(c.start, piece.from), b = Math.min(c.end, piece.to);
+      const color = Core.colorOf(project, c.key);
+      const ink = Core.textColorOf(project, c.key);
+      const e = edges(a, b);
+      if (c.second) {
+        const d = diagonalText(c.top, c.second, b - a + 1);
+        sb.block(top, col(a), top, col(b), d.text,
+          { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: ink } });
+      } else {
+        sb.block(top, col(a), top, col(b), c.top,
+          Object.assign({ bold: true, text: true, fill: color, color: ink, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
+      }
+      for (let k = a; k <= b; k++) usedTop[k] = true;
+    });
+    piece.runs.forEach(function (run) {
+      const a = Math.max(run.start, piece.from), b = Math.min(run.end, piece.to);
+      const e = edges(a, b);
+      sb.block(bottom, col(a), bottom, col(b), run.street,
+        { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
+      for (let k = a; k <= b; k++) usedBottom[k] = true;
+    });
+    for (let k = piece.from; k <= piece.to; k++) {
+      const e = edges(k, k);
+      if (!usedTop[k]) sb.put(top, col(k), '', { size: 20, bold: true, text: true, shrink: true, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } });
+      if (!usedBottom[k]) {
+        sb.put(bottom, col(k), '', { size: 16, bold: true, text: true, shrink: true,
+          border: { l: k === piece.from ? 'medium' : null, r: k === piece.to ? 'medium' : null, b: 'medium' } });
+      }
+    }
+  }
+
+  function buildCompactFiles(project) {
+    Core.assignColors(project);
+    const styles = new StyleBook();
+    const strings = new StringTable();
+    const pages = Core.packPages(Core.printPieces(project), COMPACT.perPage);
+    const sb = new SheetBuilder(styles, strings);
+    let line = 0;
+    pages.forEach(function (page) {
+      page.forEach(function (l) {
+        l.pieces.forEach(function (x) {
+          const p = x.piece, row = 3 * line + 1, col = 1 + x.start;
+          sb.block(row, col, row, col + p.width - 1, p.label[0] + ' · ' + p.label[1] + ' · ' + p.label[2] + ' · caselle ' + p.label[3],
+            { size: 7, bold: true, h: 'left', shrink: true, color: '444444' });
+          drawPiece(sb, project, p, row + 1, col);
+        });
+        line++;
+      });
+    });
+    const sheetXml = sb.xml(true, [], compactGeometry(line));
+    const name = 'Strisce';
+    const wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<bookViews><workbookView activeTab="0"/></bookViews><sheets><sheet name="' + name + '" sheetId="1" r:id="rId1"/></sheets>' +
+      '<definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">' + esc("'" + name + "'!$A$1:$" +
+        colName(Core.SLOTS_PER_PAGE) + '$' + Math.max(1, 3 * line)) + '</definedName></definedNames></workbook>';
+    return { files: packageFiles(wb, [sheetXml], styles, strings), pages: pages.length, lines: line };
+  }
+
+  function buildCompactXlsx(project, date) {
+    return zip(buildCompactFiles(project).files, date);
   }
 
   // ------------------------------------------------------------------ workbook
@@ -2134,7 +2283,13 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
       if (area) wb += '<definedName name="_xlnm.Print_Area" localSheetId="' + i + '">' + esc(area) + '</definedName>';
     });
     wb += '</definedNames></workbook>';
-    const n = sheets.length;
+    return packageFiles(wb, files.map(function (f) { return f.data; }), styles, strings);
+  }
+
+  // [Content_Types], relationships, styles and strings around a workbook and its sheets.
+  function packageFiles(wb, sheetXmls, styles, strings) {
+    const n = sheetXmls.length;
+    const files = sheetXmls.map(function (data, i) { return { name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: data }; });
     let rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
     for (let i = 0; i < n; i++) {
@@ -2233,7 +2388,188 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
     return zip(buildWorkbookFiles(project), date);
   }
 
-  return { GEOMETRY: GEOMETRY, LAYOUT: LAYOUT, colName: colName, buildWorkbookFiles: buildWorkbookFiles, buildXlsx: buildXlsx, crc32: crc32, zip: zip };
+  return { GEOMETRY: GEOMETRY, LAYOUT: LAYOUT, COMPACT: COMPACT, colName: colName, buildWorkbookFiles: buildWorkbookFiles, buildXlsx: buildXlsx,
+    buildCompactFiles: buildCompactFiles, buildCompactXlsx: buildCompactXlsx, diagonalSize: diagonalSize, crc32: crc32, zip: zip };
+});
+</script>
+<script>
+/*
+ * Casellino - writes the strips as a PDF to print (no library, works offline).
+ * © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md.
+ *
+ * Same layout as the compact Excel (Core.printPieces + Core.packPages) and the template's measures:
+ * a slot is 35.25 pt wide (1.2435 cm), the house-number line 28.35 pt (1 cm), the street line 19.9 pt.
+ * Text uses the standard PDF font Helvetica-Bold (same widths as Arial bold), so nothing is embedded.
+ */
+(function (root, factory) {
+  const api = factory(root.CasellinoCore || (typeof require === 'function' ? require('./core.js') : null));
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.CasellinoPdf = api;
+})(typeof self !== 'undefined' ? self : this, function (Core) {
+  'use strict';
+
+  const PAGE = { w: 841.89, h: 595.28 };          // A4 landscape
+  const SLOT = 35.25, LABEL = 8, TOP = 28.35, BOTTOM = 19.9, PER_PAGE = 10;
+  const THIN = 0.6, MEDIUM = 1.4;
+  // Helvetica-Bold widths (1/1000 em) of the WinAnsi characters 32..255
+  const WIDTHS = [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611, 975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556, 333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611, 611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584, 761, 556, 0, 278, 556, 500, 1000, 556, 556, 333, 1000, 667, 333, 1000, 0, 611, 0, 0, 278, 278, 500, 500, 350, 556, 1000, 333, 1000, 556, 333, 944, 0, 500, 667, 278, 333, 556, 556, 556, 556, 280, 556, 333, 737, 370, 556, 584, 333, 737, 333, 400, 584, 333, 333, 333, 611, 556, 278, 333, 333, 365, 556, 834, 834, 834, 611, 722, 722, 722, 722, 722, 722, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278, 722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611, 556, 556, 556, 556, 556, 556, 889, 556, 556, 556, 556, 556, 278, 278, 278, 278, 611, 611, 611, 611, 611, 611, 611, 584, 611, 611, 611, 611, 611, 556, 611, 556];
+  const WIN = { 0x20AC: 128, 0x201A: 130, 0x201E: 132, 0x2026: 133, 0x2018: 145, 0x2019: 146, 0x201C: 147, 0x201D: 148, 0x2013: 150, 0x2014: 151 };
+
+  function code(ch) {
+    const c = ch.charCodeAt(0);
+    if (c >= 32 && c < 128) return c;
+    if (c >= 160 && c < 256) return c;
+    return WIN[c] || 63; // "?" for what the standard font cannot write
+  }
+
+  function textWidth(s, size) {
+    let w = 0;
+    for (const ch of String(s)) w += WIDTHS[code(ch) - 32] || 556;
+    return w * size / 1000;
+  }
+
+  function pdfString(s) {
+    let out = '';
+    for (const ch of String(s)) {
+      const c = code(ch);
+      if (c === 40 || c === 41 || c === 92) out += '\\' + String.fromCharCode(c);
+      else if (c < 128) out += String.fromCharCode(c);
+      else out += '\\' + c.toString(8).padStart(3, '0');
+    }
+    return '(' + out + ')';
+  }
+
+  function rgb(hex) {
+    const h = String(hex || 'FFFFFF');
+    return [0, 2, 4].map(function (i) { return (parseInt(h.slice(i, i + 2), 16) / 255).toFixed(3); }).join(' ');
+  }
+  const n = function (v) { return Number(v).toFixed(2); };
+
+  // Drawing commands, with y measured from the top of the page.
+  function Canvas() { this.ops = []; }
+  Canvas.prototype.fill = function (x, y, w, h, hex) {
+    this.ops.push(rgb(hex) + ' rg ' + n(x) + ' ' + n(PAGE.h - y - h) + ' ' + n(w) + ' ' + n(h) + ' re f');
+  };
+  Canvas.prototype.line = function (x1, y1, x2, y2, width, hex) {
+    this.ops.push(rgb(hex || '111111') + ' RG ' + n(width) + ' w ' + n(x1) + ' ' + n(PAGE.h - y1) + ' m ' + n(x2) + ' ' + n(PAGE.h - y2) + ' l S');
+  };
+  Canvas.prototype.text = function (x, baseline, size, s, hex) {
+    this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
+  };
+  // Text centred in a box, made smaller until it fits (never cut).
+  Canvas.prototype.centered = function (x, y, w, h, s, max, hex) {
+    const size = Math.max(4, Math.min(max, (w - 4) / Math.max(1, textWidth(s, 1)), h * 0.8));
+    this.text(x + (w - textWidth(s, size)) / 2, y + h / 2 + size * 0.36, size, s, hex);
+  };
+
+  // The largest size that keeps two numbers clear of the "/" line (lower-left to upper-right corner).
+  function diagonalSize(a, b, w, h) {
+    const lineY = function (x) { return h - h / w * x; };
+    for (let s = 12; s > 4; s -= 0.5) {
+      const w1 = textWidth(a, s), w2 = textWidth(b, s), cap = 0.72 * s;
+      if (2 + cap + 1 <= lineY(3 + w1) && h - 3 - cap - 1 >= lineY(w - 3 - w2)) return s;
+    }
+    return 4;
+  }
+
+  // A name in a pigeonhole: on two lines when that makes it bigger.
+  function twoLines(text, w) {
+    const words = String(text).split(/\s+/);
+    let best = null;
+    for (let k = 1; k < words.length; k++) {
+      const l1 = words.slice(0, k).join(' '), l2 = words.slice(k).join(' ');
+      const size = Math.min(11, (w - 4) / Math.max(textWidth(l1, 1), textWidth(l2, 1)), TOP * 0.4);
+      if (!best || size > best.size) best = { lines: [l1, l2], size: size };
+    }
+    return best;
+  }
+
+  function drawPiece(cv, project, piece, x0, y0) {
+    const yTop = y0 + LABEL, yBottom = yTop + TOP, right = x0 + piece.width * SLOT;
+    const xOf = function (slot) { return x0 + (slot - piece.from) * SLOT; };
+    cv.text(x0, y0 + LABEL - 2, 6.5, piece.label[0] + ' · ' + piece.label[1] + ' · ' + piece.label[2] + ' · caselle ' + piece.label[3], '444444');
+    piece.cells.forEach(function (c) {
+      const a = Math.max(c.start, piece.from), b = Math.min(c.end, piece.to);
+      const x = xOf(a), w = (b - a + 1) * SLOT;
+      const ink = Core.textColorOf(project, c.key);
+      cv.fill(x, yTop, w, TOP, Core.colorOf(project, c.key));
+      if (c.second) {
+        const s = diagonalSize(c.top, c.second, w, TOP);
+        cv.line(x, yTop + TOP, x + w, yTop, THIN, ink);
+        cv.text(x + 3, yTop + 2 + 0.72 * s, s, c.top, ink);
+        cv.text(x + w - 3 - textWidth(c.second, s), yTop + TOP - 3, s, c.second, ink);
+        return;
+      }
+      const two = /\s/.test(c.top) && c.top.length > 6 ? twoLines(c.top, w) : null;
+      if (two && two.size > Math.min(11, (w - 4) / textWidth(c.top, 1))) {
+        two.lines.forEach(function (l, k) {
+          cv.text(x + (w - textWidth(l, two.size)) / 2, yTop + TOP / 2 + (k ? two.size * 1.0 : -two.size * 0.15), two.size, l, ink);
+        });
+      } else if (c.top) cv.centered(x, yTop, w, TOP, c.top, two ? 11 : 20, ink);
+    });
+    piece.runs.forEach(function (r) {
+      const a = Math.max(r.start, piece.from), b = Math.min(r.end, piece.to);
+      cv.fill(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, Core.colorOf(project, r.key));
+      cv.centered(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, r.street, 16, Core.textColorOf(project, r.key));
+    });
+    // lines: between pigeonholes and between streets (thin), between the two rows (thin), around (medium)
+    for (let k = piece.from + 1; k <= piece.to; k++) {
+      if (!piece.cells.some(function (c) { return c.start < k && c.end >= k; })) cv.line(xOf(k), yTop, xOf(k), yBottom, THIN);
+      if (piece.runs.some(function (r) { return r.start === k; }) || piece.runs.some(function (r) { return r.end === k - 1; })) {
+        cv.line(xOf(k), yBottom, xOf(k), yBottom + BOTTOM, THIN);
+      }
+    }
+    cv.line(x0, yBottom, right, yBottom, THIN);
+    cv.line(x0, yTop, right, yTop, MEDIUM);
+    cv.line(x0, yBottom + BOTTOM, right, yBottom + BOTTOM, MEDIUM);
+    cv.line(x0, yTop, x0, yBottom + BOTTOM, MEDIUM);
+    cv.line(right, yTop, right, yBottom + BOTTOM, MEDIUM);
+  }
+
+  // The PDF file (bytes): one A4 landscape page for every 10 lines of strips.
+  function buildPdf(project, title) {
+    Core.assignColors(project);
+    const pages = Core.packPages(Core.printPieces(project), PER_PAGE);
+    const lineH = LABEL + TOP + BOTTOM;
+    const x0 = (PAGE.w - Core.SLOTS_PER_PAGE * SLOT) / 2;
+    const y0 = (PAGE.h - PER_PAGE * lineH) / 2;
+    const streams = pages.map(function (page, k) {
+      const cv = new Canvas();
+      page.forEach(function (line, j) {
+        line.pieces.forEach(function (x) { drawPiece(cv, project, x.piece, x0 + x.start * SLOT, y0 + j * lineH); });
+      });
+      cv.text(x0, PAGE.h - 5, 6, (title || 'Casellino') + ' · foglio ' + (k + 1) + ' di ' + pages.length +
+        ' · stampa a dimensioni reali (100%), A4 orizzontale', '777777');
+      return cv.ops.join('\n');
+    });
+    // objects: 1 catalog, 2 pages, 3 font, then a page and its content for each sheet
+    const objs = [];
+    objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+    objs[2] = '<< /Type /Pages /Kids [' + streams.map(function (_, k) { return (4 + 2 * k) + ' 0 R'; }).join(' ') +
+      '] /Count ' + streams.length + ' >>';
+    objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+    streams.forEach(function (s, k) {
+      objs[4 + 2 * k] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PAGE.w + ' ' + PAGE.h + '] ' +
+        '/Resources << /Font << /F1 3 0 R >> >> /Contents ' + (5 + 2 * k) + ' 0 R >>';
+      objs[5 + 2 * k] = '<< /Length ' + s.length + ' >>\nstream\n' + s + '\nendstream';
+    });
+    let out = '%PDF-1.4\n';
+    const offsets = [];
+    for (let i = 1; i < objs.length; i++) {
+      offsets[i] = out.length;
+      out += i + ' 0 obj\n' + objs[i] + '\nendobj\n';
+    }
+    const xref = out.length;
+    out += 'xref\n0 ' + objs.length + '\n0000000000 65535 f \n';
+    for (let i = 1; i < objs.length; i++) out += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+    out += 'trailer\n<< /Size ' + objs.length + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n';
+    // all ASCII (other characters are written as octal codes), so one byte per character
+    const bytes = new Uint8Array(out.length);
+    for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i);
+    return { bytes: bytes, pages: pages.length };
+  }
+
+  return { buildPdf: buildPdf, textWidth: textWidth, diagonalSize: diagonalSize };
 });
 </script>
 <script>
@@ -4272,14 +4608,28 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
 
   // ------------------------------------------------------------ files
 
-  function exportExcel() {
+  // Printing: PDF and compact Excel fill the A4 sheet with strips; the template Excel keeps one module per sheet.
+  function exportPrint(kind) {
+    document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
     try {
-      const bytes = X.buildXlsx(state.project);
-      download(fileBaseName() + '.xlsx', bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      const xlsxType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      let sheets;
+      if (kind === 'pdf') {
+        const r = window.CasellinoPdf.buildPdf(state.project, fileBaseName());
+        download(fileBaseName() + '.pdf', r.bytes, 'application/pdf');
+        sheets = r.pages;
+      } else if (kind === 'excel') {
+        const r = X.buildCompactFiles(state.project);
+        download(fileBaseName() + '.xlsx', X.zip(r.files), xlsxType);
+        sheets = r.pages;
+      } else {
+        download(fileBaseName() + ' - come il modello.xlsx', X.buildXlsx(state.project), xlsxType);
+      }
       changed();
-      toast('Excel creato: stampalo su A4 orizzontale, al 100%, senza «adatta alla pagina».');
+      toast((sheets ? sheets + (sheets === 1 ? ' foglio' : ' fogli') + ' A4. ' : '') +
+        'Stampa su A4 orizzontale a dimensioni reali (100%), senza «adatta alla pagina».');
     } catch (e) {
-      toast('Non sono riuscito a creare l\'Excel: ' + e.message);
+      toast('Non sono riuscito a crearlo: ' + e.message);
     }
   }
 
@@ -4334,7 +4684,9 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
   function wire() {
     $('zone').addEventListener('input', function (e) { state.project.zone = e.target.value; changed(); });
     $('owner').addEventListener('input', function (e) { state.project.owner = e.target.value; changed(); });
-    $('btn-excel').addEventListener('click', exportExcel);
+    $('btn-pdf').addEventListener('click', function () { exportPrint('pdf'); });
+    $('btn-excel').addEventListener('click', function () { exportPrint('excel'); });
+    $('btn-excel-model').addEventListener('click', function () { exportPrint('model'); });
     $('btn-save').addEventListener('click', saveFile);
     $('btn-open').addEventListener('click', function () { $('file-input').click(); });
     $('file-input').addEventListener('change', function (e) {
@@ -4342,7 +4694,7 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
       if (f) openFile(f);
       e.target.value = '';
     });
-    const closeMenu = function () { document.querySelector('.menu').open = false; };
+    const closeMenu = function () { document.querySelectorAll('.menu').forEach(function (m) { m.open = false; }); };
     $('btn-new').addEventListener('click', function () {
       closeMenu();
       if (!isEmptyProject() && !confirm('Comincio da capo? Il lavoro aperto si perde, se non l\'hai salvato con «Salva file».')) return;
@@ -4373,8 +4725,7 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
       changed(); renderStreets();
     });
     document.addEventListener('click', function (e) {
-      const menu = document.querySelector('.menu');
-      if (menu.open && !menu.contains(e.target)) menu.open = false;
+      document.querySelectorAll('.menu').forEach(function (menu) { if (menu.open && !menu.contains(e.target)) menu.open = false; });
     });
     window.addEventListener('resize', debounce(function () { if (state.els.ta) fitTextarea(state.els.ta); }, 200));
     $('overview-card').addEventListener('toggle', renderOverview);

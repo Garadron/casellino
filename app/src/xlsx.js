@@ -224,8 +224,8 @@
     return out;
   }
 
-  SheetBuilder.prototype.xml = function (printSelected, breaks) {
-    const g = GEOMETRY;
+  SheetBuilder.prototype.xml = function (printSelected, breaks, geometry) {
+    const g = geometry || GEOMETRY;
     let x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
       'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
@@ -260,10 +260,15 @@
         this.merges.map(function (m) { return '<mergeCell ref="' + m + '"/>'; }).join('') + '</mergeCells>';
     }
     const mg = g.margins;
+    if (g.centered) x += '<printOptions horizontalCentered="1" verticalCentered="1"/>';
     x += '<pageMargins left="' + mg.left + '" right="' + mg.right + '" top="' + mg.top + '" bottom="' + mg.bottom +
       '" header="' + mg.header + '" footer="' + mg.footer + '"/>' +
       '<pageSetup paperSize="' + g.paperSize + '" orientation="' + g.orientation + '"/>' +
       '<headerFooter alignWithMargins="0"/>';
+    if (g.rowBreaks && g.rowBreaks.length) {
+      x += '<rowBreaks count="' + g.rowBreaks.length + '" manualBreakCount="' + g.rowBreaks.length + '">' +
+        g.rowBreaks.map(function (b) { return '<brk id="' + b + '" max="16383" man="1"/>'; }).join('') + '</rowBreaks>';
+    }
     if (breaks && breaks.length) {
       x += '<colBreaks count="' + breaks.length + '" manualBreakCount="' + breaks.length + '">' +
         breaks.map(function (b) { return '<brk id="' + b + '" max="1048575" man="1"/>'; }).join('') + '</colBreaks>';
@@ -285,7 +290,6 @@
       if (!sheet.modules[m]) return;
       const L = LAYOUT[m];
       const slots = Core.MODULE_SLOTS[m];
-      const last = L.first + slots - 1;
 
       NUMBER_ROWS.forEach(function (r) {
         for (let s = 0; s < slots; s++) {
@@ -301,45 +305,116 @@
         sb.block(top, L.labelRight, bottom, L.labelRight, (i + 1) + ' ' + L.word, Object.assign({ rot: 180 }, label));
 
         const lay = sheet.rows[m][i];
-        const edges = function (start, end) {
-          return { l: L.first + start === L.first ? 'medium' : 'thin', r: L.first + end === last ? 'medium' : 'thin' };
-        };
-        const usedTop = {}, usedBottom = {};
-
-        lay.cells.forEach(function (c) {
-          if (c.start >= slots) return;
-          const end = Math.min(c.end, slots - 1);
-          const color = Core.colorOf(project, c.key);
-          const ink = Core.textColorOf(project, c.key);
-          const e = edges(c.start, end);
-          if (c.second) {
-            const d = diagonalText(c.top, c.second, end - c.start + 1);
-            sb.block(top, L.first + c.start, top, L.first + end, d.text,
-              { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: ink } });
-          } else {
-            sb.block(top, L.first + c.start, top, L.first + end, c.top,
-              Object.assign({ bold: true, text: true, fill: color, color: ink, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
-          }
-          for (let s = c.start; s <= end; s++) usedTop[s] = true;
-        });
-        lay.runs.forEach(function (run) {
-          const e = edges(run.start, run.end);
-          sb.block(bottom, L.first + run.start, bottom, L.first + run.end, run.street,
-            { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
-          for (let s = run.start; s <= run.end; s++) usedBottom[s] = true;
-        });
-        // Slots left empty, and pigeonholes with no street, get a plain lower line.
-        for (let s = 0; s < slots; s++) {
-          const e = edges(s, s);
-          if (!usedTop[s]) sb.put(top, L.first + s, '', { size: 20, bold: true, text: true, shrink: true, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } });
-          if (!usedBottom[s]) {
-            sb.put(bottom, L.first + s, '', { size: 16, bold: true, text: true, shrink: true,
-              border: { l: s === 0 ? 'medium' : null, r: s === slots - 1 ? 'medium' : null, b: 'medium' } });
-          }
-        }
+        drawPiece(sb, project, { from: 0, to: slots - 1, cells: lay.cells, runs: lay.runs }, top, L.first);
       }
     });
     return sb.xml(selected, pageBreaks(sheet));
+  }
+
+  // ------------------------------------------------------------------ compact: strips packed on A4 sheets
+
+  /*
+   * The same strips as the template (same slot width, same row heights: they must match the
+   * pigeonholes), packed: every line of a sheet holds one row of one shelf, cut in pieces of 22
+   * slots, with a thin line above each piece saying where it goes. 10 lines per A4 landscape sheet.
+   */
+  const COMPACT = {
+    perPage: 10,
+    labelHeight: '8',
+  };
+
+  function compactGeometry(lines) {
+    const rowHeights = {};
+    const breaks = [];
+    for (let k = 0; k < lines; k++) {
+      rowHeights[3 * k + 1] = COMPACT.labelHeight;
+      rowHeights[3 * k + 2] = GEOMETRY.rowHeights[4]; // the template's heights, never change them
+      rowHeights[3 * k + 3] = GEOMETRY.rowHeights[5];
+      if (k && k % COMPACT.perPage === 0) breaks.push(3 * k);
+    }
+    return {
+      cols: [[1, Core.SLOTS_PER_PAGE, GEOMETRY.defaultColWidth, true]],
+      defaultColWidth: GEOMETRY.defaultColWidth,
+      defaultRowHeight: GEOMETRY.defaultRowHeight,
+      rowHeights: rowHeights,
+      margins: { left: '0', right: '0', top: '0.2', bottom: '0.2', header: '0', footer: '0' }, // as the template: 22 slots fit only with no side margins
+      paperSize: GEOMETRY.paperSize,
+      orientation: GEOMETRY.orientation,
+      dimension: 'A1:' + colName(Core.SLOTS_PER_PAGE) + Math.max(1, 3 * lines),
+      rowBreaks: breaks,
+      centered: true,
+    };
+  }
+
+  // One piece of strip (slots piece.from..piece.to): house numbers on row `top`, street names under it.
+  function drawPiece(sb, project, piece, top, col0) {
+    const bottom = top + 1;
+    const col = function (slot) { return col0 + slot - piece.from; };
+    const edges = function (a, b) { return { l: a === piece.from ? 'medium' : 'thin', r: b === piece.to ? 'medium' : 'thin' }; };
+    const usedTop = {}, usedBottom = {};
+    piece.cells.forEach(function (c) {
+      const a = Math.max(c.start, piece.from), b = Math.min(c.end, piece.to);
+      const color = Core.colorOf(project, c.key);
+      const ink = Core.textColorOf(project, c.key);
+      const e = edges(a, b);
+      if (c.second) {
+        const d = diagonalText(c.top, c.second, b - a + 1);
+        sb.block(top, col(a), top, col(b), d.text,
+          { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: ink } });
+      } else {
+        sb.block(top, col(a), top, col(b), c.top,
+          Object.assign({ bold: true, text: true, fill: color, color: ink, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
+      }
+      for (let k = a; k <= b; k++) usedTop[k] = true;
+    });
+    piece.runs.forEach(function (run) {
+      const a = Math.max(run.start, piece.from), b = Math.min(run.end, piece.to);
+      const e = edges(a, b);
+      sb.block(bottom, col(a), bottom, col(b), run.street,
+        { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
+      for (let k = a; k <= b; k++) usedBottom[k] = true;
+    });
+    for (let k = piece.from; k <= piece.to; k++) {
+      const e = edges(k, k);
+      if (!usedTop[k]) sb.put(top, col(k), '', { size: 20, bold: true, text: true, shrink: true, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } });
+      if (!usedBottom[k]) {
+        sb.put(bottom, col(k), '', { size: 16, bold: true, text: true, shrink: true,
+          border: { l: k === piece.from ? 'medium' : null, r: k === piece.to ? 'medium' : null, b: 'medium' } });
+      }
+    }
+  }
+
+  function buildCompactFiles(project) {
+    Core.assignColors(project);
+    const styles = new StyleBook();
+    const strings = new StringTable();
+    const pages = Core.packPages(Core.printPieces(project), COMPACT.perPage);
+    const sb = new SheetBuilder(styles, strings);
+    let line = 0;
+    pages.forEach(function (page) {
+      page.forEach(function (l) {
+        l.pieces.forEach(function (x) {
+          const p = x.piece, row = 3 * line + 1, col = 1 + x.start;
+          sb.block(row, col, row, col + p.width - 1, p.label[0] + ' · ' + p.label[1] + ' · ' + p.label[2] + ' · caselle ' + p.label[3],
+            { size: 7, bold: true, h: 'left', shrink: true, color: '444444' });
+          drawPiece(sb, project, p, row + 1, col);
+        });
+        line++;
+      });
+    });
+    const sheetXml = sb.xml(true, [], compactGeometry(line));
+    const name = 'Strisce';
+    const wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<bookViews><workbookView activeTab="0"/></bookViews><sheets><sheet name="' + name + '" sheetId="1" r:id="rId1"/></sheets>' +
+      '<definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">' + esc("'" + name + "'!$A$1:$" +
+        colName(Core.SLOTS_PER_PAGE) + '$' + Math.max(1, 3 * line)) + '</definedName></definedNames></workbook>';
+    return { files: packageFiles(wb, [sheetXml], styles, strings), pages: pages.length, lines: line };
+  }
+
+  function buildCompactXlsx(project, date) {
+    return zip(buildCompactFiles(project).files, date);
   }
 
   // ------------------------------------------------------------------ workbook
@@ -386,7 +461,13 @@
       if (area) wb += '<definedName name="_xlnm.Print_Area" localSheetId="' + i + '">' + esc(area) + '</definedName>';
     });
     wb += '</definedNames></workbook>';
-    const n = sheets.length;
+    return packageFiles(wb, files.map(function (f) { return f.data; }), styles, strings);
+  }
+
+  // [Content_Types], relationships, styles and strings around a workbook and its sheets.
+  function packageFiles(wb, sheetXmls, styles, strings) {
+    const n = sheetXmls.length;
+    const files = sheetXmls.map(function (data, i) { return { name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: data }; });
     let rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
     for (let i = 0; i < n; i++) {
@@ -485,5 +566,6 @@
     return zip(buildWorkbookFiles(project), date);
   }
 
-  return { GEOMETRY: GEOMETRY, LAYOUT: LAYOUT, colName: colName, buildWorkbookFiles: buildWorkbookFiles, buildXlsx: buildXlsx, crc32: crc32, zip: zip };
+  return { GEOMETRY: GEOMETRY, LAYOUT: LAYOUT, COMPACT: COMPACT, colName: colName, buildWorkbookFiles: buildWorkbookFiles, buildXlsx: buildXlsx,
+    buildCompactFiles: buildCompactFiles, buildCompactXlsx: buildCompactXlsx, diagonalSize: diagonalSize, crc32: crc32, zip: zip };
 });
