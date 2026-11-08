@@ -312,10 +312,15 @@ details.fold[open] > summary { margin-bottom: 8px; }
   margin: 0; padding: 4px 10px 10px; min-width: 0; }
 .depot-box legend { font-size: 13px; padding: 0 4px; }
 .project .depot-box input { width: 100%; }
-.project .depot-name { flex: 1 1 170px; }
-.project .depot-town { flex: 1 1 150px; }
-.project .depot-street { flex: 2 1 200px; }
-.project .depot-number { flex: 0 1 70px; }
+.depot-box label { min-width: 0; }
+.project .depot-name { flex: 1 1 140px; }
+.project .depot-town { flex: 1 1 130px; }
+.project .depot-street { flex: 2 1 170px; }
+.project .depot-number { flex: 0 1 64px; }
+.project .depot-prov { flex: 0 1 54px; }
+.project .depot-prov input { text-transform: uppercase; }
+.depot-coords { flex: 1 1 100%; margin: -4px 0 0; }
+.depot-coords input { width: 170px; max-width: 100%; }
 .depot-tools { flex: 1 1 100%; margin: -4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .depot-tools .bad { color: var(--bad); }
 .route-map { height: 420px; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px; background: var(--bg); }

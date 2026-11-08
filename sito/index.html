@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.20.1';</script>
+<script>window.CASELLINO_VERSION = '0.21.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -329,10 +329,15 @@ details.fold[open] > summary { margin-bottom: 8px; }
   margin: 0; padding: 4px 10px 10px; min-width: 0; }
 .depot-box legend { font-size: 13px; padding: 0 4px; }
 .project .depot-box input { width: 100%; }
-.project .depot-name { flex: 1 1 170px; }
-.project .depot-town { flex: 1 1 150px; }
-.project .depot-street { flex: 2 1 200px; }
-.project .depot-number { flex: 0 1 70px; }
+.depot-box label { min-width: 0; }
+.project .depot-name { flex: 1 1 140px; }
+.project .depot-town { flex: 1 1 130px; }
+.project .depot-street { flex: 2 1 170px; }
+.project .depot-number { flex: 0 1 64px; }
+.project .depot-prov { flex: 0 1 54px; }
+.project .depot-prov input { text-transform: uppercase; }
+.depot-coords { flex: 1 1 100%; margin: -4px 0 0; }
+.depot-coords input { width: 170px; max-width: 100%; }
 .depot-tools { flex: 1 1 100%; margin: -4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .depot-tools .bad { color: var(--bad); }
 .route-map { height: 420px; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px; background: var(--bg); }
@@ -466,6 +471,8 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
           <input id="depot-name" autocomplete="off" placeholder="es. Centro di Borgo Esempio"></label>
         <label class="depot-town">Comune
           <input id="depot-town" autocomplete="off" placeholder="es. Borgo Esempio"></label>
+        <label class="depot-prov">Prov.
+          <input id="depot-prov" autocomplete="off" maxlength="2" autocapitalize="characters" placeholder="es. CR"></label>
         <label class="depot-street"><span>Via <span class="small muted" id="depot-streets-note"></span></span>
           <input id="depot-street" autocomplete="off" list="depot-streets" placeholder="scrivi e scegli dall'elenco"></label>
         <datalist id="depot-streets"></datalist>
@@ -476,6 +483,9 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
         <button type="button" class="pin-btn" id="btn-depot-find">🔎 Cerca sulla mappa</button>
         <button type="button" class="pin-btn" id="btn-depot-map">🗺 Scegli sulla mappa</button>
         <button type="button" class="pin-btn" id="btn-depot-gps">📡 Usa la mia posizione</button></p>
+      <p class="depot-coords small" id="depot-coords" hidden>Oppure: <a id="depot-gmaps" target="_blank" rel="noopener">🔗 cercalo su Google Maps</a>,
+        fai clic destro sul punto (sul telefono: tienilo premuto), copia i due numeri e incollali qui:
+        <input id="depot-coords-in" autocomplete="off" inputmode="decimal" placeholder="es. 45.4321, 9.5678"></p>
     </div>
 
     <div class="tabs" id="tabs" role="tablist"></div>
@@ -775,7 +785,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   const MAYBE_STREET = /^(borgo|frazione|fraz\.)(\s|$)/i;   // also the start of many town names
   const HOUSE_NUMBER = /^\d{1,4}\s?[a-z]?(\/\w{1,3})?$/i;
   function splitAddress(text) {
+    let provincia = '';
     const parts = String(text || '').split(/,|\s+-\s+/).map(function (x) {
+      const p = /\(([A-Za-z]{2})\)|\s([A-Z]{2})$/.exec(x.trim());   // "(CR)" or "Borgo CR"
+      if (p && PROVINCES[(p[1] || p[2]).toUpperCase()]) { provincia = (p[1] || p[2]).toUpperCase(); x = x.trim().slice(0, p.index); }
       return x.replace(/\([^)]*\)/g, ' ').replace(/\b\d{5}\b/g, ' ').replace(/\s+/g, ' ').trim();
     }).filter(Boolean);
     let civico = '';
@@ -787,12 +800,43 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     const others = words.filter(function (x) { return x !== via; });
     const m = /^(.*\D)\s+(\d{1,4}\s?[a-z]?(\/\w{1,3})?)$/i.exec(via);
     if (m && !civico) { via = m[1].trim(); civico = m[2]; }
-    return { via: via, civico: civico, comune: others.length ? others[others.length - 1] : '' };
+    return { via: via, civico: civico, comune: others.length ? others[others.length - 1] : '', provincia: provincia };
   }
-  // The same address in one line, to search it and show it: "Via Esempio 1, Borgo Esempio".
+  // The same address in one line, to show it: "Via Esempio 1, Borgo Esempio (CR)".
   function addressText(a) {
     const street = [a.via, a.civico].map(function (x) { return String(x || '').trim(); }).filter(Boolean).join(' ');
-    return [street, String(a.comune || '').trim()].filter(Boolean).join(', ');
+    const town = String(a.comune || '').trim();
+    return [street, town && a.provincia ? town + ' (' + a.provincia + ')' : town].filter(Boolean).join(', ');
+  }
+
+  // The Italian provinces: the two letters and the name (the map search understands the name).
+  const PROVINCES = {};
+  ('AG Agrigento|AL Alessandria|AN Ancona|AO Aosta|AP Ascoli Piceno|AQ L\'Aquila|AR Arezzo|AT Asti|AV Avellino|BA Bari|' +
+   'BG Bergamo|BI Biella|BL Belluno|BN Benevento|BO Bologna|BR Brindisi|BS Brescia|BT Barletta-Andria-Trani|BZ Bolzano|' +
+   'CA Cagliari|CB Campobasso|CE Caserta|CH Chieti|CL Caltanissetta|CN Cuneo|CO Como|CR Cremona|CS Cosenza|CT Catania|' +
+   'CZ Catanzaro|EN Enna|FC Forlì-Cesena|FE Ferrara|FG Foggia|FI Firenze|FM Fermo|FR Frosinone|GE Genova|GO Gorizia|' +
+   'GR Grosseto|IM Imperia|IS Isernia|KR Crotone|LC Lecco|LE Lecce|LI Livorno|LO Lodi|LT Latina|LU Lucca|' +
+   'MB Monza e Brianza|MC Macerata|ME Messina|MI Milano|MN Mantova|MO Modena|MS Massa-Carrara|MT Matera|NA Napoli|' +
+   'NO Novara|NU Nuoro|OR Oristano|PA Palermo|PC Piacenza|PD Padova|PE Pescara|PG Perugia|PI Pisa|PN Pordenone|PO Prato|' +
+   'PR Parma|PT Pistoia|PU Pesaro e Urbino|PV Pavia|PZ Potenza|RA Ravenna|RC Reggio Calabria|RE Reggio Emilia|RG Ragusa|' +
+   'RI Rieti|RM Roma|RN Rimini|RO Rovigo|SA Salerno|SI Siena|SO Sondrio|SP La Spezia|SR Siracusa|SS Sassari|' +
+   'SU Sud Sardegna|SV Savona|TA Taranto|TE Teramo|TN Trento|TO Torino|TP Trapani|TR Terni|TS Trieste|TV Treviso|' +
+   'UD Udine|VA Varese|VB Verbano-Cusio-Ossola|VC Vercelli|VE Venezia|VI Vicenza|VR Verona|VT Viterbo|VV Vibo Valentia')
+    .split('|').forEach(function (x) { PROVINCES[x.slice(0, 2)] = x.slice(3); });
+  function provinceCode(text) {
+    const c = String(text || '').trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    return c.length === 2 ? c : '';
+  }
+  const provinceName = function (code) { return PROVINCES[provinceCode(code)] || ''; };
+
+  // Coordinates pasted from a map ("45.4321, 9.5678", "45,4321 9,5678" or a Google Maps link): { lat, lon } or null.
+  function parseCoordinates(text) {
+    const s = String(text || '');
+    const m = /!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/.exec(s) || /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/.exec(s) ||
+      /(-?\d{1,2}\.\d{3,})\s*[,;\s]\s*(-?\d{1,3}\.\d{3,})/.exec(s) || /(-?\d{1,2},\d{3,})[;\s]+(-?\d{1,3},\d{3,})/.exec(s);
+    if (!m) return null;
+    const lat = parseFloat(m[1].replace(',', '.')), lon = parseFloat(m[2].replace(',', '.'));
+    return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat: lat, lon: lon } : null;
   }
 
   function streetKey(street, town) {
@@ -821,7 +865,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
       depot: '',        // address of the office where the round starts and ends, optional (written from depotAddr)
-      depotAddr: { comune: '', via: '', civico: '' },
+      depotAddr: { comune: '', provincia: '', via: '', civico: '' },
       depotName: '',    // its name, optional
       depotPoint: null, // its point when put on the map by hand or with the device position: { lat, lon, found: 'mano' | 'gps' }
       wall: null,       // the frame drawn by the user (modules left to right, pencil marks), optional
@@ -875,7 +919,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     }
     out.depot = String(p.depot || '');
     const da = p.depotAddr || splitAddress(out.depot);   // works saved before v0.20.0 have the address in one line
-    out.depotAddr = { comune: String(da.comune || ''), via: String(da.via || ''), civico: String(da.civico || '') };
+    out.depotAddr = { comune: String(da.comune || ''), provincia: provinceCode(da.provincia), via: String(da.via || ''), civico: String(da.civico || '') };
     out.depotName = String(p.depotName || '');
     const d = p.depotPoint;
     out.depotPoint = d && isFinite(d.lat) && isFinite(d.lon) && d.lat !== null && d.lon !== null
@@ -2039,6 +2083,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     PALETTE: PALETTE,
     norm: norm,
     streetKey: streetKey, renameStreet: renameStreet, splitAddress: splitAddress, addressText: addressText,
+    provinceName: provinceName, parseCoordinates: parseCoordinates,
     newProject: newProject,
     newSubzone: newSubzone,
     sanitizeProject: sanitizeProject,
@@ -3629,6 +3674,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     $('owner').value = state.project.owner;
     const da = state.project.depotAddr;
     $('depot-town').value = da.comune;
+    $('depot-prov').value = da.provincia;
     $('depot-street').value = da.via;
     $('depot-number').value = da.civico;
     $('depot-name').value = state.project.depotName || '';
@@ -4595,23 +4641,43 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   }
 
   // The streets of a town on OpenStreetMap (also farms and places), free. [] if the town is not found.
-  async function osmStreetNames(town) {
-    const safe = town.replace(/\\/g, '').replace(/"/g, '\\"');
-    const query = '[out:json][timeout:40];' +
-      'area["boundary"="administrative"]["admin_level"="8"]["name"="' + safe + '"]->.a;' +
+  // With the province (two letters) a town is looked for only there: some towns share their name.
+  async function osmStreetNames(town, province) {
+    // the name with any capitals; characters that are not letters match anything
+    const name = '^' + town.trim().replace(/[^\p{L}\p{N}' -]/gu, '.') + '$';
+    const area = province
+      ? 'area["boundary"="administrative"]["admin_level"="6"]["ref"="' + province + '"]->.p;' +
+        'rel(area.p)["boundary"="administrative"]["admin_level"="8"]["name"~"' + name + '",i];map_to_area->.a;'
+      : 'area["boundary"="administrative"]["admin_level"="8"]["name"~"' + name + '",i]->.a;';
+    const json = await overpass('[out:json][timeout:40];' + area +
       '(way["highway"]["name"](area.a);' +
       'node["place"]["name"](area.a);way["place"]["name"](area.a);' +
       'node["name"~"^(cascina|cascine|contrada|localit)",i](area.a);way["name"~"^(cascina|cascine|contrada|localit)",i](area.a););' +
-      'out tags;';
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      body: 'data=' + encodeURIComponent(query),
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+      'out tags;');
     const names = {};
-    ((await res.json()).elements || []).forEach(function (e) { if (e.tags && e.tags.name) names[e.tags.name] = true; });
+    (json.elements || []).forEach(function (e) { if (e.tags && e.tags.name) names[e.tags.name] = true; });
     return Object.keys(names).sort(function (a, b) { return a.localeCompare(b, 'it'); });
+  }
+  // The free OpenStreetMap servers, one after the other: the main one is often full, the others are slower.
+  const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter'];
+  async function overpass(query) {
+    let last = null;
+    for (let i = 0; i < OVERPASS.length; i++) {
+      const stop = new AbortController();
+      const timer = setTimeout(function () { stop.abort(); }, 25000);
+      try {
+        const res = await fetch(OVERPASS[i], { method: 'POST', body: 'data=' + encodeURIComponent(query), signal: stop.signal,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+        if (res.ok) return await res.json();
+        last = new Error('HTTP ' + res.status);
+      } catch (e) {
+        last = e;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    throw last || new Error('nessun server risponde');
   }
 
   // The point of a stop: first with the house number, then the street alone. Found points stay
@@ -4669,33 +4735,43 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   function depotQueries() {
     const a = state.project.depotAddr;
     if (!a.via.trim() || !a.comune.trim()) return [];
-    const full = C.addressText(a), street = C.addressText({ via: a.via, comune: a.comune });
-    return full !== street ? [full, street] : [street];
+    const where = [a.comune.trim(), C.provinceName(a.provincia)].filter(Boolean).join(', ');
+    return (a.civico.trim() ? [a.via.trim() + ' ' + a.civico.trim() + ', ' + where] : []).concat([a.via.trim() + ', ' + where]);
   }
   // The streets of the office's town, to choose the street from them (kept while the page is open).
   const depotStreets = { town: '', names: null, busy: false };
+  const depotTownKey = function () { return C.norm(state.project.depotAddr.comune) + '|' + state.project.depotAddr.provincia; };
   async function loadDepotStreets() {
-    const town = state.project.depotAddr.comune.trim();
-    if (!town || (depotStreets.town === C.norm(town) && (depotStreets.names || depotStreets.busy))) return;
-    depotStreets.town = C.norm(town);
+    const town = state.project.depotAddr.comune.trim(), key = depotTownKey();
+    if (!town || (depotStreets.town === key && (depotStreets.names || depotStreets.busy))) return;
+    depotStreets.town = key;
     depotStreets.names = null;
     depotStreets.busy = true;
     $('depot-streets-note').textContent = '(carico le vie di ' + town + '…)';
+    // a list found once stays on the device: the free servers can be slow
+    const store = 'casellino.vie.' + key;
     let names = null;
-    try { names = await osmStreetNames(town); } catch (e) { /* no list: the street is written by hand */ }
-    if (depotStreets.town !== C.norm(town)) return;   // the town changed meanwhile
+    try { names = JSON.parse(localStorage.getItem(store) || 'null'); } catch (e) { /* not saved */ }
+    if (!names) {
+      try {
+        names = await osmStreetNames(town, state.project.depotAddr.provincia);
+        if (names.length) try { localStorage.setItem(store, JSON.stringify(names)); } catch (e) { /* only a convenience */ }
+      } catch (e) { /* no list: the street is written by hand */ }
+    }
+    if (depotStreets.town !== key) return;   // the town changed meanwhile
     depotStreets.busy = false;
     depotStreets.names = names;
     const list = $('depot-streets');
     list.textContent = '';
     (names || []).forEach(function (n) { list.append(h('option', { value: n })); });
-    $('depot-streets-note').textContent = names === null ? '' : (names.length ? '(' + names.length + ' vie sulla mappa)' : '(comune non trovato: controlla il nome)');
+    $('depot-streets-note').textContent = names === null ? '(elenco delle vie non disponibile ora)'
+      : (names.length ? '(' + names.length + ' vie sulla mappa)' : '(comune non trovato: controlla il nome' + (state.project.depotAddr.provincia ? ' e la provincia)' : ')'));
     renderDepotStatus();
   }
   // Is the street of the office missing from the free map? (only when the list of the town is known)
   function depotStreetMissing() {
     const via = state.project.depotAddr.via.trim();
-    return !!(via && depotStreets.names && depotStreets.names.length && depotStreets.town === C.norm(state.project.depotAddr.comune) &&
+    return !!(via && depotStreets.names && depotStreets.names.length && depotStreets.town === depotTownKey() &&
       !depotStreets.names.some(function (n) { return comparable(n) === comparable(via); }));
   }
   // Where the office is: put by hand or with the position, or found from the address.
@@ -4722,8 +4798,13 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     if (p) el.textContent = '📍 Sulla mappa: ' + ({ mano: 'messo a mano', gps: 'dalla tua posizione', via: 'trovata la via, senza il numero' }[p.found] || 'trovato');
     else if (missing) el.textContent = '«' + state.project.depotAddr.via.trim() + '» non c\'è sulla mappa gratuita di ' + state.project.depotAddr.comune.trim() +
       ': metti il punto con «Scegli sulla mappa» o «Usa la mia posizione». Basta una volta, poi resta salvato.';
-    else el.textContent = notFound ? 'Indirizzo non trovato sulla mappa: scegli il punto o usa la tua posizione.' : 'Non ancora sulla mappa.';
+    else el.textContent = notFound ? 'Questo indirizzo non c\'è sulla mappa gratuita: metti il punto con «Scegli sulla mappa» o «Usa la mia posizione». Basta una volta, poi resta salvato.' : 'Non ancora sulla mappa.';
     $('btn-depot-find').textContent = state.project.depotPoint ? '🔎 Cerca dall\'indirizzo' : '🔎 Cerca sulla mappa';
+    // not on the free map: the other ways stand out, and Google Maps can give the coordinates
+    const lost = !p && (notFound || missing);
+    $('btn-depot-map').classList.toggle('on', lost);
+    $('depot-coords').hidden = !lost;
+    if (lost) $('depot-gmaps').href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(C.addressText(state.project.depotAddr));
   }
 
   // The office from its address (a point put by hand is replaced only when asked with the button).
@@ -5787,8 +5868,9 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     wirePhotos();
     $('btn-account').addEventListener('click', openAccount);
     window.addEventListener('online', function () { if (account.token) cloudSave(false); });
-    [['depot-town', 'comune'], ['depot-street', 'via'], ['depot-number', 'civico']].forEach(function (f) {
+    [['depot-town', 'comune'], ['depot-prov', 'provincia'], ['depot-street', 'via'], ['depot-number', 'civico']].forEach(function (f) {
       $(f[0]).addEventListener('input', function (e) {
+        if (f[1] === 'provincia') e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
         state.project.depotAddr[f[1]] = e.target.value;
         state.project.depot = C.addressText(state.project.depotAddr);
         changed();
@@ -5797,6 +5879,14 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       $(f[0]).addEventListener('change', function () { findDepot(false); });  // once written, it is looked for on the map
     });
     $('depot-town').addEventListener('change', loadDepotStreets);
+    $('depot-prov').addEventListener('change', loadDepotStreets);
+    $('depot-coords-in').addEventListener('input', function (e) {
+      const c = C.parseCoordinates(e.target.value);
+      if (!c) return;
+      e.target.value = '';
+      setDepotPoint({ lat: c.lat, lng: c.lon }, 'mano');
+      toast('Centro messo alle coordinate incollate. Guardalo sulla cartina: se serve, trascinalo.');
+    });
     $('depot-street').addEventListener('focus', loadDepotStreets);
     $('depot-name').addEventListener('input', function (e) { state.project.depotName = e.target.value; changed(); });
     $('btn-depot-find').addEventListener('click', function () { findDepot(true); });

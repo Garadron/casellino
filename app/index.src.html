@@ -72,6 +72,8 @@
           <input id="depot-name" autocomplete="off" placeholder="es. Centro di Borgo Esempio"></label>
         <label class="depot-town">Comune
           <input id="depot-town" autocomplete="off" placeholder="es. Borgo Esempio"></label>
+        <label class="depot-prov">Prov.
+          <input id="depot-prov" autocomplete="off" maxlength="2" autocapitalize="characters" placeholder="es. CR"></label>
         <label class="depot-street"><span>Via <span class="small muted" id="depot-streets-note"></span></span>
           <input id="depot-street" autocomplete="off" list="depot-streets" placeholder="scrivi e scegli dall'elenco"></label>
         <datalist id="depot-streets"></datalist>
@@ -82,6 +84,9 @@
         <button type="button" class="pin-btn" id="btn-depot-find">🔎 Cerca sulla mappa</button>
         <button type="button" class="pin-btn" id="btn-depot-map">🗺 Scegli sulla mappa</button>
         <button type="button" class="pin-btn" id="btn-depot-gps">📡 Usa la mia posizione</button></p>
+      <p class="depot-coords small" id="depot-coords" hidden>Oppure: <a id="depot-gmaps" target="_blank" rel="noopener">🔗 cercalo su Google Maps</a>,
+        fai clic destro sul punto (sul telefono: tienilo premuto), copia i due numeri e incollali qui:
+        <input id="depot-coords-in" autocomplete="off" inputmode="decimal" placeholder="es. 45.4321, 9.5678"></p>
     </div>
 
     <div class="tabs" id="tabs" role="tablist"></div>

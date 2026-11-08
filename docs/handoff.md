@@ -2,6 +2,16 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 8 novembre 2026 · Tappa 10 chiusa: provincia e coordinate (v0.21.0)
+
+**Fatto.** `depotAddr.provincia` (due lettere; `Core.PROVINCES`, 107 sigle); le ricerche usano il nome della provincia
+(«Via X 15, Comune, Cremona»). `overpass(query)`: overpass-api.de, maps.mail.ru, overpass.kumi.systems, 25 s ciascuno
+(provato l'8/11: il primo pieno, il secondo risponde in 20-45 s). `osmStreetNames(town, province)`: nome del comune con
+regex senza maiuscole; con la provincia cerca il comune dentro l'area con `ref`. Elenco salvato in `localStorage`
+(`casellino.vie.<COMUNE>|<PROV>`). `Core.parseCoordinates`: «lat, lon», virgola decimale, link Google Maps (`!3d…!4d`
+prima di `@`).
+**Verifiche.** `tests/test_core.js` (38), `tests/test_pagina.js` (coordinate incollate, provincia), Edge vero.
+
 ## 8 novembre 2026 · Tappa 9 chiusa: indirizzo in tre caselle, salvataggio uscendo (v0.20.0)
 
 **Fatto.** `project.depotAddr` { comune, via, civico }; `project.depot` resta la stessa cosa in una riga

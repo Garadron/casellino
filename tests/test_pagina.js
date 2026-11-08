@@ -135,7 +135,17 @@ function caretAt(ta, needle, offset) {
   assert.strictEqual(kept.depotName, 'Centro di Borgo Esempio');
   assert.deepStrictEqual(kept.depotPoint, { lat: 45.25, lon: 9.35, found: 'gps' });
   assert.strictEqual(kept.depot, 'Via Esempio 1, Borgo Esempio', 'the address written stays');
-  assert.deepStrictEqual(kept.depotAddr, { comune: 'Borgo Esempio', via: 'Via Esempio', civico: '1' });
+  assert.deepStrictEqual(kept.depotAddr, { comune: 'Borgo Esempio', provincia: '', via: 'Via Esempio', civico: '1' });
+  // the point from coordinates pasted from Google Maps
+  doc.getElementById('depot-coords-in').value = '45.4321, 9.5678';
+  doc.getElementById('depot-coords-in').dispatchEvent(new win.Event('input'));
+  assert.ok(/messo a mano/.test(text('#depot-status')), text('#depot-status'));
+  await wait(600);
+  assert.deepStrictEqual(JSON.parse(win.localStorage.getItem('casellino.progetto')).depotPoint, { lat: 45.4321, lon: 9.5678, found: 'mano' });
+  // the province: capitals, two letters
+  doc.getElementById('depot-prov').value = 'cr';
+  doc.getElementById('depot-prov').dispatchEvent(new win.Event('input'));
+  assert.strictEqual(doc.getElementById('depot-prov').value, 'CR');
 
   // the photo reader opens from the big button and from the menu
   doc.querySelector('.photo-btn').dispatchEvent(new win.Event('click'));

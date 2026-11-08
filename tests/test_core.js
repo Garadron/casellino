@@ -242,13 +242,25 @@ test('the stops of the round follow the frame, one per piece of street', functio
   assert.strictEqual(Core.sanitizeProject({ subzones: [], depotPoint: { lat: null, lon: 9 } }).depotPoint, null);
   assert.strictEqual(Core.newProject().depotPoint, null);
   // the office's address in three parts (comune, via, civico), also from a line written before, in any order
-  assert.deepStrictEqual(Core.splitAddress('Via dei Tigli, 15, 00000 Borgo Esempio (Frazione)'), { via: 'Via dei Tigli', civico: '15', comune: 'Borgo Esempio' });
-  assert.deepStrictEqual(Core.splitAddress('Borgo Esempio, Via dei Tigli, 15'), { via: 'Via dei Tigli', civico: '15', comune: 'Borgo Esempio' });
-  assert.deepStrictEqual(Core.splitAddress('Piazza del Pozzo 1/A - Villa Esempio'), { via: 'Piazza del Pozzo', civico: '1/A', comune: 'Villa Esempio' });
-  assert.deepStrictEqual(Core.splitAddress('Borgo Nuovo 3, Villa Esempio'), { via: 'Borgo Nuovo', civico: '3', comune: 'Villa Esempio' });
-  assert.strictEqual(Core.addressText({ via: 'Via dei Tigli', civico: '15', comune: 'Borgo Esempio' }), 'Via dei Tigli 15, Borgo Esempio');
+  const addr = function (via, civico, comune, provincia) { return { via: via, civico: civico, comune: comune, provincia: provincia || '' }; };
+  assert.deepStrictEqual(Core.splitAddress('Via dei Tigli, 15, 00000 Borgo Esempio (Frazione)'), addr('Via dei Tigli', '15', 'Borgo Esempio'));
+  assert.deepStrictEqual(Core.splitAddress('Borgo Esempio, Via dei Tigli, 15'), addr('Via dei Tigli', '15', 'Borgo Esempio'));
+  assert.deepStrictEqual(Core.splitAddress('Piazza del Pozzo 1/A - Villa Esempio'), addr('Piazza del Pozzo', '1/A', 'Villa Esempio'));
+  assert.deepStrictEqual(Core.splitAddress('Borgo Nuovo 3, Villa Esempio'), addr('Borgo Nuovo', '3', 'Villa Esempio'));
+  assert.deepStrictEqual(Core.splitAddress('Via dei Tigli 15, 00000 Borgo Esempio (CR)'), addr('Via dei Tigli', '15', 'Borgo Esempio', 'CR'), 'the province in brackets');
+  assert.deepStrictEqual(Core.splitAddress('Via dei Tigli 15, Borgo Esempio MI'), addr('Via dei Tigli', '15', 'Borgo Esempio', 'MI'));
+  assert.strictEqual(Core.addressText(addr('Via dei Tigli', '15', 'Borgo Esempio')), 'Via dei Tigli 15, Borgo Esempio');
+  assert.strictEqual(Core.addressText(addr('Via dei Tigli', '15', 'Borgo Esempio', 'CR')), 'Via dei Tigli 15, Borgo Esempio (CR)');
+  assert.strictEqual(Core.provinceName('cr'), 'Cremona');
+  assert.strictEqual(Core.provinceName('XX'), '');
   assert.deepStrictEqual(Core.sanitizeProject({ subzones: [], depot: 'Via Esempio 1, Borgo Esempio' }).depotAddr,
-    { comune: 'Borgo Esempio', via: 'Via Esempio', civico: '1' }, 'works saved before keep their address');
+    { comune: 'Borgo Esempio', provincia: '', via: 'Via Esempio', civico: '1' }, 'works saved before keep their address');
+  // coordinates pasted from a map, also as a Google Maps link
+  assert.deepStrictEqual(Core.parseCoordinates('45.43212, 9.56789'), { lat: 45.43212, lon: 9.56789 });
+  assert.deepStrictEqual(Core.parseCoordinates('45,4321 9,5678'), { lat: 45.4321, lon: 9.5678 });
+  assert.deepStrictEqual(Core.parseCoordinates('https://www.google.com/maps/place/X/@45.40,9.50,17z/data=!3m1!4b1!4m6!3m5!8m2!3d45.4321!4d9.5678'),
+    { lat: 45.4321, lon: 9.5678 }, 'the point of the place, not the centre of the map');
+  assert.strictEqual(Core.parseCoordinates('Via dei Tigli 15'), null);
 });
 
 test('optimizing the round: shortest order from the office and back', function () {

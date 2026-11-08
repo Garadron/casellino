@@ -134,7 +134,10 @@
   const MAYBE_STREET = /^(borgo|frazione|fraz\.)(\s|$)/i;   // also the start of many town names
   const HOUSE_NUMBER = /^\d{1,4}\s?[a-z]?(\/\w{1,3})?$/i;
   function splitAddress(text) {
+    let provincia = '';
     const parts = String(text || '').split(/,|\s+-\s+/).map(function (x) {
+      const p = /\(([A-Za-z]{2})\)|\s([A-Z]{2})$/.exec(x.trim());   // "(CR)" or "Borgo CR"
+      if (p && PROVINCES[(p[1] || p[2]).toUpperCase()]) { provincia = (p[1] || p[2]).toUpperCase(); x = x.trim().slice(0, p.index); }
       return x.replace(/\([^)]*\)/g, ' ').replace(/\b\d{5}\b/g, ' ').replace(/\s+/g, ' ').trim();
     }).filter(Boolean);
     let civico = '';
@@ -146,12 +149,43 @@
     const others = words.filter(function (x) { return x !== via; });
     const m = /^(.*\D)\s+(\d{1,4}\s?[a-z]?(\/\w{1,3})?)$/i.exec(via);
     if (m && !civico) { via = m[1].trim(); civico = m[2]; }
-    return { via: via, civico: civico, comune: others.length ? others[others.length - 1] : '' };
+    return { via: via, civico: civico, comune: others.length ? others[others.length - 1] : '', provincia: provincia };
   }
-  // The same address in one line, to search it and show it: "Via Esempio 1, Borgo Esempio".
+  // The same address in one line, to show it: "Via Esempio 1, Borgo Esempio (CR)".
   function addressText(a) {
     const street = [a.via, a.civico].map(function (x) { return String(x || '').trim(); }).filter(Boolean).join(' ');
-    return [street, String(a.comune || '').trim()].filter(Boolean).join(', ');
+    const town = String(a.comune || '').trim();
+    return [street, town && a.provincia ? town + ' (' + a.provincia + ')' : town].filter(Boolean).join(', ');
+  }
+
+  // The Italian provinces: the two letters and the name (the map search understands the name).
+  const PROVINCES = {};
+  ('AG Agrigento|AL Alessandria|AN Ancona|AO Aosta|AP Ascoli Piceno|AQ L\'Aquila|AR Arezzo|AT Asti|AV Avellino|BA Bari|' +
+   'BG Bergamo|BI Biella|BL Belluno|BN Benevento|BO Bologna|BR Brindisi|BS Brescia|BT Barletta-Andria-Trani|BZ Bolzano|' +
+   'CA Cagliari|CB Campobasso|CE Caserta|CH Chieti|CL Caltanissetta|CN Cuneo|CO Como|CR Cremona|CS Cosenza|CT Catania|' +
+   'CZ Catanzaro|EN Enna|FC Forlì-Cesena|FE Ferrara|FG Foggia|FI Firenze|FM Fermo|FR Frosinone|GE Genova|GO Gorizia|' +
+   'GR Grosseto|IM Imperia|IS Isernia|KR Crotone|LC Lecco|LE Lecce|LI Livorno|LO Lodi|LT Latina|LU Lucca|' +
+   'MB Monza e Brianza|MC Macerata|ME Messina|MI Milano|MN Mantova|MO Modena|MS Massa-Carrara|MT Matera|NA Napoli|' +
+   'NO Novara|NU Nuoro|OR Oristano|PA Palermo|PC Piacenza|PD Padova|PE Pescara|PG Perugia|PI Pisa|PN Pordenone|PO Prato|' +
+   'PR Parma|PT Pistoia|PU Pesaro e Urbino|PV Pavia|PZ Potenza|RA Ravenna|RC Reggio Calabria|RE Reggio Emilia|RG Ragusa|' +
+   'RI Rieti|RM Roma|RN Rimini|RO Rovigo|SA Salerno|SI Siena|SO Sondrio|SP La Spezia|SR Siracusa|SS Sassari|' +
+   'SU Sud Sardegna|SV Savona|TA Taranto|TE Teramo|TN Trento|TO Torino|TP Trapani|TR Terni|TS Trieste|TV Treviso|' +
+   'UD Udine|VA Varese|VB Verbano-Cusio-Ossola|VC Vercelli|VE Venezia|VI Vicenza|VR Verona|VT Viterbo|VV Vibo Valentia')
+    .split('|').forEach(function (x) { PROVINCES[x.slice(0, 2)] = x.slice(3); });
+  function provinceCode(text) {
+    const c = String(text || '').trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    return c.length === 2 ? c : '';
+  }
+  const provinceName = function (code) { return PROVINCES[provinceCode(code)] || ''; };
+
+  // Coordinates pasted from a map ("45.4321, 9.5678", "45,4321 9,5678" or a Google Maps link): { lat, lon } or null.
+  function parseCoordinates(text) {
+    const s = String(text || '');
+    const m = /!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/.exec(s) || /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/.exec(s) ||
+      /(-?\d{1,2}\.\d{3,})\s*[,;\s]\s*(-?\d{1,3}\.\d{3,})/.exec(s) || /(-?\d{1,2},\d{3,})[;\s]+(-?\d{1,3},\d{3,})/.exec(s);
+    if (!m) return null;
+    const lat = parseFloat(m[1].replace(',', '.')), lon = parseFloat(m[2].replace(',', '.'));
+    return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat: lat, lon: lon } : null;
   }
 
   function streetKey(street, town) {
@@ -180,7 +214,7 @@
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
       depot: '',        // address of the office where the round starts and ends, optional (written from depotAddr)
-      depotAddr: { comune: '', via: '', civico: '' },
+      depotAddr: { comune: '', provincia: '', via: '', civico: '' },
       depotName: '',    // its name, optional
       depotPoint: null, // its point when put on the map by hand or with the device position: { lat, lon, found: 'mano' | 'gps' }
       wall: null,       // the frame drawn by the user (modules left to right, pencil marks), optional
@@ -234,7 +268,7 @@
     }
     out.depot = String(p.depot || '');
     const da = p.depotAddr || splitAddress(out.depot);   // works saved before v0.20.0 have the address in one line
-    out.depotAddr = { comune: String(da.comune || ''), via: String(da.via || ''), civico: String(da.civico || '') };
+    out.depotAddr = { comune: String(da.comune || ''), provincia: provinceCode(da.provincia), via: String(da.via || ''), civico: String(da.civico || '') };
     out.depotName = String(p.depotName || '');
     const d = p.depotPoint;
     out.depotPoint = d && isFinite(d.lat) && isFinite(d.lon) && d.lat !== null && d.lon !== null
@@ -1398,6 +1432,7 @@
     PALETTE: PALETTE,
     norm: norm,
     streetKey: streetKey, renameStreet: renameStreet, splitAddress: splitAddress, addressText: addressText,
+    provinceName: provinceName, parseCoordinates: parseCoordinates,
     newProject: newProject,
     newSubzone: newSubzone,
     sanitizeProject: sanitizeProject,

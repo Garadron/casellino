@@ -1,5 +1,19 @@
 # Registro delle versioni
 
+## v0.21.0 · 2026-11-08 · Provincia, coordinate da Google Maps, elenco vie più sicuro
+
+- **Provincia** (es. CR) accanto al comune: si scrive in maiuscolo da sola, entra nell'indirizzo («…, Borgo (CR)») e
+  serve a cercare il comune giusto quando ce ne sono due con lo stesso nome. Le 107 sigle con il nome della provincia.
+- **Quando l'indirizzo non c'è sulla mappa gratuita**: l'avviso dice chiaro che va messo una volta sola, «Scegli sulla
+  mappa» si accende, e c'è una strada in più: «cercalo su Google Maps», clic destro (o dito premuto) sul punto, copia i
+  due numeri e incollali nella casella. Va bene anche il link di Google Maps intero.
+- **Elenco delle vie**: il server gratuito principale spesso è pieno e restava su «carico…». Ora si provano tre
+  server, uno dopo l'altro, con un tempo massimo; se nessuno risponde lo dice. L'elenco trovato resta sul dispositivo:
+  la volta dopo si apre subito. Il comune si trova anche scritto in minuscolo.
+- File: `app/src/core.js` (`PROVINCES`, `provinceName`, `parseCoordinates`, provincia in `splitAddress` e
+  `addressText`), `app/src/ui.js` (`overpass`, `osmStreetNames`), `app/src/style.css`, `app/index.src.html`,
+  `tests/test_core.js`, `tests/test_pagina.js`, `Casellino.html`, `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.20.1 · 2026-11-08 · Il nome dell'autore in ogni file
 
 - Decisione di Garadron sul copyright: nei progetti pubblici solo nome, cognome, «Garadron» e licenza; i dati personali
