@@ -94,6 +94,37 @@ function caretAt(ta, needle, offset) {
   assert.notStrictEqual(blobs[3].size, blobs[0].size, 'per piani il PDF è diverso');
   assert.strictEqual(win.localStorage.getItem('casellino.stampa'), 'piani');
 
+  // "Lo consegna un collega": the number at the cursor gets a "*" and its pigeonhole is underlined; pressed again, it goes
+  const other = [...doc.querySelectorAll('.route-actions button')].find(function (b) { return /Lo consegna un collega/.test(b.textContent); });
+  const rb = doc.querySelector('textarea.route-text');
+  const at = rb.value.indexOf('VIA DELLE ROSE: 1/3') + 'VIA DELLE ROSE: 1'.length;
+  rb.setSelectionRange(at, at);
+  other.dispatchEvent(new win.Event('click'));
+  assert.ok(/VIA DELLE ROSE: 1\/3\*, 5\/7/.test(rb.value), 'segnato con *');
+  assert.ok(doc.querySelectorAll('.cell.top.other').length >= 1, 'casella sottolineata');
+  const at2 = rb.value.indexOf('1/3*') + 1;
+  rb.setSelectionRange(at2, at2);
+  other.dispatchEvent(new win.Event('click'));
+  assert.ok(/VIA DELLE ROSE: 1\/3, 5\/7/.test(rb.value), 'tolto');
+  // a selection marks every number in it
+  const from = rb.value.indexOf('VIA DELLE ROSE: ') + 'VIA DELLE ROSE: '.length;
+  rb.setSelectionRange(from, from + '1/3, 5/7'.length);
+  other.dispatchEvent(new win.Event('click'));
+  assert.ok(/VIA DELLE ROSE: 1\/3\*, 5\/7\*, 9,/.test(rb.value), rb.value.split('\n').find(function (l) { return /ROSE: 1/.test(l); }));
+  rb.setSelectionRange(from, from + '1/3*, 5/7*'.length);
+  other.dispatchEvent(new win.Event('click'));
+  assert.ok(/VIA DELLE ROSE: 1\/3, 5\/7, 9,/.test(rb.value));
+  // from the phone: tap the pigeonhole on the strip, then the button; a series is written out, only that one marked
+  const three = [...doc.querySelectorAll('.cell.top')].find(function (el) { return el.textContent === '3' && /VIA DEI TIGLI/.test(el.title); });
+  three.dispatchEvent(new win.Event('click'));
+  doc.querySelector('#selection .colleague-btn').dispatchEvent(new win.Event('click'));
+  assert.ok(/^VIA DEI TIGLI: 1, 3\*, 5, 7, 9, 11, 13, 15, 14\.\.2$/m.test(rb.value), 'segnata solo la 3');
+  assert.ok(/La consegna un collega/.test(text('#selection .colleague-btn')), 'il pulsante dice che è segnata');
+  doc.querySelector('#selection .colleague-btn').dispatchEvent(new win.Event('click'));
+  assert.ok(/^VIA DEI TIGLI: 1, 3, 5, 7, 9, 11, 13, 15, 14\.\.2$/m.test(rb.value), 'tolto');
+  rb.value = rb.value.replace('VIA DEI TIGLI: 1, 3, 5, 7, 9, 11, 13, 15, 14..2', 'VIA DEI TIGLI: 1..15, 14..2');
+  rb.dispatchEvent(new win.Event('input'));
+
   // leaving the app (another app, or closing it) saves at once, without waiting
   const routeBox = doc.querySelector('textarea.route-text');
   routeBox.value = routeBox.value + '\nVIA SALVATA SUBITO: 1';

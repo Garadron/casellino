@@ -416,6 +416,25 @@ test('printing: pieces of 22 slots packed on full A4 sheets, one shelf row per l
   assert.ok(piece.cells.every(function (c) { return c.end >= 22 && c.start <= 43; }));
 });
 
+test('numbers for another line ("17*"): underlined on the strip, in the PDF and in the Excel', function () {
+  const r = Core.parseRoute('VIA DEI TIGLI: 1, 3*, 5 *, 13A* (2), 13B (2)*, 2/4*, 7..9*\nCASCINA ALTA (2)*\nCASCINA BASSA', 'Borgo');
+  assert.deepStrictEqual(r.items.map(function (i) { return (i.top || i.street) + (i.second ? '/' + i.second : '') + (i.other ? '*' : ''); }),
+    ['1', '3*', '5*', '13A*', '13B*', '2/4*', '7*', '9*', 'CASCINA ALTA*', 'CASCINA BASSA']);
+  assert.deepStrictEqual(r.items.map(function (i) { return i.span; }), [1, 1, 1, 2, 2, 1, 1, 1, 2, 1], 'the width stays');
+  assert.strictEqual(r.warnings.length, 0);
+  const p = Core.sanitizeProject({ subzones: [{ name: 'A', town: 'Borgo', route: 'VIA DEI TIGLI: 1, 3*, 2/4*\nCASCINA ALTA (2)*' }] });
+  const cells = Core.allCells(Core.analyseProject(p)[0]);
+  assert.deepStrictEqual(cells.map(function (c) { return !!c.other; }), [false, true, true, true]);
+  // renaming finds the farm also with the mark
+  Core.renameStreet(p, Core.streetKey('CASCINA ALTA', 'Borgo'), 'CASCINA ALTA DI SOPRA');
+  assert.ok(/\nCASCINA ALTA DI SOPRA \(2\)\*$/.test(p.subzones[0].route), p.subzones[0].route);
+  // Excel: a thick bottom border in the colour of the writing; PDF: a thick line
+  const sheet = Xlsx.buildCompactFiles(p).files.find(function (f) { return f.name === 'xl/styles.xml'; }).data;
+  assert.ok(/<bottom style="thick"><color rgb="FF[0-9A-F]{6}"\/><\/bottom>/.test(sheet));
+  const pdf = Buffer.from(require('../app/src/pdf.js').buildPdf(p, 'Prova').bytes).toString('latin1');
+  assert.ok(/ RG 3\.00 w /.test(pdf), 'a 3 pt line under the number');
+});
+
 test('correcting a street name from the list: every line, every sub-zone, same colour', function () {
   const p = Core.sanitizeProject({ subzones: [
     { name: 'A', town: 'Borgo', route: 'VIA DEI TIGLLI: 1..5\nC.NA ALTA (2)\nVIA DELLE ROSE: 2\n  via dei tiglli?: 7, 9\nCOMUNE: Villa\nVIA DEI TIGLLI: 1' },

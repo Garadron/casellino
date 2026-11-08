@@ -232,6 +232,10 @@ a.btn {
 .cell.foreign { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.0) 0 6px, rgba(255,255,255,.18) 6px 8px); }
 .cell.top.diag.foreign { background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px)); }
 .cell.unsure { box-shadow: inset 0 0 0 2px #d93025; }
+/* mail for another line: the number is underlined with a thick line, in the colour of the writing */
+.cell.top.other { box-shadow: inset 0 -4px 0 var(--ink, #111); }
+.cell.top.other.unsure { box-shadow: inset 0 -4px 0 var(--ink, #111), inset 0 0 0 2px #d93025; }
+.colleague-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .cell.sel { outline: 3px solid var(--accent); outline-offset: -3px; z-index: 2; }
 .cut { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #6b7480; pointer-events: none; }
 .boundary { position: absolute; top: -10px; bottom: -4px; width: 0; border-left: 3px solid #d93025; pointer-events: none; }

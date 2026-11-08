@@ -267,6 +267,8 @@
             } }, 'Sblocca'))
         : h('p', { class: 'route-actions' },
             h('button', { type: 'button', class: 'primary photo-btn', onclick: openPhotos }, '📷 Carica e leggi le foto delle strisce'),
+            h('button', { type: 'button', title: 'I civici scelti (cursore o selezione) li consegna un collega, di un\'altra linea: nelle strisce la casella del numero è sottolineata. Premi di nuovo per togliere. Dal telefono: tocca la casella nella striscia.',
+              onmousedown: function (e) { e.preventDefault(); }, onclick: toggleOtherLine }, '👥 Lo consegna un collega'),
             h('button', { type: 'button', onclick: function () {
               if (!confirm('Hai controllato tutte le vie, le cascine e i civici di questo giro? Lo blocco: non si potrà cambiare per sbaglio. (Si sblocca quando vuoi.)')) return;
               s.locked = Date.now(); changed(); renderSubzone();
@@ -390,7 +392,7 @@
       const unsure = /\?/.test(c.top + c.second + c.street);
       const tip = (c.foreign ? 'Della ' + c.foreign + ' · ' : '') + (c.street || 'senza via') + (c.top ? ' · ' + c.top : '') +
         (c.second ? ' / ' + c.second : '') + ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') +
-        ' · riga ' + (c.line + 1) + ' del giro';
+        ' · riga ' + (c.line + 1) + ' del giro' + (c.other ? ' · per un\'altra linea' : '');
       const pick = function () { select(p, idx); };
       const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '');
       const width = c.span * slot;
@@ -406,7 +408,7 @@
         cls = long ? ' long' : '';
       }
       el.append(h.apply(null, ['div', {
-        class: 'cell top' + cls + (unsure ? ' unsure' : '') + mark,
+        class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + mark,
         style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';background-color:' + bg + ';color:' + ink +
           ';--ink:' + ink + ';font-size:' + size + 'px',
         title: tip, onclick: pick, 'data-idx': idx,
@@ -635,11 +637,94 @@
         h('p', { class: 'muted small' }, stripTitle(s) + ', casella ' + (c.start + 1) +
           (c.span > 1 ? ' – ' + (c.end + 1) + ' (larga ' + c.span + ')' : '') + ' · foglio ' +
           (Math.floor(c.start / C.SLOTS_PER_PAGE) + 1) + ' · riga ' + (c.line + 1) + ' del giro'),
+        c.other ? h('p', { class: 'small' }, '👥 La posta di questa casella la consegna un collega: nelle strisce il numero è sottolineato.') : null,
         h('p', { class: 'actions-inline' },
+          c.top || c.street ? h('button', { type: 'button', class: 'colleague-btn' + (c.other ? ' on' : ''), 'aria-pressed': c.other ? 'true' : 'false',
+            onclick: function () { toggleColleague(c); } }, c.other ? '👥 La consegna un collega ✓' : '👥 Lo consegna un collega') : null,
           h('button', { type: 'button', onclick: function () { goToLine(c.line); } }, 'Vai alla riga del giro'),
           q ? h('a', { class: 'btn', href: mapsLink(q), target: '_blank', rel: 'noopener' }, 'Apri in Google Maps') : null)));
     if (q) setMap(q);
     if (isTouch) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  /*
+   * "Altra linea": the numbers at the cursor (or in the selection) get a "*" (mail for another line,
+   * underlined on the strips); if they all have it already, it is taken away.
+   */
+  function toggleOtherLine() {
+    const ta = state.els.ta;
+    if (!ta || sz().locked) return;
+    const a = ta.selectionStart, b = ta.selectionEnd;
+    const found = [];
+    let pos = 0;
+    ta.value.split('\n').forEach(function (line) {
+      const plain = line.trim();
+      const special = !plain || plain[0] === '#' || /^(comune|confine)\b/i.test(plain) || /^(fine\s+striscia|fine\s+fila|striscia\s+vuota|vuot[ae](\s+\d+)?)\.?$/i.test(plain);
+      if (!special) {
+        const colon = line.indexOf(':');
+        let st = pos + colon + 1;   // a name alone (no colon) is one piece, from the start of the line
+        (colon < 0 ? [line] : line.slice(colon + 1).split(',')).forEach(function (piece) {
+          const en = st + piece.length;
+          const hit = a === b ? st <= a && a <= en : st < b && en > a;
+          if (piece.trim() && hit && !(a === b && found.length)) found.push({ start: st, end: en, text: piece });
+          st = en + 1;
+        });
+      }
+      pos += line.length + 1;
+    });
+    if (!found.length) { toast('Metti il cursore su un civico, o seleziona i civici, e premi «Lo consegna un collega». Dal telefono: tocca la casella nella striscia.'); return; }
+    const all = found.every(function (f) { return /\*\s*$/.test(f.text); });
+    let text = ta.value;
+    found.slice().reverse().forEach(function (f) {
+      const end = f.text.replace(/\s+$/, '');
+      const piece = all ? end.replace(/\s*\*$/, '') : (/\*$/.test(end) ? end : end + '*');
+      text = text.slice(0, f.start) + piece + f.text.slice(end.length) + text.slice(f.end);
+    });
+    const top = ta.scrollTop;
+    ta.value = text;
+    ta.scrollTop = top;
+    sz().route = text;
+    changed();
+    refreshRoute();
+    toast(all ? 'Tolto: li consegni tu.' : (found.length === 1 ? 'Segnato: lo consegna un collega (casella sottolineata).' : found.length + ' civici segnati: li consegna un collega (caselle sottolineate).'));
+  }
+
+  // The same for the pigeonhole tapped on a strip (easy from the phone): "*" on its number in the text.
+  // A series like "7..15" is written out ("7, 9, 11*, 13, 15") so that only that pigeonhole is marked.
+  function toggleColleague(c) {
+    const s = sz();
+    if (s.locked) { toast('Il giro è bloccato: sbloccalo per cambiarlo.'); return; }
+    const lines = s.route.split('\n');
+    const line = lines[c.line];
+    if (line === undefined) return;
+    const colon = line.indexOf(':');
+    const mark = function (text, on) { const t = text.replace(/\s*\*\s*$/, ''); return on ? t + '*' : t; };
+    if (colon < 0) {
+      lines[c.line] = mark(line.replace(/\s+$/, ''), !c.other);
+    } else {
+      const toks = line.slice(colon + 1).split(',');
+      const tok = toks[c.tok];
+      if (tok === undefined) return;
+      const lead = /^\s*/.exec(tok)[0];
+      const many = C.parseRoute('X:' + tok, '').items;
+      if (many.length > 1) {
+        toks[c.tok] = lead + many.map(function (x) {
+          const mine = x.top === c.top && x.second === c.second;
+          return x.top + (x.second ? '/' + x.second : '') + (x.span > 1 ? ' (' + x.span + ')' : '') + ((mine ? !c.other : x.other) ? '*' : '');
+        }).join(', ');
+      } else {
+        toks[c.tok] = lead + mark(tok.trim(), !c.other) + (/\s*$/.exec(tok)[0]);
+      }
+      lines[c.line] = line.slice(0, colon + 1) + toks.join(',');
+    }
+    s.route = lines.join('\n');
+    const ta = state.els.ta;
+    if (ta) { const top = ta.scrollTop; ta.value = s.route; ta.scrollTop = top; }
+    changed();
+    const keep = state.selected;
+    refreshRoute();
+    if (keep) select(keep.p, keep.idx);
+    toast(c.other ? 'Tolto: la consegni tu.' : 'Segnata: la consegna un collega (casella sottolineata).');
   }
 
   function goToLine(line) {

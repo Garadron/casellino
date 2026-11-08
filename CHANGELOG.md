@@ -1,5 +1,18 @@
 # Registro delle versioni
 
+## v0.22.0 · 2026-11-09 · «Lo consegna un collega»: i civici di un'altra linea, sottolineati
+
+- Alcune caselle della zona tengono posta che consegna un collega di un'altra linea. Ora si segnano:
+  - **dal telefono**: tocca la casella nella striscia e premi **«👥 Lo consegna un collega»** (di nuovo per togliere);
+  - **dal computer**: cursore sul civico, o selezionane tanti, e lo stesso pulsante sopra il giro;
+  - **scrivendo**: `17*`. Una serie come `7..15` si scrive per esteso solo quando se ne segna una casella.
+- Nelle strisce, nel PDF e nell'Excel il numero di quelle caselle è **sottolineato da una riga spessa** nel colore della
+  scritta (si vede anche sui colori scuri). Provato in Excel vero.
+- La parola sul pulsante è «collega» e non la sigla del lavoro, che per la regola del progetto non va nel codice pubblico.
+- File: `app/src/core.js` (`otherLine`, `other` nelle caselle), `app/src/pdf.js`, `app/src/xlsx.js`, `app/src/ui.js`
+  (`toggleOtherLine`, `toggleColleague`), `app/src/style.css`, `app/index.src.html`, `tests/test_core.js`,
+  `tests/test_pagina.js`, `Casellino.html`, `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.21.0 · 2026-11-08 · Provincia, coordinate da Google Maps, elenco vie più sicuro
 
 - **Provincia** (es. CR) accanto al comune: si scrive in maiuscolo da sola, entra nell'indirizzo («…, Borgo (CR)») e

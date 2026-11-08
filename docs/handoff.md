@@ -2,6 +2,15 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 9 novembre 2026 · Tappa 11 chiusa: «Lo consegna un collega» (v0.22.0)
+
+**Fatto.** `*` in fondo a un civico o a un nome da solo (prima o dopo «(2)») = `other: true` sulla casella
+(`Core.otherLine`). Pagina: classe `other` (ombra interna in basso, colore `--ink`), pulsante sopra il giro
+(`toggleOtherLine`, cursore o selezione) e nel riquadro della casella toccata (`toggleColleague`: una serie si scrive per
+esteso). PDF: riga di 3 pt sotto il numero; Excel: bordo inferiore `thick` con il colore della scritta (`b.bc`).
+**Verifiche.** `tests/test_core.js` (39), `tests/test_pagina.js` (cursore, selezione, tocco sulla casella), PDF e Excel vero
+guardati. **Limite.** L'apertura di un Excel (`importa.js`) non legge ancora la riga spessa: il segno si rimette.
+
 ## 8 novembre 2026 · Tappa 10 chiusa: provincia e coordinate (v0.21.0)
 
 **Fatto.** `depotAddr.provincia` (due lettere; `Core.PROVINCES`, 107 sigle); le ricerche usano il nome della provincia

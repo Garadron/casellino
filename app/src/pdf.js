@@ -104,6 +104,7 @@
       const x = xOf(a), w = (b - a + 1) * SLOT;
       const ink = Core.textColorOf(project, c.key);
       cv.fill(x, yTop, w, TOP, Core.colorOf(project, c.key));
+      if (c.other) cv.line(x + 2.5, yBottom - 2.2, x + w - 2.5, yBottom - 2.2, 3, ink);  // for another line: underlined
       if (c.second) {
         const s = diagonalSize(c.top, c.second, w, TOP);
         cv.line(x, yTop + TOP, x + w, yTop, THIN, ink);

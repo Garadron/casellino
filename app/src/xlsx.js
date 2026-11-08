@@ -89,7 +89,7 @@
     // b.d: colour of a "/" line from the lower-left to the upper-right corner (two numbers in one
     // pigeonhole); it has the colour of the writing, so it shows on dark colours too
     return this.add(this.borders, '<border' + (b.d ? ' diagonalUp="1"' : '') + '>' + side('left', b.l) +
-      side('right', b.r) + side('top', b.t) + side('bottom', b.b) + side('diagonal', b.d ? 'thin' : null, b.d) + '</border>');
+      side('right', b.r) + side('top', b.t) + side('bottom', b.b, b.bc) + side('diagonal', b.d ? 'thin' : null, b.d) + '</border>');
   };
   // s = { size, bold, color, fill, border:{l,r,t,b}, text, wrap, shrink, rot, h }
   StyleBook.prototype.xf = function (s) {
@@ -364,13 +364,15 @@
       const color = Core.colorOf(project, c.key);
       const ink = Core.textColorOf(project, c.key);
       const e = edges(a, b);
+      // for another line: a thick line under the number, in the colour of the writing
+      const under = c.other ? { b: 'thick', bc: ink } : { b: 'thin' };
       if (c.second) {
         const d = diagonalText(c.top, c.second, b - a + 1);
         sb.block(top, col(a), top, col(b), d.text,
-          { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: { l: e.l, r: e.r, t: 'medium', b: 'thin', d: ink } });
+          { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: Object.assign({ l: e.l, r: e.r, t: 'medium', d: ink }, under) });
       } else {
         sb.block(top, col(a), top, col(b), c.top,
-          Object.assign({ bold: true, text: true, fill: color, color: ink, border: { l: e.l, r: e.r, t: 'medium', b: 'thin' } }, topTextStyle(c.top)));
+          Object.assign({ bold: true, text: true, fill: color, color: ink, border: Object.assign({ l: e.l, r: e.r, t: 'medium' }, under) }, topTextStyle(c.top)));
       }
       for (let k = a; k <= b; k++) usedTop[k] = true;
     });

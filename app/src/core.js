@@ -309,17 +309,27 @@
   }
 
   // One comma-separated token -> list of pigeonholes, or { error }.
+  // "17*": the mail of that pigeonhole goes to another line (it is underlined on the strip). Returns [text, marked].
+  function otherLine(text) {
+    const m = /\s*\*\s*$/.exec(text);
+    return m ? [text.slice(0, m.index), true] : [text, false];
+  }
+
   function parseToken(token) {
     let t = token.trim();
     let span = 1;
+    let other = false;
+    [t, other] = otherLine(t);
     const spanMatch = /\(\s*(\d{1,2})\s*\)\s*$/.exec(t);
     if (spanMatch) {
       span = parseInt(spanMatch[1], 10);
       if (span < 1) return { error: 'una casella non può essere larga 0' };
       t = t.slice(0, spanMatch.index).trim();
     }
+    if (!other) [t, other] = otherLine(t);   // also "13A* (2)"
+    t = t.trim();
     // second: a second number in the same pigeonhole, split by a diagonal line ("2/4")
-    const cell = function (top, second) { return { top: top, second: second || '', span: span }; };
+    const cell = function (top, second) { return { top: top, second: second || '', span: span, other: other }; };
 
     if (t === '' || /^(vuota|vuoto|_)$/i.test(t)) return { cells: [cell('')] };
 
@@ -391,10 +401,12 @@
       const colon = line.indexOf(':');
       if (colon < 0) {
         // A name alone takes one pigeonhole with the name on the street line (e.g. a farmhouse).
-        let name = line, span = 1;
+        let [name, other] = otherLine(line), span = 1;
         const sm = /\(\s*(\d{1,2})\s*\)\s*$/.exec(name);
         if (sm) { span = Math.max(1, parseInt(sm[1], 10)); name = name.slice(0, sm.index).trim(); }
-        items.push({ kind: 'cell', street: name, town: town, key: streetKey(name, town), top: '', second: '', span: span, line: lineIndex, tok: 0 });
+        if (!other) [name, other] = otherLine(name);
+        name = name.trim();
+        items.push({ kind: 'cell', street: name, town: town, key: streetKey(name, town), top: '', second: '', span: span, line: lineIndex, tok: 0, other: other });
         return;
       }
       const street = line.slice(0, colon).trim();
@@ -409,7 +421,7 @@
           return;
         }
         r.cells.forEach(function (c) {
-          items.push({ kind: 'cell', street: street, town: town, key: street ? streetKey(street, town) : '', top: c.top, second: c.second, span: c.span, line: lineIndex, tok: tokIndex });
+          items.push({ kind: 'cell', street: street, town: town, key: street ? streetKey(street, town) : '', top: c.top, second: c.second, span: c.span, line: lineIndex, tok: tokIndex, other: c.other });
         });
       });
     });
@@ -434,7 +446,7 @@
         const m = /^comune\s*:(.*)$/i.exec(line);
         if (m) { town = m[1].trim() || baseTown || ''; return raw; }
         const colon = line.indexOf(':');
-        const street = (colon < 0 ? line.replace(/\(\s*\d{1,2}\s*\)\s*$/, '') : line.slice(0, colon)).trim();
+        const street = (colon < 0 ? otherLine(otherLine(line)[0].replace(/\(\s*\d{1,2}\s*\)\s*$/, ''))[0] : line.slice(0, colon)).trim();
         if (!street || streetKey(street, town) !== key) return raw;
         const at = raw.indexOf(street);
         n++;
