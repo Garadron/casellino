@@ -1659,21 +1659,25 @@
     const user = h('input', { autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', placeholder: 'es. mario.rossi' });
     const pass = h('input', { type: 'password', autocomplete: accountMode === 'accedi' ? 'current-password' : 'new-password' });
     const code = h('input', { autocapitalize: 'characters', spellcheck: 'false', placeholder: 'XXXX-XXXX-XXXX' });
+    const email = h('input', { type: 'email', autocomplete: 'email', autocapitalize: 'none', spellcheck: 'false', placeholder: 'es. nome@gmail.com' });
     const msg = h('p', { class: 'small bad' });
     const go = h('button', { type: 'submit', class: 'primary' },
       accountMode === 'accedi' ? 'Accedi' : (accountMode === 'registrati' ? 'Crea l\'account' : 'Cambia la password'));
+    const fresh = accountMode === 'registrati';
     const form = h('form', { class: 'account-form' },
-      h('label', null, 'Nome utente', user),
+      h('label', null, 'Nome utente' + (fresh ? '' : ' (maiuscole o minuscole, è uguale)'), user),
+      fresh ? h('p', { class: 'small hint' }, USER_TIP) : null,
+      fresh ? h('label', null, 'La tua email', email) : null,
       accountMode === 'recupera' ? h('label', null, 'Codice di recupero (te l\'ho dato quando hai creato l\'account)', code) : null,
-      h('label', null, accountMode === 'recupera' ? 'Password nuova (almeno 8 caratteri)' : 'Password' + (accountMode === 'registrati' ? ' (almeno 8 caratteri)' : ''), pass),
+      h('label', null, accountMode === 'recupera' ? 'Password nuova (almeno 8 caratteri)' : 'Password' + (fresh ? ' (almeno 8 caratteri)' : ''), pass),
       msg, h('p', { class: 'actions-inline' }, go));
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       msg.textContent = '';
       go.disabled = true;
       try {
-        const path = accountMode === 'accedi' ? '/api/accedi' : (accountMode === 'registrati' ? '/api/registrati' : '/api/recupera');
-        const r = await api('POST', path, { utente: user.value, password: pass.value, recupero: code.value });
+        const path = accountMode === 'accedi' ? '/api/accedi' : (fresh ? '/api/registrati' : '/api/recupera');
+        const r = await api('POST', path, { utente: user.value, password: pass.value, recupero: code.value, email: email.value });
         account.token = r.token; account.utente = r.utente;
         accountStore();
         renderAccountButton();
@@ -1687,8 +1691,71 @@
     box.append(
       h('p', null, 'Con un account i tuoi lavori si salvano da soli mentre scrivi e li ritrovi da qualsiasi telefono o computer. È gratis.'),
       tabs, form,
-      h('p', { class: 'small muted' }, 'Non serve l\'email. Quando crei l\'account ti do un codice di recupero: scrivilo da qualche parte, serve se dimentichi la password. Nell\'account si salvano solo i tuoi lavori.'));
+      h('p', { class: 'small muted' }, 'Quando crei l\'account ti do un codice di recupero: scrivilo da qualche parte, serve se dimentichi la password. ' +
+        'L\'email nel server resta nascosta: nessuno la può leggere, nemmeno da lì. Nell\'account si salvano solo i tuoi lavori.'));
     setTimeout(function () { user.focus(); }, 30);
+  }
+  const USER_TIP = 'Usa pure il tuo stesso nome utente che usi nel palmare se ti viene più facile da ricordare. Ma non la stessa password!';
+
+  // Name and e-mail of the account, each with «Cambia»: a small form that asks the password again.
+  async function accountDetails(box) {
+    const part = h('div', { class: 'account-details' }, h('h3', null, 'Nome utente ed email'));
+    box.append(part);
+    let me = { utente: account.utente, email: '', prossimoCambioNome: 0 };
+    try { me = await api('GET', '/api/io'); } catch (e) { /* shown without the e-mail */ }
+    if (!('email' in me)) { part.remove(); return; }  // a server older than v0.17.0: no changes yet
+    const rows = h('div');
+    part.append(rows);
+    const show = function () {
+      rows.textContent = '';
+      const next = me.prossimoCambioNome ? new Date(me.prossimoCambioNome).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) : '';
+      rows.append(
+        detailRow('Nome utente', me.utente, next ? 'si può cambiare di nuovo dal ' + next : 'si cambia una volta a settimana', !next && function (slot) {
+          changeForm(slot, 'Nome utente nuovo', { autocapitalize: 'none', spellcheck: 'false' }, USER_TIP, async function (value, password) {
+            const r = await api('POST', '/api/cambia-nome', { utente: value, password: password });
+            account.utente = r.utente; accountStore(); renderAccountButton();
+            $('account-title').textContent = 'Account: ' + r.utente;
+            me = await api('GET', '/api/io');
+            show();
+            toast('Ora il tuo nome utente è «' + r.utente + '».');
+          });
+        }),
+        detailRow('Email', me.email || 'non ancora scritta', '', function (slot) {
+          changeForm(slot, 'Email nuova', { type: 'email', autocomplete: 'email', autocapitalize: 'none', spellcheck: 'false' }, '', async function (value, password) {
+            const r = await api('POST', '/api/cambia-email', { email: value, password: password });
+            me.email = r.email;
+            show();
+            toast('Email salvata.');
+          });
+        }, me.email ? 'Cambia' : 'Aggiungi'));
+    };
+    show();
+  }
+  function detailRow(label, value, note, onChange, button) {
+    const slot = h('div');
+    return h('div', { class: 'detail-row' },
+      h('div', null, h('span', { class: 'small muted' }, label + ': '), h('b', null, value),
+        onChange ? h('button', { type: 'button', class: 'link-btn', onclick: function () { onChange(slot); } }, button || 'Cambia') : null,
+        note ? h('div', { class: 'small muted' }, note) : null),
+      slot);
+  }
+  function changeForm(slot, label, attrs, tip, save) {
+    slot.textContent = '';
+    const value = h('input', attrs);
+    const password = h('input', { type: 'password', autocomplete: 'current-password' });
+    const msg = h('p', { class: 'small bad' });
+    const go = h('button', { type: 'submit', class: 'primary' }, 'Salva');
+    const form = h('form', { class: 'account-form' }, h('label', null, label, value), tip ? h('p', { class: 'small hint' }, tip) : null,
+      h('label', null, 'La tua password, per conferma', password), msg,
+      h('p', { class: 'actions-inline' }, go, h('button', { type: 'button', onclick: function () { slot.textContent = ''; } }, 'Annulla')));
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      msg.textContent = '';
+      go.disabled = true;
+      try { await save(value.value, password.value); } catch (err) { msg.textContent = err.message; go.disabled = false; }
+    });
+    slot.append(form);
+    value.focus();
   }
 
   // After signing in: the code to keep (new account or new password), then the works.
@@ -1751,6 +1818,7 @@
         } }, 'Copia il codice')));
     }
     worksList(box);
+    accountDetails(box);
     box.append(h('p', { class: 'actions-inline account-end' },
       h('button', { type: 'button', onclick: signOut }, 'Esci'),
       h('button', { type: 'button', class: 'danger', onclick: deleteAccount }, 'Elimina l\'account')));

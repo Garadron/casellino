@@ -2,6 +2,18 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 8 novembre 2026 · Tappa 6 chiusa: email e nome utente (v0.17.0)
+
+**Fatto.** Account: `email_impronta` (HMAC di `email:<email minuscola>`, non legata all'id, così un domani si cerca
+l'account dall'email) e `email_vista` («m***@dominio»); `nome_cambiato_il` e `LIMITS.renameDays` (7). `checkMine`
+ricontrolla la password per cambio nome, cambio email ed eliminazione, risponde 403 (non 401: la pagina con 401 butta
+il gettone) e conta come un accesso sbagliato. Pagina: email e consiglio nella registrazione, riquadro «Nome utente ed
+email» con «Cambia».
+**Verifiche.** `tests/test_server.js` e `tests/test_account_pagina.js` con il server locale (migrazione 0002 applicata
+in locale), finestre guardate in Edge.
+**Da decidere con Garadron.** Il recupero della password per email: gratis come nel Ricettario (Apps Script su un
+Gmail, `Ricettaio Mannisi/strumenti/posta-google.gs`), ma serve un account Gmail scelto da lui.
+
 ## 8 novembre 2026 · Tappa 5 chiusa: stampa per moduli (v0.16.0)
 
 **Fatto.** `Core.printBlocks`: per ogni modulo e ogni tratto di 22 caselle un blocco con le 4 file. `Core.packPages`

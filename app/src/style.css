@@ -369,3 +369,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
 .pin-btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .optimize-result { margin-top: 6px; }
 .optimize-result p { margin: 4px 0; }
+
+/* name and e-mail of the account */
+.account-details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.account-details h3 { margin: 0 0 6px; }
+.detail-row { margin: 6px 0; }
+.account-form .hint { margin: -4px 0 0; color: var(--muted); }
+.link-btn { border: 0; background: none; padding: 2px 6px; min-height: 0; color: var(--accent); text-decoration: underline; cursor: pointer; }

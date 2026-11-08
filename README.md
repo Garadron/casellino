@@ -20,13 +20,15 @@ telefono, e i tuoi dati restano sul tuo dispositivo.
    Se hai le foto delle strisce di oggi, **Leggi le strisce dalle foto** scrive una bozza del giro (gratis, dentro il
    dispositivo). Nel **disegno di tutto il mobile** metti i moduli nell'ordine giusto e, con la matita, segni dove una
    sottozona entra nell'altra. La **cartina del giro** mette le vie sulla mappa e calcola i chilometri.
-4. **Stampa**: il **PDF** (consigliato) o l'**Excel** riempiono il foglio A4 orizzontale: 10 righe di strisce per foglio,
-   ogni pezzo con scritto sopra dove va (per esempio «2A · Fila 1 · Casello · caselle 1-22»). Le caselle hanno le
-   misure del modello (1,2435 cm, righe di 1 cm e 0,7 cm). Si stampa a dimensioni reali (100%). C'è anche l'«Excel
-   come il modello», un modulo per foglio come prima.
-5. **Con un account** (pulsante «Accedi» in alto, gratis, basta nome utente e password) i lavori si salvano da soli e
-   li ritrovi da qualsiasi telefono o computer. Alla registrazione ricevi un codice di recupero: scrivilo, serve se
-   dimentichi la password. Sui computer non tuoi, quando esci, scegli di togliere il lavoro da lì.
+4. **Stampa**: il **PDF** (consigliato) o l'**Excel** riempiono il foglio A4 orizzontale. **Per moduli** (la scelta
+   normale) è come il modello: le 4 file di un modulo una sotto l'altra, con «1 Fila… 4 Fila» a sinistra, 2 blocchi da
+   22 caselle per foglio. **Per piani** mette una fila per riga, 10 righe per foglio. Ogni pezzo ha scritto sopra dove
+   va (per esempio «2A · Casello · caselle 1-22»). Le caselle hanno le misure del modello (1,2435 cm, righe di 1 cm e
+   0,7 cm). Si stampa a dimensioni reali (100%). C'è anche l'«Excel come il modello», un modulo per foglio come prima.
+5. **Con un account** (pulsante «Accedi» in alto, gratis: nome utente, email e password) i lavori si salvano da soli e
+   li ritrovi da qualsiasi telefono o computer. Il nome utente si scrive con maiuscole o minuscole, è uguale, e si può
+   cambiare una volta a settimana; l'email nel server resta nascosta. Alla registrazione ricevi un codice di recupero:
+   scrivilo, serve se dimentichi la password. Sui computer non tuoi, quando esci, scegli di togliere il lavoro da lì.
 6. Senza account il lavoro resta salvato nel browser di quel dispositivo. Per portarlo su un altro, e come copia sicura: **Salva
    file**, poi **Apri** dall'altro. Su iPhone Safari può cancellare i dati dei siti non usati da qualche settimana: con
    l'app sulla schermata Home e un «Salva file» ogni tanto non si perde niente.

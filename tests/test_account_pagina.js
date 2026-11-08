@@ -52,13 +52,16 @@ async function until(fn, ms, label) {
   d1.getElementById('zone').dispatchEvent(new w1.Event('input'));
   d1.getElementById('btn-account').dispatchEvent(new w1.Event('click'));
   [...d1.querySelectorAll('#account-body .tabs button')].find(function (b) { return b.textContent === 'Registrati'; }).dispatchEvent(new w1.Event('click'));
+  assert.ok(/palmare/.test(d1.getElementById('account-body').textContent), 'il consiglio sul nome utente');
   const inputs = d1.querySelectorAll('#account-body input');
-  inputs[0].value = user; inputs[1].value = pass;
+  inputs[0].value = user; inputs[1].value = 'Mario.Rossi@esempio.it'; inputs[2].value = pass;
+  assert.strictEqual(inputs[1].type, 'email');
   d1.querySelector('#account-body form').dispatchEvent(new w1.Event('submit', { cancelable: true }));
   const code = await until(function () { const c = d1.querySelector('.recovery .code'); return c && c.textContent; });
   assert.ok(/^[A-Z2-9-]{14}$/.test(code), 'codice di recupero mostrato');
   assert.strictEqual(d1.getElementById('btn-account').textContent, '👤 ' + user);
   await until(function () { return /Zona 9/.test(d1.querySelector('.works').textContent); });
+  await until(function () { return /m\*\*\*@esempio\.it/.test(d1.querySelector('.account-details').textContent); }, 8000, 'email nascosta');
 
   // a change is saved by itself
   ta.value = 'VIA DEI TIGLI: 1..9\nVIA DELLE ROSE: 2, 4';
@@ -73,7 +76,7 @@ async function until(fn, ms, label) {
   await wait(300);
   d2.getElementById('btn-account').dispatchEvent(new w2.Event('click'));
   const in2 = d2.querySelectorAll('#account-body input');
-  in2[0].value = user; in2[1].value = pass;
+  in2[0].value = user.toUpperCase(); in2[1].value = pass;  // capitals or not, the same name
   d2.querySelector('#account-body form').dispatchEvent(new w2.Event('submit', { cancelable: true }));
   const openBtn = await until(function () {
     return [...d2.querySelectorAll('.works button')].find(function (b) { return b.textContent === 'Apri'; });
@@ -81,6 +84,19 @@ async function until(fn, ms, label) {
   openBtn.dispatchEvent(new w2.Event('click'));
   await until(function () { return /VIA DELLE ROSE/.test(d2.querySelector('textarea.route-text').value); });
   assert.strictEqual(d2.getElementById('zone').value, '9');
+
+  // a new user name: a wrong password does not sign out; then the name changes everywhere on this device
+  const renamed = user + 'n';
+  [...d2.querySelectorAll('.account-details button')].find(function (b) { return b.textContent === 'Cambia'; }).dispatchEvent(new w2.Event('click'));
+  let fields = d2.querySelectorAll('.account-details input');
+  fields[0].value = renamed; fields[1].value = 'sbagliata!!';
+  d2.querySelector('.account-details form').dispatchEvent(new w2.Event('submit', { cancelable: true }));
+  await until(function () { return /Password sbagliata/.test(d2.querySelector('.account-details').textContent); });
+  assert.strictEqual(d2.getElementById('btn-account').textContent, '👤 ' + user, 'ancora dentro');
+  fields[1].value = pass;
+  d2.querySelector('.account-details form').dispatchEvent(new w2.Event('submit', { cancelable: true }));
+  await until(function () { return d2.getElementById('btn-account').textContent === '👤 ' + renamed; });
+  await until(function () { return /cambiare di nuovo dal/.test(d2.querySelector('.account-details').textContent); }, 8000, 'prossimo cambio');
 
   // sign out on the office computer, removing the work from it
   d2.getElementById('btn-account').dispatchEvent(new w2.Event('click'));
@@ -91,7 +107,7 @@ async function until(fn, ms, label) {
   assert.strictEqual(w2.localStorage.getItem('casellino.account'), null);
 
   // clean up: delete the test account
-  await fetch(API + '/api/accedi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ utente: user, password: pass }) })
+  await fetch(API + '/api/accedi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ utente: renamed, password: pass }) })
     .then(function (r) { return r.json(); })
     .then(function (r) {
       return fetch(API + '/api/elimina-account', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + r.token }, body: JSON.stringify({ password: pass }) });

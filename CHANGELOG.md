@@ -1,5 +1,24 @@
 # Registro delle versioni
 
+## v0.17.0 · 2026-11-08 · Email nell'account, nome utente da cambiare
+
+- **L'email nella registrazione**: si chiede insieme a nome utente e password. Nel server resta nascosta: c'è solo la
+  sua impronta (come per le password) e la forma «m***@esempio.it» per mostrarla al titolare. Chi ha già l'account la
+  aggiunge da «Accedi» → «Nome utente ed email» → «Aggiungi».
+- **Cambiare il nome utente**, una volta a settimana: fra un cambio e il successivo devono passare 7 giorni (il primo si
+  può fare subito). Chiede la password; il dispositivo resta dentro e i lavori restano.
+- **Il consiglio sotto il nome utente**: «Usa pure il tuo stesso nome utente che usi nel palmare se ti viene più facile
+  da ricordare. Ma non la stessa password!»
+- **Maiuscole e minuscole**: il nome utente vale come si vuole scritto («Mario» = «mario»), già da prima; ora c'è anche
+  la prova e la pagina lo dice.
+- **Sistemato**: la password sbagliata in «Elimina l'account» faceva uscire dall'account; ora dice solo «Password
+  sbagliata». Le password sbagliate in queste richieste contano come gli accessi sbagliati.
+- Server: `server/migrations/0002_email_e_nome.sql` (tre colonne nuove), `/api/io` dice email e prossimo cambio,
+  `/api/cambia-nome`, `/api/cambia-email`.
+- File: `server/src/worker.js`, `server/migrations/0002_email_e_nome.sql`, `app/src/ui.js`, `app/src/style.css`,
+  `tests/test_server.js`, `tests/test_account_pagina.js`, `README.md`, `PROMEMORIA.md`, `Casellino.html`, `sito/`,
+  `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.16.0 · 2026-11-08 · Stampa «per moduli», come il modello
 
 - **Stampa per moduli** (ora è quella normale): come nel modello, ogni blocco ha le 4 file del modulo una sotto l'altra,

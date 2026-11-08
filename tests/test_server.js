@@ -23,7 +23,11 @@ async function call(method, path, body, token) {
   r = await call('POST', '/api/registrati', { utente: user, password: 'corta' });
   assert.strictEqual(r.status, 400, 'password corta');
 
-  r = await call('POST', '/api/registrati', { utente: user.toUpperCase(), password: pass });
+  r = await call('POST', '/api/registrati', { utente: user, password: pass });
+  assert.strictEqual(r.status, 400, "serve l'email");
+  r = await call('POST', '/api/registrati', { utente: user, password: pass, email: 'senza-chiocciola.it' });
+  assert.strictEqual(r.status, 400, 'email non valida');
+  r = await call('POST', '/api/registrati', { utente: user.toUpperCase(), password: pass, email: ' Mario.Rossi@Esempio.IT ' });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
   assert.strictEqual(r.cors, ORIGIN, 'permesso per la pagina');
   assert.strictEqual(r.data.utente, user);
@@ -31,11 +35,13 @@ async function call(method, path, body, token) {
   const recovery = r.data.recupero;
   let token = r.data.token;
 
-  r = await call('POST', '/api/registrati', { utente: user, password: pass });
+  r = await call('POST', '/api/registrati', { utente: user, password: pass, email: 'a@esempio.it' });
   assert.strictEqual(r.status, 409, 'nome già preso');
 
   r = await call('GET', '/api/io', undefined, token);
   assert.strictEqual(r.data.utente, user);
+  assert.strictEqual(r.data.email, 'm***@esempio.it', "l'email si vede solo nascosta");
+  assert.strictEqual(r.data.prossimoCambioNome, 0);
   r = await call('GET', '/api/lavori');
   assert.strictEqual(r.status, 401, 'senza accesso niente lavori');
 
@@ -57,7 +63,7 @@ async function call(method, path, body, token) {
   assert.strictEqual(JSON.parse(r.data.dati).zone, 'forzato');
 
   // another account cannot see or overwrite it
-  const other = await call('POST', '/api/registrati', { utente: user + 'x', password: pass });
+  const other = await call('POST', '/api/registrati', { utente: user + 'x', password: pass, email: 'altro@esempio.it' });
   r = await call('GET', '/api/lavori/' + id, undefined, other.data.token);
   assert.strictEqual(r.status, 404);
   r = await call('PUT', '/api/lavori/' + id, { nome: 'x', dati: {}, versione: 3 }, other.data.token);
@@ -66,8 +72,8 @@ async function call(method, path, body, token) {
   // wrong password, login, logout
   r = await call('POST', '/api/accedi', { utente: user, password: 'sbagliata!!' });
   assert.strictEqual(r.status, 401);
-  r = await call('POST', '/api/accedi', { utente: user, password: pass });
-  assert.strictEqual(r.status, 200);
+  r = await call('POST', '/api/accedi', { utente: user.toUpperCase(), password: pass });
+  assert.strictEqual(r.status, 200, 'maiuscole o minuscole: è lo stesso nome');
   const second = r.data.token;
   await call('POST', '/api/esci', {}, second);
   r = await call('GET', '/api/io', undefined, second);
@@ -85,12 +91,40 @@ async function call(method, path, body, token) {
   token = r.data.token;
   assert.ok(token);
 
+  // a new user name, then no other change for a week
+  const renamed = user + 'n';
+  r = await call('POST', '/api/cambia-nome', { utente: renamed, password: 'sbagliata!!' }, token);
+  assert.strictEqual(r.status, 403, 'password sbagliata, ma il dispositivo resta dentro');
+  r = await call('POST', '/api/cambia-nome', { utente: user + 'x', password: 'nuova password 1' }, token);
+  assert.strictEqual(r.status, 409, 'nome di un altro');
+  r = await call('POST', '/api/cambia-nome', { utente: renamed.toUpperCase(), password: 'nuova password 1' }, token);
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(r.data.utente, renamed);
+  r = await call('GET', '/api/io', undefined, token);
+  assert.strictEqual(r.data.utente, renamed, 'il dispositivo resta dentro');
+  assert.ok(r.data.prossimoCambioNome > Date.now() + 6 * 24 * 3600 * 1000);
+  r = await call('POST', '/api/cambia-nome', { utente: user, password: 'nuova password 1' }, token);
+  assert.strictEqual(r.status, 429, 'una volta a settimana');
+  assert.ok(/settimana/.test(r.data.errore));
+  r = await call('POST', '/api/accedi', { utente: user, password: 'nuova password 1' });
+  assert.strictEqual(r.status, 401, 'il nome vecchio non vale più');
+  r = await call('POST', '/api/accedi', { utente: renamed, password: 'nuova password 1' });
+  assert.strictEqual(r.status, 200);
+
+  // another e-mail
+  r = await call('POST', '/api/cambia-email', { email: 'nuova@esempio.it', password: 'sbagliata!!' }, token);
+  assert.strictEqual(r.status, 403, 'password sbagliata, ma il dispositivo resta dentro');
+  r = await call('POST', '/api/cambia-email', { email: 'nuova', password: 'nuova password 1' }, token);
+  assert.strictEqual(r.status, 400);
+  r = await call('POST', '/api/cambia-email', { email: 'nuova@esempio.it', password: 'nuova password 1' }, token);
+  assert.strictEqual(r.data.email, 'n***@esempio.it');
+
   // delete the account: works go too
   r = await call('POST', '/api/elimina-account', { password: 'sbagliata!!' }, token);
-  assert.strictEqual(r.status, 401);
+  assert.strictEqual(r.status, 403, 'password sbagliata, ma il dispositivo resta dentro');
   r = await call('POST', '/api/elimina-account', { password: 'nuova password 1' }, token);
   assert.strictEqual(r.status, 200);
-  r = await call('POST', '/api/accedi', { utente: user, password: 'nuova password 1' });
+  r = await call('POST', '/api/accedi', { utente: renamed, password: 'nuova password 1' });
   assert.strictEqual(r.status, 401);
   await call('POST', '/api/elimina-account', { password: pass }, other.data.token);
 

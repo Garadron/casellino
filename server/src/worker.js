@@ -6,8 +6,9 @@
  * not lost and can be opened from any device. The page stays on its own site and calls this server
  * with a session token (Authorization: Bearer ...): no cookies, so it works on every phone.
  *
- * Passwords, recovery codes and session tokens are stored only as HMAC fingerprints made with the
- * server secret SEGRETO: the database alone does not reveal them. Fast fingerprints keep each request
+ * Passwords, recovery codes, session tokens and e-mails are stored only as HMAC fingerprints made with
+ * the server secret SEGRETO: the database alone does not reveal them (of the e-mail it keeps only a
+ * hidden form like m***@esempio.it, to show it to its owner). Fast fingerprints keep each request
  * inside the 10 ms of the free plan; guessing is stopped by the limit on attempts.
  */
 
@@ -21,6 +22,7 @@ const LIMITS = {
   works: 100,               // works per account
   bytes: 1500000,           // size of one work
   sessionDays: 180,         // a device stays signed in this long without being used
+  renameDays: 7,            // days between two changes of the user name
 };
 const ORIGINS = ['https://garadron.github.io', 'null'];
 
@@ -97,6 +99,17 @@ function newRecoveryCode() {
   bytes.forEach(function (b, i) { s += (i && i % 4 === 0 ? '-' : '') + alphabet[b % alphabet.length]; });
   return s;
 }
+// The e-mail: lower case, checked; stored as a fingerprint and in a hidden form.
+function emailOf(raw) {
+  const e = String(raw || '').trim().toLowerCase();
+  if (e.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) {
+    throw new UserError(400, "Scrivi un'email valida, per esempio nome@gmail.com.");
+  }
+  return e;
+}
+
+const emailShown = function (e) { const at = e.indexOf('@'); return e[0] + '***' + e.slice(at); };
+const emailText = function (e) { return 'email:' + e; };
 const recoveryText = function (id, code) { return 'recupero:' + id + ':' + String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); };
 const passwordText = function (id, password) { return 'password:' + id + ':' + password; };
 
@@ -154,13 +167,16 @@ async function register(request, env) {
   const b = await body(request);
   const user = userName(b.utente);
   const password = checkPassword(b.password, user);
+  const email = emailOf(b.email);
   const exists = await env.DB.prepare('SELECT 1 FROM account WHERE utente = ?').bind(user).first();
   if (exists) throw new UserError(409, 'Questo nome utente è già preso: scegline un altro.');
   const id = randomId(12);
   const code = newRecoveryCode();
   await env.DB.prepare(
-    'INSERT INTO account (id, utente, password_impronta, recupero_impronta, errori, bloccato_fino, creato_il) VALUES (?, ?, ?, ?, 0, 0, ?)',
-  ).bind(id, user, await fingerprint(env, passwordText(id, password)), await fingerprint(env, recoveryText(id, code)), Date.now()).run();
+    `INSERT INTO account (id, utente, password_impronta, recupero_impronta, errori, bloccato_fino, creato_il, email_impronta, email_vista)
+     VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?)`,
+  ).bind(id, user, await fingerprint(env, passwordText(id, password)), await fingerprint(env, recoveryText(id, code)), Date.now(),
+    await fingerprint(env, emailText(email)), emailShown(email)).run();
   await countAttempt(env, ip, DAY);
   return json(request, { token: await newSession(env, id), utente: user, recupero: code });
 }
@@ -216,12 +232,54 @@ async function logout(request, env, me) {
   return json(request, { ok: true });
 }
 
+// The password again, for the changes to the account (wrong ones count like wrong logins).
+async function checkMine(request, env, me, password) {
+  const ip = 'accesso:' + ipOf(request);
+  await checkAttempts(env, ip, LIMITS.attemptsPerIp, 15 * MINUTE);
+  const row = await env.DB.prepare('SELECT * FROM account WHERE id = ?').bind(me.id).first();
+  if (!sameText(await fingerprint(env, passwordText(row.id, String(password || ''))), row.password_impronta)) {
+    await countAttempt(env, ip, 15 * MINUTE);
+    throw new UserError(403, 'Password sbagliata.'); // not 401: the device stays signed in
+  }
+  return row;
+}
+
+async function aboutMe(request, env, me) {
+  const row = await env.DB.prepare('SELECT email_vista, nome_cambiato_il FROM account WHERE id = ?').bind(me.id).first();
+  const next = row.nome_cambiato_il ? row.nome_cambiato_il + LIMITS.renameDays * DAY : 0;
+  return json(request, { utente: me.utente, email: row.email_vista, prossimoCambioNome: next > Date.now() ? next : 0 });
+}
+
+// A new user name, at most once every 7 days (the first change can be done at once).
+async function rename(request, env, me) {
+  const b = await body(request);
+  const user = userName(b.utente);
+  const row = await checkMine(request, env, me, b.password);
+  if (user === row.utente) throw new UserError(400, 'È già il tuo nome utente.');
+  const next = row.nome_cambiato_il + LIMITS.renameDays * DAY;
+  if (row.nome_cambiato_il && next > Date.now()) {
+    throw new UserError(429, 'Il nome utente si cambia una volta a settimana: il prossimo cambio dal ' +
+      new Date(next).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', timeZone: 'Europe/Rome' }) + '.');
+  }
+  if (String(b.password || '').toLowerCase() === user) throw new UserError(400, 'Il nome utente non può essere uguale alla password.');
+  const taken = await env.DB.prepare('SELECT 1 FROM account WHERE utente = ?').bind(user).first();
+  if (taken) throw new UserError(409, 'Questo nome utente è già preso: scegline un altro.');
+  await env.DB.prepare('UPDATE account SET utente = ?, nome_cambiato_il = ? WHERE id = ?').bind(user, Date.now(), me.id).run();
+  return json(request, { utente: user });
+}
+
+async function changeEmail(request, env, me) {
+  const b = await body(request);
+  const email = emailOf(b.email);
+  await checkMine(request, env, me, b.password);
+  await env.DB.prepare('UPDATE account SET email_impronta = ?, email_vista = ? WHERE id = ?')
+    .bind(await fingerprint(env, emailText(email)), emailShown(email), me.id).run();
+  return json(request, { email: emailShown(email) });
+}
+
 async function deleteAccount(request, env, me) {
   const b = await body(request);
-  const row = await env.DB.prepare('SELECT * FROM account WHERE id = ?').bind(me.id).first();
-  if (!sameText(await fingerprint(env, passwordText(row.id, String(b.password || ''))), row.password_impronta)) {
-    throw new UserError(401, 'Password sbagliata.');
-  }
+  await checkMine(request, env, me, b.password);
   await env.DB.batch([
     env.DB.prepare('DELETE FROM lavori WHERE account_id = ?').bind(me.id),
     env.DB.prepare('DELETE FROM sessioni WHERE account_id = ?').bind(me.id),
@@ -296,7 +354,9 @@ async function route(request, env) {
   if (path === '/api/accedi' && m === 'POST') return login(request, env);
   if (path === '/api/recupera' && m === 'POST') return recover(request, env);
   const me = await signedIn(request, env);
-  if (path === '/api/io' && m === 'GET') return json(request, { utente: me.utente });
+  if (path === '/api/io' && m === 'GET') return aboutMe(request, env, me);
+  if (path === '/api/cambia-nome' && m === 'POST') return rename(request, env, me);
+  if (path === '/api/cambia-email' && m === 'POST') return changeEmail(request, env, me);
   if (path === '/api/esci' && m === 'POST') return logout(request, env, me);
   if (path === '/api/elimina-account' && m === 'POST') return deleteAccount(request, env, me);
   if (path === '/api/lavori' && m === 'GET') return listWorks(request, env, me);
