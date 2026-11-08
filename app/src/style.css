@@ -307,9 +307,14 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
 .zone-key { display: inline-flex; align-items: center; gap: 6px; }
 .zone-key i { display: inline-block; width: 18px; height: 6px; border-radius: 2px; }
-.project .depot-label { flex: 1 1 260px; }
-.project .depot-label input, .project .depot-name input { width: 100%; }
-.project .depot-name { flex: 1 1 180px; }
+.depot-box { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
+  margin: 0; padding: 4px 10px 10px; min-width: 0; }
+.depot-box legend { font-size: 13px; padding: 0 4px; }
+.project .depot-box input { width: 100%; }
+.project .depot-name { flex: 1 1 170px; }
+.project .depot-town { flex: 1 1 150px; }
+.project .depot-street { flex: 2 1 200px; }
+.project .depot-number { flex: 0 1 70px; }
 .depot-tools { flex: 1 1 100%; margin: -4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .depot-tools .bad { color: var(--bad); }
 .route-map { height: 420px; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px; background: var(--bg); }

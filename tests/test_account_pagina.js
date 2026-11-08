@@ -67,8 +67,11 @@ async function until(fn, ms, label) {
   ta.value = 'VIA DEI TIGLI: 1..9\nVIA DELLE ROSE: 2, 4';
   d1.getElementById('saved').textContent = '';
   ta.dispatchEvent(new w1.Event('input'));
-  // saved by itself, about 2.5 seconds after the last change
-  await until(function () { return /Salvato nel tuo account/.test(d1.getElementById('saved').textContent); }, 10000);
+  // saved by itself about 2.5 seconds after the last change; at once when the app is left
+  Object.defineProperty(d1, 'visibilityState', { value: 'hidden', configurable: true });
+  d1.dispatchEvent(new w1.Event('visibilitychange'));
+  await until(function () { return /Salvato nel tuo account/.test(d1.getElementById('saved').textContent); }, 1800, 'salvato subito uscendo');
+  Object.defineProperty(d1, 'visibilityState', { value: 'visible', configurable: true });
 
   // device 2 (office computer): sign in, the work is there
   const two = device({ confirm: true });

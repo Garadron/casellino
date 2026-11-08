@@ -125,6 +125,35 @@
     return k.replace(/\s+/g, ' ').trim();
   }
 
+  /*
+   * An address written in one line, in any order ("Via Esempio 1, 00000 Borgo (Frazione)" or
+   * "Borgo, Via Esempio, 1"), split into { via, civico, comune }: the street is the part that starts
+   * like a street, the town the last other part (without postcode and brackets).
+   */
+  const STREET_START = /^(via|viale|v\.\s?le|piazza|p\.?\s?zza|piazzale|corso|c\.\s?so|largo|vicolo|strada|str\.|localit[aà]|loc\.|cascina|c\.?\s?na|contrada)(\s|$)/i;
+  const MAYBE_STREET = /^(borgo|frazione|fraz\.)(\s|$)/i;   // also the start of many town names
+  const HOUSE_NUMBER = /^\d{1,4}\s?[a-z]?(\/\w{1,3})?$/i;
+  function splitAddress(text) {
+    const parts = String(text || '').split(/,|\s+-\s+/).map(function (x) {
+      return x.replace(/\([^)]*\)/g, ' ').replace(/\b\d{5}\b/g, ' ').replace(/\s+/g, ' ').trim();
+    }).filter(Boolean);
+    let civico = '';
+    const words = parts.filter(function (x) {
+      if (HOUSE_NUMBER.test(x)) { civico = civico || x; return false; }
+      return true;
+    });
+    let via = words.find(function (x) { return STREET_START.test(x); }) || words.find(function (x) { return MAYBE_STREET.test(x); }) || words[0] || '';
+    const others = words.filter(function (x) { return x !== via; });
+    const m = /^(.*\D)\s+(\d{1,4}\s?[a-z]?(\/\w{1,3})?)$/i.exec(via);
+    if (m && !civico) { via = m[1].trim(); civico = m[2]; }
+    return { via: via, civico: civico, comune: others.length ? others[others.length - 1] : '' };
+  }
+  // The same address in one line, to search it and show it: "Via Esempio 1, Borgo Esempio".
+  function addressText(a) {
+    const street = [a.via, a.civico].map(function (x) { return String(x || '').trim(); }).filter(Boolean).join(' ');
+    return [street, String(a.comune || '').trim()].filter(Boolean).join(', ');
+  }
+
   function streetKey(street, town) {
     return streetName(street) + '|' + norm(town);
   }
@@ -150,7 +179,8 @@
       streets: {},      // streetKey -> { color: 'RRGGBB' }
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
-      depot: '',        // address of the office where the round starts and ends, optional
+      depot: '',        // address of the office where the round starts and ends, optional (written from depotAddr)
+      depotAddr: { comune: '', via: '', civico: '' },
       depotName: '',    // its name, optional
       depotPoint: null, // its point when put on the map by hand or with the device position: { lat, lon, found: 'mano' | 'gps' }
       wall: null,       // the frame drawn by the user (modules left to right, pencil marks), optional
@@ -203,6 +233,8 @@
       });
     }
     out.depot = String(p.depot || '');
+    const da = p.depotAddr || splitAddress(out.depot);   // works saved before v0.20.0 have the address in one line
+    out.depotAddr = { comune: String(da.comune || ''), via: String(da.via || ''), civico: String(da.civico || '') };
     out.depotName = String(p.depotName || '');
     const d = p.depotPoint;
     out.depotPoint = d && isFinite(d.lat) && isFinite(d.lon) && d.lat !== null && d.lon !== null
@@ -1365,7 +1397,7 @@
     SLOTS_PER_PAGE: SLOTS_PER_PAGE,
     PALETTE: PALETTE,
     norm: norm,
-    streetKey: streetKey, renameStreet: renameStreet,
+    streetKey: streetKey, renameStreet: renameStreet, splitAddress: splitAddress, addressText: addressText,
     newProject: newProject,
     newSubzone: newSubzone,
     sanitizeProject: sanitizeProject,

@@ -2,6 +2,20 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 8 novembre 2026 · Tappa 9 chiusa: indirizzo in tre caselle, salvataggio uscendo (v0.20.0)
+
+**Fatto.** `project.depotAddr` { comune, via, civico }; `project.depot` resta la stessa cosa in una riga
+(`Core.addressText`), per le ricerche. `Core.splitAddress` divide le righe vecchie (sanitize, in qualsiasi ordine).
+Pagina: `osmStreetNames(town)` (Overpass, la stessa ricerca di «Elenco vie»), `loadDepotStreets` riempie il `datalist`
+quando si scrive il comune o si entra nella via, `depotStreetMissing` avvisa se la via non c'è; «Scegli sulla mappa»
+centra sul comune. `debounce(...).now()` e `saveBeforeLeaving` (visibilitychange hidden, pagehide): salvataggio locale e
+nell'account subito, con `keepalive` se il lavoro è sotto i 60 KB.
+**Server.** Migrazione 0002 e deploy fatti l'8/11 con il sì di Garadron; controllato che risponda.
+**Verifiche.** `tests/test_core.js` (38), `tests/test_pagina.js`, `tests/test_account_pagina.js` (salvato nell'account
+entro 1,8 s uscendo), `tests/test_server.js`, Edge vero: via esistente trovata, via inventata segnalata.
+**Scoperta.** La via del centro vero di Garadron non è su OpenStreetMap: si può aggiungere lì (gratis), e dopo qualche
+giorno la ricerca la trova anche per gli altri.
+
 ## 8 novembre 2026 · Tappa 8 chiusa: correggere i nomi dall'elenco (v0.19.0)
 
 **Fatto.** `Core.renameStreet(project, key, newName)`: rilegge ogni giro come `parseRoute` (COMUNE, righe di servizio,

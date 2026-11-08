@@ -93,6 +93,17 @@ function caretAt(ta, needle, offset) {
   assert.notStrictEqual(blobs[3].size, blobs[0].size, 'per piani il PDF è diverso');
   assert.strictEqual(win.localStorage.getItem('casellino.stampa'), 'piani');
 
+  // leaving the app (another app, or closing it) saves at once, without waiting
+  const routeBox = doc.querySelector('textarea.route-text');
+  routeBox.value = routeBox.value + '\nVIA SALVATA SUBITO: 1';
+  routeBox.dispatchEvent(new win.Event('input'));
+  Object.defineProperty(doc, 'visibilityState', { value: 'hidden', configurable: true });
+  doc.dispatchEvent(new win.Event('visibilitychange'));
+  assert.ok(/VIA SALVATA SUBITO/.test(win.localStorage.getItem('casellino.progetto')), 'salvato appena si esce');
+  Object.defineProperty(doc, 'visibilityState', { value: 'visible', configurable: true });
+  routeBox.value = routeBox.value.replace('\nVIA SALVATA SUBITO: 1', '');
+  routeBox.dispatchEvent(new win.Event('input'));
+
   // a street name corrected from the list of streets: the round changes, the numbers stay
   assert.ok(!/null|undefined/.test(text('#streets')), "niente parole del programma nell'elenco");
   const tigli = [...doc.querySelectorAll('#streets li')].find(function (li) { return /^VIA DEI TIGLI$/.test((li.querySelector('.nm') || {}).textContent || ''); });
@@ -110,8 +121,10 @@ function caretAt(ta, needle, offset) {
   // the office: name, address, and its point from the device position (the address is kept)
   doc.getElementById('depot-name').value = 'Centro di Borgo Esempio';
   doc.getElementById('depot-name').dispatchEvent(new win.Event('input'));
-  doc.getElementById('depot').value = 'Via Esempio 1 - 00000 Borgo Esempio (Frazione)';
-  doc.getElementById('depot').dispatchEvent(new win.Event('input'));
+  [['depot-town', 'Borgo Esempio'], ['depot-street', 'Via Esempio'], ['depot-number', '1']].forEach(function (f) {
+    doc.getElementById(f[0]).value = f[1];
+    doc.getElementById(f[0]).dispatchEvent(new win.Event('input'));
+  });
   assert.ok(/Non ancora sulla mappa/.test(text('#depot-status')));
   doc.getElementById('btn-depot-gps').dispatchEvent(new win.Event('click'));
   assert.ok(/dalla tua posizione/.test(text('#depot-status')), text('#depot-status'));
@@ -120,7 +133,8 @@ function caretAt(ta, needle, offset) {
   const kept = JSON.parse(win.localStorage.getItem('casellino.progetto'));
   assert.strictEqual(kept.depotName, 'Centro di Borgo Esempio');
   assert.deepStrictEqual(kept.depotPoint, { lat: 45.25, lon: 9.35, found: 'gps' });
-  assert.strictEqual(kept.depot, 'Via Esempio 1 - 00000 Borgo Esempio (Frazione)', 'the address written stays');
+  assert.strictEqual(kept.depot, 'Via Esempio 1, Borgo Esempio', 'the address written stays');
+  assert.deepStrictEqual(kept.depotAddr, { comune: 'Borgo Esempio', via: 'Via Esempio', civico: '1' });
 
   // the photo reader opens from the big button and from the menu
   doc.querySelector('.photo-btn').dispatchEvent(new win.Event('click'));

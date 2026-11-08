@@ -66,10 +66,18 @@
     <div class="card project">
       <label>Zona <input id="zone" autocomplete="off" placeholder="es. 9"></label>
       <label>Titolare <input id="owner" autocomplete="off" placeholder="il tuo nome"></label>
-      <label class="depot-name">Nome del centro di partenza
-        <input id="depot-name" autocomplete="off" placeholder="es. Centro di Borgo Esempio"></label>
-      <label class="depot-label">Indirizzo del centro
-        <input id="depot" autocomplete="off" placeholder="es. Via Esempio 1, Borgo Esempio"></label>
+      <fieldset class="depot-box">
+        <legend>Centro di partenza <span class="small muted">(il giro parte e torna lì)</span></legend>
+        <label class="depot-name">Nome
+          <input id="depot-name" autocomplete="off" placeholder="es. Centro di Borgo Esempio"></label>
+        <label class="depot-town">Comune
+          <input id="depot-town" autocomplete="off" placeholder="es. Borgo Esempio"></label>
+        <label class="depot-street"><span>Via <span class="small muted" id="depot-streets-note"></span></span>
+          <input id="depot-street" autocomplete="off" list="depot-streets" placeholder="scrivi e scegli dall'elenco"></label>
+        <datalist id="depot-streets"></datalist>
+        <label class="depot-number">N.
+          <input id="depot-number" autocomplete="off" placeholder="es. 1"></label>
+      </fieldset>
       <p class="depot-tools small"><span id="depot-status" class="muted"></span>
         <button type="button" class="pin-btn" id="btn-depot-find">🔎 Cerca sulla mappa</button>
         <button type="button" class="pin-btn" id="btn-depot-map">🗺 Scegli sulla mappa</button>

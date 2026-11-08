@@ -1,5 +1,21 @@
 # Registro delle versioni
 
+## v0.20.0 · 2026-11-08 · Indirizzo del centro in tre caselle, salvataggio quando si esce
+
+- **Indirizzo del centro come nei siti della fibra**: Comune, Via, N. La via si sceglie dall'elenco delle vie di quel
+  comune sulla mappa gratuita (OpenStreetMap), che si carica scrivendo il comune. Se la via scritta non c'è, il
+  programma lo dice subito e spiega cosa fare: «Scegli sulla mappa» (ora si apre già sul comune) o «Usa la mia
+  posizione», una volta sola. Il centro di una prova vera non si trovava proprio per questo: la sua via non è ancora
+  sulla mappa gratuita.
+- Gli indirizzi scritti prima in una riga si dividono da soli nelle tre caselle, in qualsiasi ordine
+  («Borgo, Via dei Tigli, 15» o «Via dei Tigli 15 - 00000 Borgo (Frazione)»).
+- **Salvataggio quando si esce**: chiudendo l'app o passando a un'altra, il lavoro si salva subito sul dispositivo e
+  nell'account, senza aspettare i 2-3 secondi di prima.
+- **Server degli account pubblicato** (v0.17.0): email nascosta e cambio del nome utente ora funzionano.
+- File: `app/src/core.js` (`splitAddress`, `addressText`, `depotAddr`), `app/src/ui.js`, `app/src/style.css`,
+  `app/index.src.html`, `tests/test_core.js`, `tests/test_pagina.js`, `tests/test_account_pagina.js`, `README.md`,
+  `PROMEMORIA.md`, `Casellino.html`, `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.19.0 · 2026-11-08 · Correggere i nomi delle vie dall'elenco
 
 - Nell'elenco **Vie** si tocca un nome (o la matita ✏️) e si scrive quello giusto: cambia in **tutte le righe del giro**,
