@@ -5,6 +5,9 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
+0. **Pubblicare il server degli account** (v0.17.0: email e cambio del nome utente): aspetta il «sì» di Garadron. Sono
+   due comandi in `server/`: `npx wrangler d1 migrations apply casellino --remote` e `npx wrangler deploy`. Gli account
+   e i lavori che ci sono restano.
 1. **Prova di stampa** del PDF (A4 orizzontale, «dimensioni reali / 100%») appoggiata alle caselle del mobile vero:
    larghezza delle caselle, caselle oblique, colori scuri. Se non combacia, si aggiunge una regolazione della larghezza
    nel PDF (proposta, non fatta).
