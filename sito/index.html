@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.24.0';</script>
+<script>window.CASELLINO_VERSION = '0.25.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -247,6 +247,7 @@ a.btn, label.btn {
 .cell.top.diag .d1 { top: 2px; left: 2px; }
 .cell.top.diag .d2 { bottom: 2px; right: 2px; }
 .cell.run { grid-row: 2; letter-spacing: .02em; }
+.cell.run.two { line-height: 1.05; white-space: nowrap; text-align: center; }
 .cell.foreign { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.0) 0 6px, rgba(255,255,255,.18) 6px 8px); }
 .cell.top.diag.foreign { background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px)); }
 .cell.unsure { box-shadow: inset 0 0 0 2px #d93025; }
@@ -594,6 +595,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       <tr><td><code>vuota</code></td><td>una casella vuota della via</td></tr>
       <tr><td><code>vuote 3</code> (riga da sola)</td><td>tre caselle vuote, senza via</td></tr>
       <tr><td><code>CASCINA ALTA (2)</code> (riga senza due punti)</td><td>una casella con il nome scritto sotto</td></tr>
+      <tr><td><code>C.NA ALTA / C.NA BASSA (2)</code></td><td>una casella con due nomi sotto, uno sopra l'altro (per esempio due cascine delle stesse famiglie). Va anche con i civici: <code>VIA X / VIA Y: 1, 2</code>. La casella ha il colore del primo; nell'elenco delle vie ci sono tutti e due.</td></tr>
       <tr><td><code>FINE STRISCIA</code></td><td>il resto della striscia resta vuoto: si continua sulla striscia dopo (a destra, o la fila sotto)</td></tr>
       <tr><td><code>FINE FILA</code></td><td>il resto della fila resta vuoto: si continua all'inizio della fila sotto</td></tr>
       <tr><td><code>STRISCIA VUOTA</code></td><td>salta una striscia intera</td></tr>
@@ -1103,10 +1105,16 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
         if (sm) { span = Math.max(1, parseInt(sm[1], 10)); name = name.slice(0, sm.index).trim(); }
         if (!other) [name, other] = otherLine(name);
         name = name.trim();
-        items.push({ kind: 'cell', street: name, town: town, key: streetKey(name, town), top: '', second: '', span: span, line: lineIndex, tok: 0, other: other });
+        // "C.NA ALTA / C.NA BASSA": two names in the same pigeonhole, one above the other (the colour is the first one's)
+        const two = name.split('/').map(function (x) { return x.trim(); });
+        const item = { kind: 'cell', street: name, town: town, key: streetKey(name, town), top: '', second: '', span: span, line: lineIndex, tok: 0, other: other };
+        if (two.length === 2 && two[0] && two[1]) Object.assign(item, { street: two[0], key: streetKey(two[0], town), street2: two[1], key2: streetKey(two[1], town) });
+        items.push(item);
         return;
       }
-      const street = line.slice(0, colon).trim();
+      let street = line.slice(0, colon).trim(), street2 = '';
+      const names = street.split('/').map(function (x) { return x.trim(); });
+      if (names.length === 2 && names[0] && names[1]) { street = names[0]; street2 = names[1]; }   // two names, one above the other
       const rest = line.slice(colon + 1);
       if (!street) warnings.push({ line: lineIndex, text: 'Riga ' + (lineIndex + 1) + ': manca il nome della via prima dei due punti.' });
       const tokens = rest.split(',');
@@ -1118,7 +1126,9 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
           return;
         }
         r.cells.forEach(function (c) {
-          items.push({ kind: 'cell', street: street, town: town, key: street ? streetKey(street, town) : '', top: c.top, second: c.second, span: c.span, line: lineIndex, tok: tokIndex, other: c.other });
+          const item = { kind: 'cell', street: street, town: town, key: street ? streetKey(street, town) : '', top: c.top, second: c.second, span: c.span, line: lineIndex, tok: tokIndex, other: c.other };
+          if (street2) Object.assign(item, { street2: street2, key2: streetKey(street2, town) });
+          items.push(item);
         });
       });
     });
@@ -1143,8 +1153,11 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
         const m = /^comune\s*:(.*)$/i.exec(line);
         if (m) { town = m[1].trim() || baseTown || ''; return raw; }
         const colon = line.indexOf(':');
-        const street = (colon < 0 ? otherLine(otherLine(line)[0].replace(/\(\s*\d{1,2}\s*\)\s*$/, ''))[0] : line.slice(0, colon)).trim();
-        if (!street || streetKey(street, town) !== key) return raw;
+        const whole = (colon < 0 ? otherLine(otherLine(line)[0].replace(/\(\s*\d{1,2}\s*\)\s*$/, ''))[0] : line.slice(0, colon)).trim();
+        // a pigeonhole with two names ("C.NA ALTA / C.NA BASSA"): each name is its own street
+        const names = whole.split('/').length === 2 ? whole.split('/').map(function (x) { return x.trim(); }) : [whole];
+        const street = names.find(function (x) { return x && streetKey(x, town) === key; });
+        if (!street) return raw;
         const at = raw.indexOf(street);
         n++;
         return raw.slice(0, at) + name + raw.slice(at + street.length);
@@ -1297,12 +1310,12 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     cells.forEach(function (c) {
       if (c.start >= capacity) { cur = null; return; }
       const free = !!c.key;
-      const sameRun = cur && free && cur.key === c.key && cur.end + 1 === c.start &&
+      const sameRun = cur && free && cur.key === c.key && cur.street2 === c.street2 && cur.end + 1 === c.start &&
         Math.floor(c.start / SLOTS_PER_PAGE) === Math.floor(cur.start / SLOTS_PER_PAGE) &&
         Math.floor(c.end / SLOTS_PER_PAGE) === Math.floor(cur.start / SLOTS_PER_PAGE);
       if (sameRun) { cur.end = c.end; return; }
       if (free) {
-        cur = { key: c.key, street: c.street, town: c.town, start: c.start, end: Math.min(c.end, capacity - 1) };
+        cur = { key: c.key, street: c.street, street2: c.street2, town: c.town, start: c.start, end: Math.min(c.end, capacity - 1) };
         runs.push(cur);
       } else cur = null;
     });
@@ -2625,8 +2638,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     piece.runs.forEach(function (run) {
       const a = Math.max(run.start, piece.from), b = Math.min(run.end, piece.to);
       const e = edges(a, b);
-      sb.block(bottom, col(a), bottom, col(b), run.street,
-        { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
+      sb.block(bottom, col(a), bottom, col(b), run.street2 ? run.street + '\n' + run.street2 : run.street,
+        Object.assign({ size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } },
+          // two names, one above the other: a size that keeps each name on its line (about 0.62 em per letter, 35.25 pt per slot)
+          run.street2 ? { size: Math.max(5, Math.min(9, Math.floor(((b - a + 1) * 35.25 - 4) / (0.62 * Math.max(run.street.length, run.street2.length))))), shrink: false, wrap: true } : {}));
       for (let k = a; k <= b; k++) usedBottom[k] = true;
     });
     for (let k = piece.from; k <= piece.to; k++) {
@@ -2959,7 +2974,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     piece.runs.forEach(function (r) {
       const a = Math.max(r.start, piece.from), b = Math.min(r.end, piece.to);
       cv.fill(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, Core.colorOf(project, r.key));
-      cv.centered(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, r.street, 16, Core.textColorOf(project, r.key));
+      if (r.street2) {   // two names, one above the other
+        cv.centered(xOf(a), yBottom + 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street, 9, Core.textColorOf(project, r.key));
+        cv.centered(xOf(a), yBottom + BOTTOM / 2 - 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street2, 9, Core.textColorOf(project, r.key));
+      } else cv.centered(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, r.street, 16, Core.textColorOf(project, r.key));
     });
     // lines: between pigeonholes and between streets (thin), between the two rows (thin), around (medium)
     for (let k = piece.from + 1; k <= piece.to; k++) {
@@ -3210,7 +3228,8 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     }
     holes.forEach(function (h) {
       const names = streetOf.slice(h.from, h.to + 1).filter(Boolean);
-      h.street = h.whole ? '' : (names[0] || '');
+      // two names one above the other in the same cell (written by Casellino): "C.NA ALTA / C.NA BASSA"
+      h.street = h.whole ? '' : (names[0] || '').split(/\s*\n\s*/).filter(Boolean).join(' / ');
     });
     return holes;
   }
@@ -4109,12 +4128,14 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     s.runs.forEach(function (r) {
       const idx = s.cells.findIndex(function (c) { return c.start === r.start; });
       const width = (r.end - r.start + 1) * slot;
+      const two = !!r.street2;
       el.append(h('div', {
-        class: 'cell run', title: r.street + (r.town ? ' · ' + r.town : ''),
+        class: 'cell run' + (two ? ' two' : ''), title: r.street + (two ? ' / ' + r.street2 : '') + (r.town ? ' · ' + r.town : ''),
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
-          ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' + fitPx(r.street, width, 11) + 'px',
+          ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' +
+          (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
         onclick: function () { select(p, idx); },
-      }, r.street));
+      }, r.street, two ? h('br') : null, two ? r.street2 : null));
     });
     for (let k = C.SLOTS_PER_PAGE; k < s.capacity; k += C.SLOTS_PER_PAGE) {
       el.append(h('div', { class: 'cut', style: 'left:calc(' + k + ' * var(--slot) - 1px)', title: 'Qui finisce un foglio A4' }));
@@ -4447,12 +4468,18 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     const cur = state.current;
     const usage = {};
     const order = [];
+    const count = function (key, street, c, zi, own) {
+      if (!usage[key]) { usage[key] = { street: street, town: c.town, n: 0, zones: {} }; order.push(key); }
+      if (zi === cur) usage[key].n += c.span;
+      usage[key].zones[zi] = true;
+      if (own) usage[key].own = true;
+      else usage[key].with = usage[key].with || { street: c.street, key: c.key };   // shares a pigeonhole with that one
+    };
     C.analyseProject(p).forEach(function (a, zi) {
       C.allCells(a).forEach(function (c) {
         if (!c.key) return;
-        if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0, zones: {} }; order.push(c.key); }
-        if (zi === cur) usage[c.key].n += c.span;
-        usage[c.key].zones[zi] = true;
+        count(c.key, c.street, c, zi, true);
+        if (c.key2) count(c.key2, c.street2, c, zi, false);
       });
     });
     const mine = order.filter(function (k) { return usage[k].zones[cur]; });
@@ -4488,7 +4515,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       const official = (p.streetLists[C.norm(t)] || []).map(comparable);
       byTown[t].sort(function (a, b) { return usage[a].street.localeCompare(usage[b].street, 'it'); }).forEach(function (k) {
         const u = usage[k];
-        const color = C.colorOf(p, k);
+        const color = u.own ? C.colorOf(p, k) : C.colorOf(p, u.with.key);   // only in a shared pigeonhole: its colour
         const sel = h('select', { 'aria-label': 'Colore di ' + u.street });
         const others = Object.keys(near[k] || {});
         const sameZone = Object.keys(C.sameZoneStreets(groups, k));
@@ -4507,8 +4534,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
         let li = null;
         const fix = function () { editStreetName(li, k, u, usage); };
         li = h('li', null,
-          h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, k), title: 'Cambia colore: ' + C.paletteName(color) }, 'A', sel),
-          h('button', { type: 'button', class: 'nm', title: 'Tocca per correggere il nome: ' + u.street, onclick: fix }, u.street),
+          u.own ? h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, k), title: 'Cambia colore: ' + C.paletteName(color) }, 'A', sel)
+            : h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, u.with.key), title: 'Ha il colore di ' + u.with.street + ', con cui divide la casella' }, 'A'),
+          h('button', { type: 'button', class: 'nm', title: 'Tocca per correggere il nome: ' + u.street, onclick: fix }, u.street,
+            u.own ? null : h('span', { class: 'small muted' }, ' (con ' + u.with.street + ')')),
           unknown ? h('span', { class: 'flag', title: 'Questo nome non è nell\'elenco delle vie del comune' }, 'non in elenco') : null,
           h('span', { class: 'n' }, u.n),
           h('button', { type: 'button', class: 'pen', title: 'Correggi il nome', 'aria-label': 'Correggi il nome di ' + u.street, onclick: fix }, '✏️'));

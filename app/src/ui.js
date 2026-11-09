@@ -442,12 +442,14 @@
     s.runs.forEach(function (r) {
       const idx = s.cells.findIndex(function (c) { return c.start === r.start; });
       const width = (r.end - r.start + 1) * slot;
+      const two = !!r.street2;
       el.append(h('div', {
-        class: 'cell run', title: r.street + (r.town ? ' · ' + r.town : ''),
+        class: 'cell run' + (two ? ' two' : ''), title: r.street + (two ? ' / ' + r.street2 : '') + (r.town ? ' · ' + r.town : ''),
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
-          ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' + fitPx(r.street, width, 11) + 'px',
+          ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' +
+          (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
         onclick: function () { select(p, idx); },
-      }, r.street));
+      }, r.street, two ? h('br') : null, two ? r.street2 : null));
     });
     for (let k = C.SLOTS_PER_PAGE; k < s.capacity; k += C.SLOTS_PER_PAGE) {
       el.append(h('div', { class: 'cut', style: 'left:calc(' + k + ' * var(--slot) - 1px)', title: 'Qui finisce un foglio A4' }));
@@ -780,12 +782,18 @@
     const cur = state.current;
     const usage = {};
     const order = [];
+    const count = function (key, street, c, zi, own) {
+      if (!usage[key]) { usage[key] = { street: street, town: c.town, n: 0, zones: {} }; order.push(key); }
+      if (zi === cur) usage[key].n += c.span;
+      usage[key].zones[zi] = true;
+      if (own) usage[key].own = true;
+      else usage[key].with = usage[key].with || { street: c.street, key: c.key };   // shares a pigeonhole with that one
+    };
     C.analyseProject(p).forEach(function (a, zi) {
       C.allCells(a).forEach(function (c) {
         if (!c.key) return;
-        if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0, zones: {} }; order.push(c.key); }
-        if (zi === cur) usage[c.key].n += c.span;
-        usage[c.key].zones[zi] = true;
+        count(c.key, c.street, c, zi, true);
+        if (c.key2) count(c.key2, c.street2, c, zi, false);
       });
     });
     const mine = order.filter(function (k) { return usage[k].zones[cur]; });
@@ -821,7 +829,7 @@
       const official = (p.streetLists[C.norm(t)] || []).map(comparable);
       byTown[t].sort(function (a, b) { return usage[a].street.localeCompare(usage[b].street, 'it'); }).forEach(function (k) {
         const u = usage[k];
-        const color = C.colorOf(p, k);
+        const color = u.own ? C.colorOf(p, k) : C.colorOf(p, u.with.key);   // only in a shared pigeonhole: its colour
         const sel = h('select', { 'aria-label': 'Colore di ' + u.street });
         const others = Object.keys(near[k] || {});
         const sameZone = Object.keys(C.sameZoneStreets(groups, k));
@@ -840,8 +848,10 @@
         let li = null;
         const fix = function () { editStreetName(li, k, u, usage); };
         li = h('li', null,
-          h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, k), title: 'Cambia colore: ' + C.paletteName(color) }, 'A', sel),
-          h('button', { type: 'button', class: 'nm', title: 'Tocca per correggere il nome: ' + u.street, onclick: fix }, u.street),
+          u.own ? h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, k), title: 'Cambia colore: ' + C.paletteName(color) }, 'A', sel)
+            : h('span', { class: 'sw', style: 'background:#' + color + ';color:#' + C.textColorOf(p, u.with.key), title: 'Ha il colore di ' + u.with.street + ', con cui divide la casella' }, 'A'),
+          h('button', { type: 'button', class: 'nm', title: 'Tocca per correggere il nome: ' + u.street, onclick: fix }, u.street,
+            u.own ? null : h('span', { class: 'small muted' }, ' (con ' + u.with.street + ')')),
           unknown ? h('span', { class: 'flag', title: 'Questo nome non è nell\'elenco delle vie del comune' }, 'non in elenco') : null,
           h('span', { class: 'n' }, u.n),
           h('button', { type: 'button', class: 'pen', title: 'Correggi il nome', 'aria-label': 'Correggi il nome di ' + u.street, onclick: fix }, '✏️'));

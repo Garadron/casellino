@@ -1,5 +1,18 @@
 # Registro delle versioni
 
+## v0.25.0 · 2026-11-09 · Due nomi nella stessa casella
+
+- Nella riga sotto, dove vanno vie e cascine, una casella può avere **due nomi uno sopra l'altro** (per esempio due
+  cascine delle stesse famiglie): si scrive `C.NA ALTA / C.NA BASSA (2)`, con la barra come per i due numeri. Va anche
+  con i civici: `VIA X / VIA Y: 1, 2`.
+- La casella ha il colore del primo nome. Nell'elenco **Vie** ci sono tutti e due: il secondo, se non ha caselle sue,
+  compare con «(con …)» e il colore della casella; se le ha, la sua voce conta anche questa.
+- Ogni nome si corregge da solo dall'elenco. Strisce, PDF ed Excel scrivono i due nomi su due righe (provato in Excel
+  vero); aprendo un Excel di Casellino la casella torna «A / B».
+- File: `app/src/core.js` (`street2`, `key2`), `app/src/ui.js`, `app/src/pdf.js`, `app/src/xlsx.js`,
+  `app/src/importa.js`, `app/src/style.css`, `app/index.src.html`, `tests/test_core.js`, `tests/test_pagina.js`,
+  `Casellino.html`, `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.24.0 · 2026-11-09 · Le caselle con due numeri nel verso della via
 
 - **Lettura delle foto**: una casella con due numeri si scrive nel verso della via, capito dai numeri vicini

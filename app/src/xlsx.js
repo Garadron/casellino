@@ -379,8 +379,10 @@
     piece.runs.forEach(function (run) {
       const a = Math.max(run.start, piece.from), b = Math.min(run.end, piece.to);
       const e = edges(a, b);
-      sb.block(bottom, col(a), bottom, col(b), run.street,
-        { size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } });
+      sb.block(bottom, col(a), bottom, col(b), run.street2 ? run.street + '\n' + run.street2 : run.street,
+        Object.assign({ size: 16, bold: true, text: true, shrink: true, fill: Core.colorOf(project, run.key), color: Core.textColorOf(project, run.key), border: { l: e.l, r: e.r, b: 'medium' } },
+          // two names, one above the other: a size that keeps each name on its line (about 0.62 em per letter, 35.25 pt per slot)
+          run.street2 ? { size: Math.max(5, Math.min(9, Math.floor(((b - a + 1) * 35.25 - 4) / (0.62 * Math.max(run.street.length, run.street2.length))))), shrink: false, wrap: true } : {}));
       for (let k = a; k <= b; k++) usedBottom[k] = true;
     });
     for (let k = piece.from; k <= piece.to; k++) {

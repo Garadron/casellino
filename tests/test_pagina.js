@@ -213,14 +213,20 @@ function caretAt(ta, needle, offset) {
   assert.ok(names().indexOf('VIA DELLE ROSE') >= 0);
   [...doc.querySelectorAll('#tabs button')].find(function (b) { return b.textContent === '+ Sottozona'; }).dispatchEvent(new win.Event('click'));
   const routeB = doc.querySelector('textarea.route-text');
-  routeB.value = 'VIA SOLO DELLA B: 1, 2';
+  routeB.value = 'VIA SOLO DELLA B: 1, 2\nC.NA UNO / C.NA DUE (2)';
   routeB.dispatchEvent(new win.Event('input'));
   await wait(900);
-  assert.deepStrictEqual(names(), ['VIA SOLO DELLA B'], "nella sottozona nuova solo le sue vie");
+  assert.deepStrictEqual(names(), ['C.NA DUE (con C.NA UNO)', 'C.NA UNO', 'VIA SOLO DELLA B'], "nella sottozona nuova solo le sue vie, anche il secondo nome di una casella");
   [...doc.querySelectorAll('#tabs button')].find(function (b) { return /9A/.test(b.textContent); }).dispatchEvent(new win.Event('click'));
   await wait(900);
   assert.ok(names().indexOf('VIA SOLO DELLA B') < 0 && names().indexOf('VIA DELLE ROSE') >= 0, 'nella 9A le vie della 9A');
   assert.ok(/della 9A/.test(text('#streets-zone')));
+  // in the strips: the two names one above the other
+  const route9A = doc.querySelector('textarea.route-text');
+  route9A.value = 'C.NA UNO / C.NA DUE (2)\n' + route9A.value;
+  route9A.dispatchEvent(new win.Event('input'));
+  await wait(900);
+  assert.ok([...doc.querySelectorAll('.cell.run.two')].some(function (el) { return /C\.NA UNO/.test(el.textContent) && /C\.NA DUE/.test(el.textContent); }), 'due nomi nella stessa casella');
 
   assert.ok(/Versione \d+\.\d+\.\d+/.test(text('#version')), 'versione nel menu');
   console.log('Pagina: tutte le prove superate');

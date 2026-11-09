@@ -435,6 +435,22 @@ test('numbers for another line ("17*"): underlined on the strip, in the PDF and 
   assert.ok(/ RG 3\.00 w /.test(pdf), 'a 3 pt line under the number');
 });
 
+test('two names in one pigeonhole ("C.NA ALTA / C.NA BASSA"), one above the other', function () {
+  const p = Core.sanitizeProject({ subzones: [{ name: 'A', town: 'Borgo', route: 'C.NA ALTA / C.NA BASSA (2)\nVIA DEI TIGLI: 1, 2' }] });
+  const a = Core.analyseProject(p)[0];
+  const c = Core.allCells(a)[0];
+  assert.deepStrictEqual([c.street, c.street2, c.span, c.key2], ['C.NA ALTA', 'C.NA BASSA', 2, Core.streetKey('C.NA BASSA', 'Borgo')]);
+  assert.deepStrictEqual(a.strips[0].runs.map(function (r) { return [r.street, r.street2 || '']; }), [['C.NA ALTA', 'C.NA BASSA'], ['VIA DEI TIGLI', '']]);
+  // printed on two lines
+  const strings = Xlsx.buildCompactFiles(p).files.find(function (f) { return f.name === 'xl/sharedStrings.xml'; }).data;
+  assert.ok(strings.indexOf('C.NA ALTA\nC.NA BASSA') >= 0, 'Excel: two lines in the cell');
+  const pdf = Buffer.from(require('../app/src/pdf.js').buildPdf(p, 'Prova').bytes).toString('latin1');
+  assert.ok(pdf.indexOf('(C.NA ALTA) Tj') >= 0 && pdf.indexOf('(C.NA BASSA) Tj') >= 0, 'PDF: both names');
+  // each name can be corrected on its own
+  Core.renameStreet(p, Core.streetKey('C.NA BASSA', 'Borgo'), 'C.NA BASSA DI SOTTO');
+  assert.strictEqual(p.subzones[0].route.split('\n')[0], 'C.NA ALTA / C.NA BASSA DI SOTTO (2)');
+});
+
 test('two numbers in one pigeonhole follow the way of the street', function () {
   const text = ['VIA DEI TIGLI: 1, 3, 2A, 4, 7/5, 6, 9, 8, 11', 'VIA DELLE ROSE: 52/50, 48/46, 44/42,',
     'VIA DEL CANALE: 2/4, 8/10, 12/14, 13, 11, 9/7, 5/3, 1A/1', 'VIA DEL BOSCO: 8, 6A, 9C/9B, 4', 'VIA DEI MULINI: 3, 9/7 (2)*, 11'].join('\n');
@@ -645,7 +661,7 @@ async function asyncTests() {
       return a.sheets.map(function (sh) {
         return Core.MODULES.filter(function (m) { return sh.modules[m]; }).map(function (m) {
           return sh.rows[m].map(function (st) {
-            return st.cells.map(function (c) { return c.start + ':' + c.span + ':' + Core.streetName(c.street) + ':' + c.top + (c.second ? '/' + c.second : ''); }).join(',');
+            return st.cells.map(function (c) { return c.start + ':' + c.span + ':' + Core.streetName(c.street) + (c.street2 ? '+' + Core.streetName(c.street2) : '') + ':' + c.top + (c.second ? '/' + c.second : ''); }).join(',');
           }).join('|');
         }).join('#');
       }).join('&');
@@ -654,6 +670,7 @@ async function asyncTests() {
   try {
     const p = Core.textToProject(EXAMPLE);
     p.subzones[0].town = '';
+    p.subzones[0].route = p.subzones[0].route.replace('CASCINA ALTA', 'CASCINA ALTA / CASCINA BASSA');   // two names in a pigeonhole
     // Excel like the template -> Casellino: every pigeonhole in its place, with its street
     const plain = await Importa.importExcel(Xlsx.buildXlsx(JSON.parse(JSON.stringify(p))));
     assert.deepStrictEqual(pigeonholes(plain.project), pigeonholes(p), 'stesse caselle dopo andata e ritorno');

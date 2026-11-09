@@ -2,6 +2,14 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 9 novembre 2026 · Tappa 14 chiusa: due nomi in una casella (v0.25.0)
+
+**Fatto.** «A / B» nel nome (riga da sola o prima dei due punti) → casella con `street`/`key` = A e `street2`/`key2` = B;
+`streetRuns` unisce solo caselle con lo stesso `street2`. Colori: solo la chiave del primo nome (il secondo non entra in
+`assignColors`). Elenco Vie: `key2` contato, voce «(con A)» se non ha caselle sue. `renameStreet` cambia uno dei due nomi.
+Excel: due righe nella cella (`wrap`, grandezza dalla larghezza); `importa.js` rimette «A / B».
+**Verifiche.** `tests/test_core.js` (41, anche andata e ritorno dall'Excel), `tests/test_pagina.js`, PDF ed Excel vero.
+
 ## 9 novembre 2026 · Tappa 13 chiusa: caselle doppie nel verso della via (v0.24.0)
 
 **Fatto.** `Core.houseValue` (12B → 12,02), `Core.pairOrderFixes(text, town)`: per ogni casella «a/b» con numeri

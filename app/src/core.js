@@ -405,10 +405,16 @@
         if (sm) { span = Math.max(1, parseInt(sm[1], 10)); name = name.slice(0, sm.index).trim(); }
         if (!other) [name, other] = otherLine(name);
         name = name.trim();
-        items.push({ kind: 'cell', street: name, town: town, key: streetKey(name, town), top: '', second: '', span: span, line: lineIndex, tok: 0, other: other });
+        // "C.NA ALTA / C.NA BASSA": two names in the same pigeonhole, one above the other (the colour is the first one's)
+        const two = name.split('/').map(function (x) { return x.trim(); });
+        const item = { kind: 'cell', street: name, town: town, key: streetKey(name, town), top: '', second: '', span: span, line: lineIndex, tok: 0, other: other };
+        if (two.length === 2 && two[0] && two[1]) Object.assign(item, { street: two[0], key: streetKey(two[0], town), street2: two[1], key2: streetKey(two[1], town) });
+        items.push(item);
         return;
       }
-      const street = line.slice(0, colon).trim();
+      let street = line.slice(0, colon).trim(), street2 = '';
+      const names = street.split('/').map(function (x) { return x.trim(); });
+      if (names.length === 2 && names[0] && names[1]) { street = names[0]; street2 = names[1]; }   // two names, one above the other
       const rest = line.slice(colon + 1);
       if (!street) warnings.push({ line: lineIndex, text: 'Riga ' + (lineIndex + 1) + ': manca il nome della via prima dei due punti.' });
       const tokens = rest.split(',');
@@ -420,7 +426,9 @@
           return;
         }
         r.cells.forEach(function (c) {
-          items.push({ kind: 'cell', street: street, town: town, key: street ? streetKey(street, town) : '', top: c.top, second: c.second, span: c.span, line: lineIndex, tok: tokIndex, other: c.other });
+          const item = { kind: 'cell', street: street, town: town, key: street ? streetKey(street, town) : '', top: c.top, second: c.second, span: c.span, line: lineIndex, tok: tokIndex, other: c.other };
+          if (street2) Object.assign(item, { street2: street2, key2: streetKey(street2, town) });
+          items.push(item);
         });
       });
     });
@@ -445,8 +453,11 @@
         const m = /^comune\s*:(.*)$/i.exec(line);
         if (m) { town = m[1].trim() || baseTown || ''; return raw; }
         const colon = line.indexOf(':');
-        const street = (colon < 0 ? otherLine(otherLine(line)[0].replace(/\(\s*\d{1,2}\s*\)\s*$/, ''))[0] : line.slice(0, colon)).trim();
-        if (!street || streetKey(street, town) !== key) return raw;
+        const whole = (colon < 0 ? otherLine(otherLine(line)[0].replace(/\(\s*\d{1,2}\s*\)\s*$/, ''))[0] : line.slice(0, colon)).trim();
+        // a pigeonhole with two names ("C.NA ALTA / C.NA BASSA"): each name is its own street
+        const names = whole.split('/').length === 2 ? whole.split('/').map(function (x) { return x.trim(); }) : [whole];
+        const street = names.find(function (x) { return x && streetKey(x, town) === key; });
+        if (!street) return raw;
         const at = raw.indexOf(street);
         n++;
         return raw.slice(0, at) + name + raw.slice(at + street.length);
@@ -599,12 +610,12 @@
     cells.forEach(function (c) {
       if (c.start >= capacity) { cur = null; return; }
       const free = !!c.key;
-      const sameRun = cur && free && cur.key === c.key && cur.end + 1 === c.start &&
+      const sameRun = cur && free && cur.key === c.key && cur.street2 === c.street2 && cur.end + 1 === c.start &&
         Math.floor(c.start / SLOTS_PER_PAGE) === Math.floor(cur.start / SLOTS_PER_PAGE) &&
         Math.floor(c.end / SLOTS_PER_PAGE) === Math.floor(cur.start / SLOTS_PER_PAGE);
       if (sameRun) { cur.end = c.end; return; }
       if (free) {
-        cur = { key: c.key, street: c.street, town: c.town, start: c.start, end: Math.min(c.end, capacity - 1) };
+        cur = { key: c.key, street: c.street, street2: c.street2, town: c.town, start: c.start, end: Math.min(c.end, capacity - 1) };
         runs.push(cur);
       } else cur = null;
     });

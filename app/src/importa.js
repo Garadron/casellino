@@ -159,7 +159,8 @@
     }
     holes.forEach(function (h) {
       const names = streetOf.slice(h.from, h.to + 1).filter(Boolean);
-      h.street = h.whole ? '' : (names[0] || '');
+      // two names one above the other in the same cell (written by Casellino): "C.NA ALTA / C.NA BASSA"
+      h.street = h.whole ? '' : (names[0] || '').split(/\s*\n\s*/).filter(Boolean).join(' / ');
     });
     return holes;
   }
