@@ -1,5 +1,14 @@
 # Registro delle versioni
 
+## v0.25.2 · 2026-11-09 · Lettura delle foto: si riprova sulla stessa foto
+
+- **Sistemato**: quando la lettura non trovava nessun civico passava comunque alla foto dopo («Foto finite»), e non si
+  poteva riprovare sulla stessa. Ora resta sulla foto e dice cosa fare: trascinare (o stringere) il rettangolo intorno a
+  una sola striscia, raddrizzarla, e premere di nuovo «Leggi».
+- Finché il rettangolo non c'è, sulla foto è scritto «Trascina un rettangolo intorno a una sola striscia».
+- Nato da una prova di un collega su Android.
+- File: `app/src/ui.js`, `Casellino.html`, `sito/`, `CHANGELOG.md`, `prove/`.
+
 ## v0.25.1 · 2026-11-09 · Il telefono prende l'ultima versione salvata dal PC
 
 - **Sistemato**: aprendo Casellino (o ricaricando la pagina) si riprendeva la copia del dispositivo, anche quando un

@@ -1778,6 +1778,13 @@
       g.fillRect(r.x1, r.y0, stage.width - r.x1, r.y1 - r.y0);
       g.strokeStyle = '#d93025'; g.lineWidth = 2;
       g.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+    } else {
+      // no rectangle yet: say what to do, on the photo itself
+      const fs = Math.max(13, Math.round(stage.width / 28));
+      g.fillStyle = 'rgba(0,0,0,0.6)';
+      g.fillRect(0, 0, stage.width, fs * 2.2);
+      g.fillStyle = '#fff'; g.font = 'bold ' + fs + 'px Arial'; g.textBaseline = 'middle';
+      g.fillText('Trascina un rettangolo intorno a una sola striscia', fs * 0.6, fs * 1.1, stage.width - fs * 1.2);
     }
     $('foto-count').textContent = 'Foto ' + (photo.index + 1) + ' di ' + photo.files.length;
   }
@@ -1842,11 +1849,18 @@
       const rn = await w.recognize(toCanvas(low));
       const phrases = F.streetPhrases(rn.data.words).map(function (p) { return { text: p.text, x0: p.x0 / S, x1: p.x1 / S }; });
       // two numbers in one pigeonhole follow the way of the street (read "7/5" between 4 and 6: it is 5/7)
+      if (!cells.length) {
+        // nothing read: the same photo stays, to try again
+        status.textContent = 'Non ho trovato civici in questa foto. ' + (photo.rect
+          ? 'Stringi il rettangolo sulla sola striscia (dal bordo sopra i numeri al bordo sotto le vie), raddrizzala se è storta, e premi di nuovo «Leggi».'
+          : 'Trascina con il dito un rettangolo intorno a una sola striscia (dal bordo sopra i numeri al bordo sotto le vie) e premi di nuovo «Leggi».');
+        return;
+      }
       const read = F.routeLines(cells, phrases);
-      const lines = read.length ? C.fixPairOrder(read.join('\n'), sz().town).text.split('\n') : read;
+      const lines = C.fixPairOrder(read.join('\n'), sz().town).text.split('\n');
       const out = $('foto-result');
       out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + '# foto ' + (photo.index + 1) + ' (letta in automatico: da controllare)\n' +
-        (lines.length ? lines.join('\n') : '# non ho letto niente: prova a raddrizzarla o a stringere il rettangolo') + '\n';
+        lines.join('\n') + '\n';
       status.textContent = cells.length + ' civici letti nella foto ' + (photo.index + 1) + '.';
       showPhoto(photo.index + 1);
     } catch (e) {
