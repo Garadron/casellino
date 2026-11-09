@@ -1826,28 +1826,17 @@
       const cw = Math.min(full.width - x0, Math.round((r.x1 - r.x0) * k)), ch = Math.min(full.height - y0, Math.round((r.y1 - r.y0) * k));
       const data = full.getContext('2d').getImageData(x0, y0, cw, ch);
       const img = { width: data.width, height: data.height, data: data.data };
-      const seg = F.segmentStrip(img);
-      const S = 2;
-      const up = F.cleanBand(img, seg.top, seg.split, S);
-      const low = F.cleanBand(img, seg.split, seg.bottom, S, true);
       const toCanvas = function (band) {
         const c = imageToCanvas(band.width, band.height);
         c.getContext('2d').putImageData(new ImageData(band.data, band.width, band.height), 0, 0);
         return c;
       };
-      const clusters = F.inkClusters(up);
-      await w.setParameters({ tessedit_pageseg_mode: '8', tessedit_char_whitelist: '0123456789ABCDEFGHILMNOPQRSTUVZ/\\-' });
-      const cells = [];
-      for (let i = 0; i < clusters.length; i++) {
-        status.textContent = 'Leggo i civici: ' + (i + 1) + ' di ' + clusters.length + '…';
-        const res = await w.recognize(toCanvas(F.cropBand(up, clusters[i], 10)));
-        const t = F.cleanNumber(res.data.text);
-        if (t) cells.push({ x0: clusters[i].x0 / S, x1: clusters[i].x1 / S, top: t, unsure: res.data.confidence < 70, span: 1 });
-      }
-      status.textContent = 'Leggo i nomi delle vie…';
-      await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
-      const rn = await w.recognize(toCanvas(low));
-      const phrases = F.streetPhrases(rn.data.words).map(function (p) { return { text: p.text, x0: p.x0 / S, x1: p.x1 / S }; });
+      // the reading itself is in foto.js (straightened, pigeonhole by pigeonhole); here only Tesseract and the progress
+      const res = await F.readStrip(img, async function (band, mode, whitelist) {
+        await w.setParameters({ tessedit_pageseg_mode: mode, tessedit_char_whitelist: whitelist });
+        return (await w.recognize(toCanvas(band))).data;
+      }, function (i, n) { status.textContent = 'Leggo i civici: ' + (i + 1) + ' di ' + n + '…'; });
+      const cells = res.cells, phrases = res.phrases;
       // two numbers in one pigeonhole follow the way of the street (read "7/5" between 4 and 6: it is 5/7)
       if (!cells.length) {
         // nothing read: the same photo stays, to try again

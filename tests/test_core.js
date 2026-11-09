@@ -388,6 +388,9 @@ test('photo of a strip: printed lines removed, one group of ink per pigeonhole',
   assert.strictEqual(F.cleanNumber('20 G'), '20G');
   assert.strictEqual(F.cleanNumber('61\\59'), '61\\59');
   assert.strictEqual(F.cleanNumber('ABC'), '');
+  assert.strictEqual(F.cleanNumber('2U'), '20', 'U read for 0');
+  assert.strictEqual(F.cleanNumber('2725'), '27/25?', 'two numbers whose small slash was not seen, to check');
+  assert.strictEqual(F.cleanNumber('1234'), '1234', 'not two numbers of the same side');
   const lines = F.routeLines([{ x0: 0, x1: 10, top: '1', span: 1 }, { x0: 20, x1: 30, top: '3', unsure: true, span: 1 }, { x0: 200, x1: 210, top: '2', span: 1 }],
     [{ text: 'VIA DEI TIGLI', x0: 0, x1: 40 }, { text: 'VIA DELLE ROSE', x0: 190, x1: 260 }]);
   assert.deepStrictEqual(lines, ['VIA DEI TIGLI: 1, 3?', 'VIA DELLE ROSE: 2']);

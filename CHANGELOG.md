@@ -1,5 +1,27 @@
 # Registro delle versioni
 
+## v0.26.0 · 2026-11-09 · Lettura delle foto più brava
+
+- Provata su cinque strisce vere con i numeri giusti scritti a mano (quella di un collega e quattro della zona di
+  Garadron): i civici letti giusti passano dal **23% al 53%**, quelli sbagliati o inventati da 35 a 13. Nessuna
+  striscia peggiora.
+- Cosa è cambiato nella lettura:
+  - chiaro e scuro si giudicano zona per zona, non con un grigio unico per tutta la foto: l'ombra su metà striscia non
+    cancella più i numeri;
+  - la striscia storta si **raddrizza da sola** misurando la riga lunga fra numeri e vie;
+  - il bordo alto della riga dei numeri si trova dalle righe fra le caselle, così un pezzo di mobile sopra la striscia
+    non inganna più;
+  - le caselle si trovano dalle righe fra loro anche quando sono sottili, grigie o tratteggiate nell'ombra;
+  - ogni casella si legge da sola, ingrandita e in bianco e nero con la sua luce (anche scritta chiara su colore scuro);
+  - «2U» diventa 20; quattro cifre attaccate come «2725» diventano «27/25?» (da controllare).
+- Anche i nomi delle vie escono meglio (sulla striscia del collega due vie su tre giuste, prima nessuna).
+- Resta necessario il **rettangolo intorno alla sola striscia**; le caselle con due numeri molto piccoli e lo scritto
+  a mano restano difficili.
+- Nuovo `tools/misura_lettura_foto.js`: misura la lettura sulle strisce di prova (private, in `dati/prova-lettura/`).
+- File: `app/src/foto.js` (`readStrip`, `straighten`, `darkMask` locale, `blackWhite`, `cellImage`), `app/src/ui.js`,
+  `tools/misura_lettura_foto.js`, `tests/test_core.js`, `README.md`, `PROMEMORIA.md`, `Casellino.html`, `sito/`,
+  `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.25.2 · 2026-11-09 · Lettura delle foto: si riprova sulla stessa foto
 
 - **Sistemato**: quando la lettura non trovava nessun civico passava comunque alla foto dopo («Foto finite»), e non si

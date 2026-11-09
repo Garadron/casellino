@@ -2,6 +2,20 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 9 novembre 2026 · Tappa 15 chiusa: lettura delle foto (v0.26.0)
+
+**Fatto.** Tutta la lettura in `F.readStrip(img, recognize, progress)` (la pagina passa solo Tesseract), così si misura in
+Node. Passi: `straighten` (pendenza della riga numeri/vie in 12 fette, mediana, solo se le fette sono d'accordo),
+`segmentStrip` (maschera di Bradley; bordo alto dalle righe verticali che salgono dalla riga sotto i numeri; righe nette
+≥ 75% dell'altezza; nei buchi larghi più di 2,5 caselle anche righe tenui e righe «pallide» cercate sui bordi alto e
+basso), poi casella per casella `cellImage` (grigio ×3) e `blackWhite` (Otsu nella casella, scritta chiara capovolta),
+Tesseract psm 8 e, se incerto, psm 7. Pezzi larghi più caselle: i gruppi di inchiostro dentro. Meno di 4 caselle: il
+vecchio metodo a gruppi di inchiostro.
+**Misura.** `OCR_NM=… node tools/misura_lettura_foto.js`: 50/94 giusti (53%), 13 sbagliati (prima 22/94 e 35).
+Strisce e numeri giusti in `dati/prova-lettura/` (privati). Tolti `numberWords` e `inkIn`, non più usati.
+**Limiti.** a08_2 (rettangolo con tanto mobile sopra) resta a 0: la riga fra numeri e vie si cerca ancora al 58%
+dell'altezza. Caselle doppie con numeri piccoli deboli. Senza rettangolo la foto intera non si legge.
+
 ## 9 novembre 2026 · Tappa 14 chiusa: due nomi in una casella (v0.25.0)
 
 **Fatto.** «A / B» nel nome (riga da sola o prima dei due punti) → casella con `street`/`key` = A e `street2`/`key2` = B;
