@@ -320,6 +320,27 @@
         w.line >= 0 ? h('button', { type: 'button', class: 'link', onclick: function () { goToLine(w.line); } }, w.text) : w.text));
     });
     if (a.warnings.length > 12) els.warnings.append(h('li', { class: 'soft' }, 'e altri ' + (a.warnings.length - 12) + ' avvisi'));
+    // pigeonholes with two numbers against the way of the street: one button puts them all right
+    const turned = sz().locked ? [] : C.pairOrderFixes(sz().route, sz().town);
+    if (turned.length) {
+      const note = h('li', { class: 'soft' },
+        turned.length + (turned.length === 1 ? ' casella con due numeri sembra' : ' caselle con due numeri sembrano') + ' al contrario del verso della via: ');
+      turned.slice(0, 4).forEach(function (f, k) {
+        note.append(k ? ', ' : '', h('button', { type: 'button', class: 'link', onclick: function () { goToLine(f.line); } }, f.from + ' → ' + f.to));
+      });
+      els.warnings.append(note);
+      note.append(turned.length > 4 ? '… ' : ' ',
+        h('button', { type: 'button', class: 'pin-btn', onclick: function () {
+          const r = C.fixPairOrder(sz().route, sz().town);
+          sz().route = r.text;
+          const ta = state.els.ta;
+          if (ta) { const top = ta.scrollTop; ta.value = r.text; ta.scrollTop = top; }
+          changed();
+          refreshRoute();
+          refreshSide();
+          toast(r.fixes.length === 1 ? 'Messa in ordine 1 casella.' : 'Messe in ordine ' + r.fixes.length + ' caselle.');
+        } }, '↕ Mettile in ordine'));
+    }
     const unsure = C.allCells(a).filter(function (c) { return /\?/.test(c.top + c.second + c.street); }).length;
     if (unsure) els.warnings.append(h('li', { class: 'soft' }, unsure + (unsure === 1 ? ' casella da controllare' : ' caselle da controllare') + ' (hanno un «?», sono segnate in rosso).'));
 
@@ -677,11 +698,11 @@
       pos += line.length + 1;
     });
     if (!found.length) { toast('Metti il cursore su un civico, o seleziona i civici, e premi «Lo consegna un collega». Dal telefono: tocca la casella nella striscia.'); return; }
-    const all = found.every(function (f) { return /\*\s*$/.test(f.text); });
+    const all = found.every(function (f) { return /\*/.test(f.text); });
     let text = ta.value;
     found.slice().reverse().forEach(function (f) {
       const end = f.text.replace(/\s+$/, '');
-      const piece = all ? end.replace(/\s*\*$/, '') : (/\*$/.test(end) ? end : end + '*');
+      const piece = all ? end.replace(/\s*\*/g, '') : (/\*/.test(end) ? end : end + '*');
       text = text.slice(0, f.start) + piece + f.text.slice(end.length) + text.slice(f.end);
     });
     const top = ta.scrollTop;
@@ -702,7 +723,7 @@
     const line = lines[c.line];
     if (line === undefined) return;
     const colon = line.indexOf(':');
-    const mark = function (text, on) { const t = text.replace(/\s*\*\s*$/, ''); return on ? t + '*' : t; };
+    const mark = function (text, on) { const t = text.replace(/\s*\*/g, ''); return on ? t + '*' : t; };
     if (colon < 0) {
       lines[c.line] = mark(line.replace(/\s+$/, ''), !c.other);
     } else {
@@ -1808,7 +1829,9 @@
       await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
       const rn = await w.recognize(toCanvas(low));
       const phrases = F.streetPhrases(rn.data.words).map(function (p) { return { text: p.text, x0: p.x0 / S, x1: p.x1 / S }; });
-      const lines = F.routeLines(cells, phrases);
+      // two numbers in one pigeonhole follow the way of the street (read "7/5" between 4 and 6: it is 5/7)
+      const read = F.routeLines(cells, phrases);
+      const lines = read.length ? C.fixPairOrder(read.join('\n'), sz().town).text.split('\n') : read;
       const out = $('foto-result');
       out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + '# foto ' + (photo.index + 1) + ' (letta in automatico: da controllare)\n' +
         (lines.length ? lines.join('\n') : '# non ho letto niente: prova a raddrizzarla o a stringere il rettangolo') + '\n';

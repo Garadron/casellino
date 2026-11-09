@@ -435,6 +435,22 @@ test('numbers for another line ("17*"): underlined on the strip, in the PDF and 
   assert.ok(/ RG 3\.00 w /.test(pdf), 'a 3 pt line under the number');
 });
 
+test('two numbers in one pigeonhole follow the way of the street', function () {
+  const text = ['VIA DEI TIGLI: 1, 3, 2A, 4, 7/5, 6, 9, 8, 11', 'VIA DELLE ROSE: 52/50, 48/46, 44/42,',
+    'VIA DEL CANALE: 2/4, 8/10, 12/14, 13, 11, 9/7, 5/3, 1A/1', 'VIA DEL BOSCO: 8, 6A, 9C/9B, 4', 'VIA DEI MULINI: 3, 9/7 (2)*, 11'].join('\n');
+  const r = Core.fixPairOrder(text, 'Borgo');
+  assert.deepStrictEqual(r.fixes.map(function (f) { return (f.line + 1) + ':' + f.from + '>' + f.to; }), ['1:7/5>5/7', '5:9/7>7/9']);
+  assert.strictEqual(r.text.split('\n')[0], 'VIA DEI TIGLI: 1, 3, 2A, 4, 5/7, 6, 9, 8, 11');
+  assert.strictEqual(r.text.split('\n')[1], 'VIA DELLE ROSE: 52/50, 48/46, 44/42,', 'a street that goes down stays down');
+  assert.strictEqual(r.text.split('\n')[2], 'VIA DEL CANALE: 2/4, 8/10, 12/14, 13, 11, 9/7, 5/3, 1A/1', 'a street that turns back is understood');
+  assert.strictEqual(r.text.split('\n')[3], 'VIA DEL BOSCO: 8, 6A, 9C/9B, 4', 'same number: the letters stay as written');
+  assert.strictEqual(r.text.split('\n')[4], 'VIA DEI MULINI: 3, 7/9 (2)*, 11', 'width and mark stay');
+  assert.strictEqual(Core.fixPairOrder(r.text, 'Borgo').fixes.length, 0, 'nothing more to fix');
+  // a "*" on both numbers is one marked pigeonhole
+  const it = Core.parseRoute('VIA DEL BOSCO: 9C*/9B*', 'Borgo').items[0];
+  assert.deepStrictEqual([it.top, it.second, it.other], ['9C', '9B', true]);
+});
+
 test('correcting a street name from the list: every line, every sub-zone, same colour', function () {
   const p = Core.sanitizeProject({ subzones: [
     { name: 'A', town: 'Borgo', route: 'VIA DEI TIGLLI: 1..5\nC.NA ALTA (2)\nVIA DELLE ROSE: 2\n  via dei tiglli?: 7, 9\nCOMUNE: Villa\nVIA DEI TIGLLI: 1' },

@@ -1,5 +1,18 @@
 # Registro delle versioni
 
+## v0.24.0 · 2026-11-09 · Le caselle con due numeri nel verso della via
+
+- **Lettura delle foto**: una casella con due numeri si scrive nel verso della via, capito dai numeri vicini
+  («1, 3, 2A, 4, 7/5, 6» diventa «… 4, 5/7, 6»). Va bene anche per le vie che scendono e per quelle che tornano indietro
+  sull'altro lato (pari che salgono, dispari che scendono).
+- **Per quello già scritto**: sotto il giro un avviso dice quali caselle sembrano al contrario (si toccano per andare
+  alla riga) e **«↕ Mettile in ordine»** le sistema tutte insieme. Con lo stesso numero e lettere diverse (9C/9B) non
+  tocca niente: lì i numeri vicini non bastano a capire l'ordine.
+- **«9C\*/9B\*»**, con l'asterisco su tutti e due i numeri, vale come una casella sola che consegna un collega.
+- File: `app/src/core.js` (`houseValue`, `pairOrderFixes`, `fixPairOrder`, «*» ovunque nel civico), `app/src/ui.js`,
+  `app/index.src.html`, `tests/test_core.js`, `tests/test_pagina.js`, `Casellino.html`, `sito/`, `docs/handoff.md`,
+  `CHANGELOG.md`, `prove/`.
+
 ## v0.23.1 · 2026-11-09 · L'elenco delle vie della sottozona aperta
 
 - L'elenco **Vie** a destra mostra solo le vie della sottozona aperta («Vie della 2A»), comprese le caselle che finisce

@@ -2,6 +2,16 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 9 novembre 2026 · Tappa 13 chiusa: caselle doppie nel verso della via (v0.24.0)
+
+**Fatto.** `Core.houseValue` (12B → 12,02), `Core.pairOrderFixes(text, town)`: per ogni casella «a/b» con numeri
+diversi il verso viene dal valore della casella prima e di quella dopo sulla stessa riga (se mancano, dal confronto con la
+casella stessa); se «a/b» va contro, la propone girata. `Core.fixPairOrder` riscrive solo quei pezzi (larghezza e «*»
+restano). Usato in automatico dopo `F.routeLines` (lettura foto) e con un pulsante sotto il giro (non sui giri bloccati).
+**Verifiche.** `tests/test_core.js` (40: via che scende, via che torna indietro, stesso numero con lettere, «(2)*»),
+`tests/test_pagina.js` (avviso e pulsante), Edge in tempo reale.
+**Rischio.** È un'ipotesi: dove una casella vera ha davvero i numeri al contrario, l'avviso resta e basta non premere.
+
 ## 9 novembre 2026 · Tappa 12 chiusa: le foto da guardare (v0.23.0)
 
 **Fatto.** IndexedDB `casellino-foto`, archivio `foto` { id, sz, sign, name, blob, order, added }, indice `sz`; copie

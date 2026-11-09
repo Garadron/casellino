@@ -318,16 +318,15 @@
   function parseToken(token) {
     let t = token.trim();
     let span = 1;
-    let other = false;
-    [t, other] = otherLine(t);
+    // a "*" anywhere ("17*", "13A* (2)", "9C*/9B*"): the pigeonhole's mail goes to another line
+    const other = /\*/.test(t);
+    if (other) t = t.replace(/\s*\*\s*/g, ' ').trim();
     const spanMatch = /\(\s*(\d{1,2})\s*\)\s*$/.exec(t);
     if (spanMatch) {
       span = parseInt(spanMatch[1], 10);
       if (span < 1) return { error: 'una casella non può essere larga 0' };
       t = t.slice(0, spanMatch.index).trim();
     }
-    if (!other) [t, other] = otherLine(t);   // also "13A* (2)"
-    t = t.trim();
     // second: a second number in the same pigeonhole, split by a diagonal line ("2/4")
     const cell = function (top, second) { return { top: top, second: second || '', span: span, other: other }; };
 
@@ -465,6 +464,62 @@
       delete project.streets[key];
     }
     return out;
+  }
+
+  // The number of a house number, to compare them: "12" -> 12, "12B" -> 12.02, "12B/1" -> 12.02; null if none.
+  function houseValue(text) {
+    const m = /^\s*(\d{1,4})\s*([A-Za-z](?![A-Za-z]))?/.exec(String(text || ''));
+    return m ? +m[1] + (m[2] ? (m[2].toUpperCase().charCodeAt(0) - 64) / 100 : 0) : null;
+  }
+
+  /*
+   * Pigeonholes with two numbers written against the way the street goes ("1, 3, 4, 7/5, 6": it is 5/7).
+   * The way comes from the numbers just before and after on the same line, so a street that turns
+   * back (even numbers up, odd numbers down) is understood. Returns [{ line, tok, from, to, cell }].
+   */
+  function pairOrderFixes(text, baseTown) {
+    const byLine = {};
+    parseRoute(text, baseTown).items.forEach(function (it) {
+      if (it.kind === 'cell' && it.top) (byLine[it.line] = byLine[it.line] || []).push(it);
+    });
+    const fixes = [];
+    Object.keys(byLine).forEach(function (ln) {
+      const cells = byLine[ln];
+      const value = cells.map(function (c) {
+        const a = houseValue(c.top), b = c.second ? houseValue(c.second) : null;
+        return a === null ? null : (b === null ? a : (a + b) / 2);
+      });
+      cells.forEach(function (c, i) {
+        const a = houseValue(c.top), b = houseValue(c.second);
+        // only different numbers: with the same number (9C/9B) the numbers around do not tell the order of the letters
+        if (!c.second || a === null || b === null || Math.floor(a) === Math.floor(b)) return;
+        let before = null, after = null;
+        for (let j = i - 1; j >= 0 && before === null; j--) before = value[j];
+        for (let j = i + 1; j < cells.length && after === null; j++) after = value[j];
+        const here = (a + b) / 2;
+        let way = before !== null && after !== null ? Math.sign(after - before) : 0;
+        if (!way && after !== null) way = Math.sign(after - here);
+        if (!way && before !== null) way = Math.sign(here - before);
+        if (way && Math.sign(b - a) !== way) fixes.push({ line: +ln, tok: c.tok, from: c.top + '/' + c.second, to: c.second + '/' + c.top, cell: c });
+      });
+    });
+    return fixes;
+  }
+
+  // The same text with those pigeonholes the right way round: { text, fixes }.
+  function fixPairOrder(text, baseTown) {
+    const fixes = pairOrderFixes(text, baseTown);
+    const lines = String(text || '').split('\n');
+    fixes.forEach(function (f) {
+      const line = lines[f.line];
+      const colon = line.indexOf(':');
+      const toks = line.slice(colon + 1).split(',');
+      const tok = toks[f.tok];
+      const c = f.cell;
+      toks[f.tok] = /^\s*/.exec(tok)[0] + c.second + '/' + c.top + (c.span > 1 ? ' (' + c.span + ')' : '') + (c.other ? '*' : '') + /\s*$/.exec(tok)[0];
+      lines[f.line] = line.slice(0, colon + 1) + toks.join(',');
+    });
+    return { text: lines.join('\n'), fixes: fixes };
   }
 
   // The strips of a sub-zone in reading order: row 1 left to right, then row 2...
@@ -1444,7 +1499,7 @@
     PALETTE: PALETTE,
     norm: norm,
     streetKey: streetKey, renameStreet: renameStreet, splitAddress: splitAddress, addressText: addressText,
-    provinceName: provinceName, parseCoordinates: parseCoordinates,
+    provinceName: provinceName, parseCoordinates: parseCoordinates, pairOrderFixes: pairOrderFixes, fixPairOrder: fixPairOrder,
     newProject: newProject,
     newSubzone: newSubzone,
     sanitizeProject: sanitizeProject,

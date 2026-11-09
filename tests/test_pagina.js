@@ -125,6 +125,15 @@ function caretAt(ta, needle, offset) {
   rb.value = rb.value.replace('VIA DEI TIGLI: 1, 3, 5, 7, 9, 11, 13, 15, 14..2', 'VIA DEI TIGLI: 1..15, 14..2');
   rb.dispatchEvent(new win.Event('input'));
 
+  // a pigeonhole with two numbers against the way of the street: one button puts it right
+  rb.value = rb.value.replace('VIA DELLE ROSE: 1/3, 5/7,', 'VIA DELLE ROSE: 1/3, 7/5,');
+  rb.dispatchEvent(new win.Event('input'));
+  await wait(400);
+  const turnedNote = [...doc.querySelectorAll('li.soft')].find(function (li) { return /al contrario del verso della via/.test(li.textContent); });
+  assert.ok(turnedNote && /7\/5 → 5\/7/.test(turnedNote.textContent), 'avviso con l\'esempio');
+  [...turnedNote.querySelectorAll('button')].find(function (b) { return /Mettile in ordine/.test(b.textContent); }).dispatchEvent(new win.Event('click'));
+  assert.ok(/VIA DELLE ROSE: 1\/3, 5\/7,/.test(rb.value), 'rimessa in ordine');
+
   // leaving the app (another app, or closing it) saves at once, without waiting
   const routeBox = doc.querySelector('textarea.route-text');
   routeBox.value = routeBox.value + '\nVIA SALVATA SUBITO: 1';

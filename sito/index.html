@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.23.1';</script>
+<script>window.CASELLINO_VERSION = '0.24.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -601,6 +601,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       <tr><td><code>CONFINE: 9B</code></td><td>segna dove comincia un'altra sottozona (non si stampa)</td></tr>
       <tr><td><code># nota</code></td><td>una riga di appunti, non si stampa</td></tr>
       <tr><td><code>?</code></td><td>da controllare: la casella resta segnata in rosso</td></tr>
+      <tr><td><code>4, 7/5, 6</code></td><td>una casella con due numeri scritti al contrario del verso della via: sotto il giro compare l'avviso e «↕ Mettile in ordine» la fa diventare <code>5/7</code> (tutte insieme). La lettura delle foto le mette già nel verso giusto. Il verso si capisce dai numeri vicini, anche quando la via torna indietro sull'altro lato.</td></tr>
       <tr><td><code>17*</code></td><td>la posta di questa casella la consegna un collega (un'altra linea): nelle strisce e nella stampa il numero è sottolineato da una riga spessa. Non serve scriverlo: tocca la casella nella striscia e premi «👥 Lo consegna un collega» (dal computer anche con il cursore sul civico, o selezionandone tanti, e il pulsante sopra il giro).</td></tr>
     </table>
     <p><b>La regola delle strisce</b>: nella riga sotto c'è solo il nome della via (o piazza, cascina…), steso su tutte le sue caselle; nelle caselle di sopra ci sono solo i civici. Una casella che appartiene a un'altra via, in mezzo a una via, si scrive su una riga sua (per esempio <code>VIA DEI GELSI: 37</code>): prende il suo colore e il suo nome sotto.</p>
@@ -1015,16 +1016,15 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   function parseToken(token) {
     let t = token.trim();
     let span = 1;
-    let other = false;
-    [t, other] = otherLine(t);
+    // a "*" anywhere ("17*", "13A* (2)", "9C*/9B*"): the pigeonhole's mail goes to another line
+    const other = /\*/.test(t);
+    if (other) t = t.replace(/\s*\*\s*/g, ' ').trim();
     const spanMatch = /\(\s*(\d{1,2})\s*\)\s*$/.exec(t);
     if (spanMatch) {
       span = parseInt(spanMatch[1], 10);
       if (span < 1) return { error: 'una casella non può essere larga 0' };
       t = t.slice(0, spanMatch.index).trim();
     }
-    if (!other) [t, other] = otherLine(t);   // also "13A* (2)"
-    t = t.trim();
     // second: a second number in the same pigeonhole, split by a diagonal line ("2/4")
     const cell = function (top, second) { return { top: top, second: second || '', span: span, other: other }; };
 
@@ -1162,6 +1162,62 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       delete project.streets[key];
     }
     return out;
+  }
+
+  // The number of a house number, to compare them: "12" -> 12, "12B" -> 12.02, "12B/1" -> 12.02; null if none.
+  function houseValue(text) {
+    const m = /^\s*(\d{1,4})\s*([A-Za-z](?![A-Za-z]))?/.exec(String(text || ''));
+    return m ? +m[1] + (m[2] ? (m[2].toUpperCase().charCodeAt(0) - 64) / 100 : 0) : null;
+  }
+
+  /*
+   * Pigeonholes with two numbers written against the way the street goes ("1, 3, 4, 7/5, 6": it is 5/7).
+   * The way comes from the numbers just before and after on the same line, so a street that turns
+   * back (even numbers up, odd numbers down) is understood. Returns [{ line, tok, from, to, cell }].
+   */
+  function pairOrderFixes(text, baseTown) {
+    const byLine = {};
+    parseRoute(text, baseTown).items.forEach(function (it) {
+      if (it.kind === 'cell' && it.top) (byLine[it.line] = byLine[it.line] || []).push(it);
+    });
+    const fixes = [];
+    Object.keys(byLine).forEach(function (ln) {
+      const cells = byLine[ln];
+      const value = cells.map(function (c) {
+        const a = houseValue(c.top), b = c.second ? houseValue(c.second) : null;
+        return a === null ? null : (b === null ? a : (a + b) / 2);
+      });
+      cells.forEach(function (c, i) {
+        const a = houseValue(c.top), b = houseValue(c.second);
+        // only different numbers: with the same number (9C/9B) the numbers around do not tell the order of the letters
+        if (!c.second || a === null || b === null || Math.floor(a) === Math.floor(b)) return;
+        let before = null, after = null;
+        for (let j = i - 1; j >= 0 && before === null; j--) before = value[j];
+        for (let j = i + 1; j < cells.length && after === null; j++) after = value[j];
+        const here = (a + b) / 2;
+        let way = before !== null && after !== null ? Math.sign(after - before) : 0;
+        if (!way && after !== null) way = Math.sign(after - here);
+        if (!way && before !== null) way = Math.sign(here - before);
+        if (way && Math.sign(b - a) !== way) fixes.push({ line: +ln, tok: c.tok, from: c.top + '/' + c.second, to: c.second + '/' + c.top, cell: c });
+      });
+    });
+    return fixes;
+  }
+
+  // The same text with those pigeonholes the right way round: { text, fixes }.
+  function fixPairOrder(text, baseTown) {
+    const fixes = pairOrderFixes(text, baseTown);
+    const lines = String(text || '').split('\n');
+    fixes.forEach(function (f) {
+      const line = lines[f.line];
+      const colon = line.indexOf(':');
+      const toks = line.slice(colon + 1).split(',');
+      const tok = toks[f.tok];
+      const c = f.cell;
+      toks[f.tok] = /^\s*/.exec(tok)[0] + c.second + '/' + c.top + (c.span > 1 ? ' (' + c.span + ')' : '') + (c.other ? '*' : '') + /\s*$/.exec(tok)[0];
+      lines[f.line] = line.slice(0, colon + 1) + toks.join(',');
+    });
+    return { text: lines.join('\n'), fixes: fixes };
   }
 
   // The strips of a sub-zone in reading order: row 1 left to right, then row 2...
@@ -2141,7 +2197,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     PALETTE: PALETTE,
     norm: norm,
     streetKey: streetKey, renameStreet: renameStreet, splitAddress: splitAddress, addressText: addressText,
-    provinceName: provinceName, parseCoordinates: parseCoordinates,
+    provinceName: provinceName, parseCoordinates: parseCoordinates, pairOrderFixes: pairOrderFixes, fixPairOrder: fixPairOrder,
     newProject: newProject,
     newSubzone: newSubzone,
     sanitizeProject: sanitizeProject,
@@ -3931,6 +3987,27 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
         w.line >= 0 ? h('button', { type: 'button', class: 'link', onclick: function () { goToLine(w.line); } }, w.text) : w.text));
     });
     if (a.warnings.length > 12) els.warnings.append(h('li', { class: 'soft' }, 'e altri ' + (a.warnings.length - 12) + ' avvisi'));
+    // pigeonholes with two numbers against the way of the street: one button puts them all right
+    const turned = sz().locked ? [] : C.pairOrderFixes(sz().route, sz().town);
+    if (turned.length) {
+      const note = h('li', { class: 'soft' },
+        turned.length + (turned.length === 1 ? ' casella con due numeri sembra' : ' caselle con due numeri sembrano') + ' al contrario del verso della via: ');
+      turned.slice(0, 4).forEach(function (f, k) {
+        note.append(k ? ', ' : '', h('button', { type: 'button', class: 'link', onclick: function () { goToLine(f.line); } }, f.from + ' → ' + f.to));
+      });
+      els.warnings.append(note);
+      note.append(turned.length > 4 ? '… ' : ' ',
+        h('button', { type: 'button', class: 'pin-btn', onclick: function () {
+          const r = C.fixPairOrder(sz().route, sz().town);
+          sz().route = r.text;
+          const ta = state.els.ta;
+          if (ta) { const top = ta.scrollTop; ta.value = r.text; ta.scrollTop = top; }
+          changed();
+          refreshRoute();
+          refreshSide();
+          toast(r.fixes.length === 1 ? 'Messa in ordine 1 casella.' : 'Messe in ordine ' + r.fixes.length + ' caselle.');
+        } }, '↕ Mettile in ordine'));
+    }
     const unsure = C.allCells(a).filter(function (c) { return /\?/.test(c.top + c.second + c.street); }).length;
     if (unsure) els.warnings.append(h('li', { class: 'soft' }, unsure + (unsure === 1 ? ' casella da controllare' : ' caselle da controllare') + ' (hanno un «?», sono segnate in rosso).'));
 
@@ -4288,11 +4365,11 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       pos += line.length + 1;
     });
     if (!found.length) { toast('Metti il cursore su un civico, o seleziona i civici, e premi «Lo consegna un collega». Dal telefono: tocca la casella nella striscia.'); return; }
-    const all = found.every(function (f) { return /\*\s*$/.test(f.text); });
+    const all = found.every(function (f) { return /\*/.test(f.text); });
     let text = ta.value;
     found.slice().reverse().forEach(function (f) {
       const end = f.text.replace(/\s+$/, '');
-      const piece = all ? end.replace(/\s*\*$/, '') : (/\*$/.test(end) ? end : end + '*');
+      const piece = all ? end.replace(/\s*\*/g, '') : (/\*/.test(end) ? end : end + '*');
       text = text.slice(0, f.start) + piece + f.text.slice(end.length) + text.slice(f.end);
     });
     const top = ta.scrollTop;
@@ -4313,7 +4390,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     const line = lines[c.line];
     if (line === undefined) return;
     const colon = line.indexOf(':');
-    const mark = function (text, on) { const t = text.replace(/\s*\*\s*$/, ''); return on ? t + '*' : t; };
+    const mark = function (text, on) { const t = text.replace(/\s*\*/g, ''); return on ? t + '*' : t; };
     if (colon < 0) {
       lines[c.line] = mark(line.replace(/\s+$/, ''), !c.other);
     } else {
@@ -5419,7 +5496,9 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
       const rn = await w.recognize(toCanvas(low));
       const phrases = F.streetPhrases(rn.data.words).map(function (p) { return { text: p.text, x0: p.x0 / S, x1: p.x1 / S }; });
-      const lines = F.routeLines(cells, phrases);
+      // two numbers in one pigeonhole follow the way of the street (read "7/5" between 4 and 6: it is 5/7)
+      const read = F.routeLines(cells, phrases);
+      const lines = read.length ? C.fixPairOrder(read.join('\n'), sz().town).text.split('\n') : read;
       const out = $('foto-result');
       out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + '# foto ' + (photo.index + 1) + ' (letta in automatico: da controllare)\n' +
         (lines.length ? lines.join('\n') : '# non ho letto niente: prova a raddrizzarla o a stringere il rettangolo') + '\n';
