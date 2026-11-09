@@ -1,5 +1,14 @@
 # Registro delle versioni
 
+## v0.23.1 · 2026-11-09 · L'elenco delle vie della sottozona aperta
+
+- L'elenco **Vie** a destra mostra solo le vie della sottozona aperta («Vie della 2A»), comprese le caselle che finisce
+  nel mobile di un'altra sottozona; cambiando sottozona cambia anche l'elenco. Prima c'erano le vie di tutte, mescolate.
+- Correggendo un nome dall'elenco, il messaggio dice se è cambiato anche nel giro di un'altra sottozona.
+- **Sistemato**: nella finestra delle foto, senza foto compariva l'icona di un'immagine rotta.
+- File: `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `tests/test_pagina.js`, `Casellino.html`, `sito/`,
+  `CHANGELOG.md`, `prove/`.
+
 ## v0.23.0 · 2026-11-09 · Le foto delle strisce, da guardare mentre scrivi
 
 - **«🖼 Guarda le foto»** sopra il giro (anche quando è bloccato): una finestra che **resta aperta mentre scrivi**, sul

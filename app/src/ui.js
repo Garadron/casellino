@@ -753,27 +753,29 @@
     renderDuplicates();
   }, 250);
 
+  // The streets of the open sub-zone only (also the pigeonholes it fills in another sub-zone's frame).
   function renderStreets() {
     const p = state.project;
+    const cur = state.current;
     const usage = {};
     const order = [];
     C.analyseProject(p).forEach(function (a, zi) {
       C.allCells(a).forEach(function (c) {
         if (!c.key) return;
         if (!usage[c.key]) { usage[c.key] = { street: c.street, town: c.town, n: 0, zones: {} }; order.push(c.key); }
-        usage[c.key].n += c.span;
+        if (zi === cur) usage[c.key].n += c.span;
         usage[c.key].zones[zi] = true;
       });
     });
+    const mine = order.filter(function (k) { return usage[k].zones[cur]; });
     const byTown = {};
-    order.forEach(function (k) {
+    mine.forEach(function (k) {
       const t = usage[k].town || '';
       (byTown[t] = byTown[t] || []).push(k);
     });
     const towns = Object.keys(byTown);
-    p.subzones.forEach(function (s) {
-      if (s.town && !towns.some(function (t) { return C.norm(t) === C.norm(s.town); })) towns.push(s.town);
-    });
+    if (sz().town && !towns.some(function (t) { return C.norm(t) === C.norm(sz().town); })) towns.push(sz().town);
+    $('streets-zone').textContent = sz().name ? 'della ' + sz().name : '';
 
     const lists = $('town-lists');
     lists.textContent = '';
@@ -786,8 +788,8 @@
 
     const ul = $('streets');
     ul.textContent = '';
-    $('streets-count').textContent = order.length ? '(' + order.length + ')' : '';
-    if (!order.length) {
+    $('streets-count').textContent = mine.length ? '(' + mine.length + ')' : '';
+    if (!mine.length) {
       ul.append(h('li', { class: 'muted' }, 'Le vie che scrivi compaiono qui, con il loro colore.'));
       return;
     }
@@ -855,7 +857,9 @@
       refreshRoute();
       renderStreets();
       renderDuplicates();
-      toast('Nome corretto in ' + r.lines + (r.lines === 1 ? ' riga' : ' righe') + ' del giro' + (same ? ', e unito a quello che c\'era già.' : '.'));
+      const also = r.zones.filter(function (i) { return i !== state.current; }).map(function (i) { return p.subzones[i].name || 'sottozona ' + (i + 1); });
+      toast('Nome corretto in ' + r.lines + (r.lines === 1 ? ' riga' : ' righe') + (also.length ? ', anche nel giro della ' + also.join(' e della ') : ' del giro') +
+        (same ? ', e unito a quello che c\'era già.' : '.'));
     });
     li.textContent = '';
     li.append(form);

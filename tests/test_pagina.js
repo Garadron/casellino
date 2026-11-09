@@ -199,6 +199,20 @@ function caretAt(ta, needle, offset) {
   assert.ok(/disegno del mobile/.test(text('#subzone')), 'i moduli ora si scelgono nel disegno');
   assert.ok([...doc.querySelectorAll('.pen')].length >= 2, 'matite e gomma');
 
+  // the list of streets shows the open sub-zone only
+  const names = function () { return [...doc.querySelectorAll('#streets .nm')].map(function (b) { return b.textContent; }); };
+  assert.ok(names().indexOf('VIA DELLE ROSE') >= 0);
+  [...doc.querySelectorAll('#tabs button')].find(function (b) { return b.textContent === '+ Sottozona'; }).dispatchEvent(new win.Event('click'));
+  const routeB = doc.querySelector('textarea.route-text');
+  routeB.value = 'VIA SOLO DELLA B: 1, 2';
+  routeB.dispatchEvent(new win.Event('input'));
+  await wait(900);
+  assert.deepStrictEqual(names(), ['VIA SOLO DELLA B'], "nella sottozona nuova solo le sue vie");
+  [...doc.querySelectorAll('#tabs button')].find(function (b) { return /9A/.test(b.textContent); }).dispatchEvent(new win.Event('click'));
+  await wait(900);
+  assert.ok(names().indexOf('VIA SOLO DELLA B') < 0 && names().indexOf('VIA DELLE ROSE') >= 0, 'nella 9A le vie della 9A');
+  assert.ok(/della 9A/.test(text('#streets-zone')));
+
   assert.ok(/Versione \d+\.\d+\.\d+/.test(text('#version')), 'versione nel menu');
   console.log('Pagina: tutte le prove superate');
   win.close();
