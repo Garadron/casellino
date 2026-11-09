@@ -1,5 +1,12 @@
 # Registro delle versioni
 
+## v0.26.1 · 2026-11-09 · Il nome dell'autore anche in cima alla pagina
+
+- Regola Mondiale «I progetti portano il nome dell'autore» (nata qui, Casellino è il modello): la riga «© 2026 Emmanuel
+  Surace (Garadron)» ora c'è anche come commento in cima alla pagina, subito dopo `<!doctype html>`. Il resto (ogni file
+  di codice, `LICENSE`, `LICENZA.md`) era già a posto dalla v0.20.1.
+- File: `app/index.src.html`, `Casellino.html`, `sito/`, `CHANGELOG.md`, `prove/`.
+
 ## v0.26.0 · 2026-11-09 · Lettura delle foto più brava
 
 - Provata su cinque strisce vere con i numeri giusti scritti a mano (quella di un collega e quattro della zona di
