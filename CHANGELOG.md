@@ -1,5 +1,17 @@
 # Registro delle versioni
 
+## v0.25.1 · 2026-11-09 · Il telefono prende l'ultima versione salvata dal PC
+
+- **Sistemato**: aprendo Casellino (o ricaricando la pagina) si riprendeva la copia del dispositivo, anche quando un
+  altro dispositivo aveva salvato nell'account una versione più nuova; e nell'elenco dei lavori quello aperto non aveva
+  «Apri», quindi non si poteva riprendere. Ora, all'apertura e ogni volta che si torna sull'app, Casellino guarda
+  nell'account: se c'è una versione più nuova la apre da solo e lo dice («Aggiornato dall'account: salvato il …»).
+- Se anche questo dispositivo ha modifiche non ancora salvate, chiede quale tenere.
+- Nell'elenco dei lavori, sul lavoro aperto, compare «↻ Apri la più nuova» quando nell'account ce n'è una più nuova.
+- Le modifiche rimaste sul dispositivo senza arrivare all'account (per esempio senza internet) partono appena si riapre.
+- File: `app/src/ui.js` (`syncFromAccount`, `cloud.pending`), `app/src/core.js`, `tests/test_account_pagina.js`,
+  `Casellino.html`, `sito/`, `CHANGELOG.md`, `prove/`.
+
 ## v0.25.0 · 2026-11-09 · Due nomi nella stessa casella
 
 - Nella riga sotto, dove vanno vie e cascine, una casella può avere **due nomi uno sopra l'altro** (per esempio due

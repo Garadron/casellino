@@ -113,6 +113,8 @@
 
   function changed() {
     C.assignColors(state.project);
+    if (account.token && state.project.cloud) state.project.cloud.pending = true;
+    account.edits = (account.edits || 0) + 1;
     storeSave();
     if (typeof cloudSaveLater === 'function' && account.token) cloudSaveLater();
   }
@@ -2088,6 +2090,37 @@
 
   function savedLine(text) { $('saved').textContent = text; }
   const hhmm = function (t) { return new Date(t || Date.now()).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }); };
+  const when = function (t) { return new Date(t).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+  // Is the copy of the open work in the account newer than the one on this device?
+  const newer = function (w) { const c = state.project.cloud; return !!(c && c.id === w.id && w.versione > (c.versione || 0)); };
+
+  /*
+   * When the page opens and when it comes back on screen: if another device saved the open work
+   * after this one, its copy is opened (asking first if this device has changes not yet saved).
+   * Changes left here and never sent (for example without internet) are sent now.
+   */
+  async function syncFromAccount() {
+    const p = state.project;
+    if (!account.token || !p.cloud || !p.cloud.id || account.saving || account.syncing) return;
+    account.syncing = true;
+    try {
+      let list;
+      try { list = (await api('GET', '/api/lavori')).lavori; } catch (e) { return; }
+      const w = list.find(function (x) { return x.id === p.cloud.id; });
+      if (!w || state.project !== p) return;
+      if (!newer(w)) { if (p.cloud.pending) cloudSave(false); return; }
+      if (p.cloud.pending && !confirm('Nell\'account c\'è una versione più nuova di «' + w.nome + '», salvata il ' + when(w.aggiornato_il) +
+        ' da un altro dispositivo. Anche qui ci sono modifiche non ancora salvate.\n\nOK = apri quella dell\'account\nAnnulla = tieni questa (prenderà il posto dell\'altra)')) {
+        cloudSave(true);
+        return;
+      }
+      await openWork(w.id, true);
+      savedLine('Aggiornato dall\'account: salvato il ' + when(w.aggiornato_il));
+      toast('Ho aperto la versione più nuova, salvata il ' + when(w.aggiornato_il) + ' su un altro dispositivo.');
+    } finally {
+      account.syncing = false;
+    }
+  }
 
   // Saves the open work in the account (empty works are not saved). One save at a time.
   async function cloudSave(force, leaving) {
@@ -2097,11 +2130,13 @@
     const p = state.project;
     if (!p.cloud) p.cloud = { id: newWorkId(), versione: 0, aggiornato_il: 0 };
     const data = Object.assign({}, p, { cloud: null });
+    const edits = account.edits;
     try {
       const r = await api('PUT', '/api/lavori/' + p.cloud.id, { nome: workName(p), dati: JSON.stringify(data), versione: p.cloud.versione, forza: !!force }, leaving);
       if (state.project === p) {
         p.cloud.versione = r.versione;
         p.cloud.aggiornato_il = r.aggiornato_il;
+        if (account.edits === edits) delete p.cloud.pending;   // nothing changed while saving
         try { localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) { /* local copy is optional */ }
         savedLine('Salvato nel tuo account alle ' + hhmm(r.aggiornato_il));
       }
@@ -2291,9 +2326,10 @@
         list.append(h('li', { class: open ? 'open' : '' },
           h('div', null, h('b', null, w.nome), h('div', { class: 'small muted' },
             'salvato il ' + new Date(w.aggiornato_il).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) +
-            (open ? ' · è quello aperto' : ''))),
+            (open ? ' · è quello aperto' : '') + (newer(w) ? ' · nell\'account c\'è una versione più nuova' : ''))),
           h('span', { class: 'actions-inline' },
-            open ? null : h('button', { type: 'button', onclick: function () { $('dlg-account').close(); openWork(w.id); } }, 'Apri'),
+            open && !newer(w) ? null : h('button', { type: 'button', class: newer(w) ? 'primary' : '', onclick: function () { $('dlg-account').close(); openWork(w.id); } },
+              newer(w) ? '↻ Apri la più nuova' : 'Apri'),
             h('button', { type: 'button', class: 'danger', onclick: async function () {
               if (!confirm('Elimino «' + w.nome + '» dal tuo account? Non si torna indietro.')) return;
               try {
@@ -2561,7 +2597,10 @@
       document.querySelectorAll('.menu').forEach(function (menu) { if (menu.open && !menu.contains(e.target)) menu.open = false; });
     });
     window.addEventListener('resize', debounce(function () { if (state.els.ta) fitTextarea(state.els.ta); }, 200));
-    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') saveBeforeLeaving(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') saveBeforeLeaving();
+      else syncFromAccount();   // back on screen: maybe another device saved meanwhile
+    });
     window.addEventListener('pagehide', saveBeforeLeaving);
     $('overview-card').addEventListener('toggle', renderOverview);
     $('btn-ov-fit').addEventListener('click', function () { overviewBig = false; renderOverview(); });
@@ -2616,6 +2655,7 @@
     C.assignColors(state.project);
     renderAll();
     if (stored && p === stored) $('saved').textContent = 'Ripreso da questo dispositivo';
+    if (stored && p === stored) syncFromAccount();   // the account may have a newer copy (saved on another device)
     const v = $('version');
     if (v && window.CASELLINO_VERSION) v.textContent = 'Versione ' + window.CASELLINO_VERSION;
     registerOffline();

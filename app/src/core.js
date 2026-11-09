@@ -276,6 +276,7 @@
     out.wall = sanitizeWall(p.wall, out.subzones);
     if (p.cloud && /^[A-Za-z0-9_-]{8,40}$/.test(String(p.cloud.id || ''))) {
       out.cloud = { id: String(p.cloud.id), versione: Number(p.cloud.versione) || 0, aggiornato_il: Number(p.cloud.aggiornato_il) || 0 };
+      if (p.cloud.pending) out.cloud.pending = true;   // changed on this device and not yet in the account
     }
     if (p.streetLists && typeof p.streetLists === 'object') {
       Object.keys(p.streetLists).forEach(function (k) {

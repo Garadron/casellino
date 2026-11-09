@@ -89,6 +89,15 @@ async function until(fn, ms, label) {
   await until(function () { return /VIA DELLE ROSE/.test(d2.querySelector('textarea.route-text').value); });
   assert.strictEqual(d2.getElementById('zone').value, '9');
 
+  // the phone goes on writing; the office computer, coming back on screen, opens the newer copy by itself
+  ta.value = ta.value + '\nVIA DEL TELEFONO: 1';
+  d1.getElementById('saved').textContent = '';
+  ta.dispatchEvent(new w1.Event('input'));
+  await until(function () { return /Salvato nel tuo account/.test(d1.getElementById('saved').textContent); }, 10000, 'salvato dal primo');
+  d2.dispatchEvent(new w2.Event('visibilitychange'));
+  await until(function () { return /VIA DEL TELEFONO/.test(d2.querySelector('textarea.route-text').value); }, 8000, 'il secondo prende la versione nuova');
+  assert.ok(/Aggiornato dall'account/.test(d2.getElementById('saved').textContent));
+
   // a new user name: a wrong password does not sign out; then the name changes everywhere on this device
   const renamed = user + 'n';
   [...d2.querySelectorAll('.account-details button')].find(function (b) { return b.textContent === 'Cambia'; }).dispatchEvent(new w2.Event('click'));
