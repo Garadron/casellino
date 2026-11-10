@@ -2,6 +2,18 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 10 novembre 2026 · Tappa 17 chiusa: caselle trovate meglio (v0.28.0)
+
+**Fatto.** In `segmentStrip` le righe trovate passano da un filtro: una riga più vicina di 0,8 caselle a quella prima
+non è un bordo (stanghetta di «1» o «4», riga doppia); la larghezza di confronto è quella della casella prima se sta
+fra 0,7 e 1,3 volte la solita (foto di sbieco), se no la solita (metà alta dei buchi). Righe «pallide» solo dentro i
+buchi larghi più di 2,5 caselle. `readStrip`: se il riquadro è alto (larghezza/altezza < 7) `findStrip(photo, 0.3)` lo
+stringe sulla striscia. `blackWhite` cancella le righe e colonne di inchiostro che attraversano tutta la casella.
+**Misura.** 6 strisce di prova (una nuova: striscia intera fotografata dal telefono): 81/138 (59%), 37 sbagliati
+(v0.27.0: 70/138, 51%, 32). Nessuna striscia peggiora; quella presa di sbieco da 0 a 7 su 18.
+**Verifiche.** core 41, pagina, Edge vero con foto vere, controllo privacy.
+**Limiti.** Numeri scritti a mano su strisce colorate quasi illeggibili; la striscia intera in una foto resta al 50%.
+
 ## 10 novembre 2026 · Tappa 16 chiusa: foto tutte insieme, cartello, segnalazioni (v0.27.0)
 
 **Fatto.** `F.findStrip` (copia piccola 600 punti: righe di carta chiara con tanti tratti scuri sottili, pesate dalla
