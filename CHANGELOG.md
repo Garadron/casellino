@@ -1,5 +1,17 @@
 # Registro delle versioni
 
+## v0.28.0 · 2026-11-10 · Lettura delle foto: caselle trovate meglio
+
+- **Le caselle si trovano meglio**: le caselle vicine sono larghe uguali, quindi una «riga» troppo vicina a quella prima
+  non è un bordo ma la stanghetta di un «1» o di un «4» (succedeva con tutta la striscia in una foto, dove i numeri
+  riempiono la riga) o la seconda di una riga doppia. Il confronto è con la casella prima, così va bene anche una foto
+  presa di sbieco, dove le caselle si stringono man mano.
+- **Riquadro troppo alto** (un pezzo di mobile sopra o sotto): il programma tiene solo la striscia.
+- Dentro ogni casella si tolgono i resti dei bordi (righe dritte che la attraversano tutta).
+- Strisce di prova (ora 6, con una striscia intera fotografata dal telefono): **59%** dei civici giusti (prima 51%);
+  nessuna striscia legge meno civici giusti di prima.
+- File: `app/src/foto.js`, `Casellino.html`, `sito/`, `CHANGELOG.md`, `prove/`.
+
 ## v0.27.0 · 2026-11-10 · Foto lette tutte insieme, prima foto del cartello, segnalazioni
 
 Richieste di Garadron del 10 novembre 2026 (prove su Android, ColorOS 13, Oppo CPH2333).

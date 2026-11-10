@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.27.0';</script>
+<script>window.CASELLINO_VERSION = '0.28.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -3566,13 +3566,28 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     const gaps = [];
     for (let i = 1; i < faintX.length; i++) gaps.push(faintX[i] - faintX[i - 1]);
     gaps.sort(function (a, b) { return a - b; });
-    const usual = gaps.length ? gaps[Math.floor(gaps.length / 2)] : W;
+    // (the middle of the larger half: double lines and strokes of numbers make many small gaps)
+    const upper = gaps.slice(Math.floor(gaps.length / 2));
+    const usual = upper.length ? upper[Math.floor(upper.length / 2)] : W;
     // the clear lines; where they leave a gap of more than two pigeonholes, the faint lines inside it too
-    const edges = [0];
+    const found = [0];
     strongX.concat([W - 1]).forEach(function (x) {
+      const last = found[found.length - 1];
+      if (x - last > usual * 2.5) paleX.forEach(function (f) { if (f > last + usual * 0.5 && f < x - usual * 0.5) found.push(f); });
+      found.push(x);
+    });
+    // Pigeonholes next to each other are as wide (a photo taken at an angle makes them narrower little by
+    // little): a line closer than 4/5 of the pigeonhole before is not a border (the stroke of a "1" or a "4"
+    // when the numbers fill the row, the second line of a double line). Of two lines too close, the one that
+    // falls better on that width stays.
+    const edges = [found[0]];
+    found.slice(1).forEach(function (x, i) {
       const last = edges[edges.length - 1];
-      if (x - last > usual * 2.5) paleX.forEach(function (f) { if (f > last + usual * 0.5 && f < x - usual * 0.5) edges.push(f); });
-      edges.push(x);
+      const before = edges.length > 1 ? edges[edges.length - 2] : null;
+      const prevGap = before === null ? usual : last - before;
+      const width = prevGap >= usual * 0.7 && prevGap <= usual * 1.3 ? prevGap : usual;   // a wide pigeonhole before does not count
+      if (x - last >= width * 0.8 || i === found.length - 2) { edges.push(x); return; }
+      if (before !== null && Math.abs(x - before - width) < Math.abs(last - before - width)) edges[edges.length - 1] = x;
     });
     let cells = [];
     for (let i = 1; i < edges.length; i++) cells.push({ x0: Math.round(edges[i - 1]), x1: Math.round(edges[i]) });
@@ -3593,8 +3608,22 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     for (let i = 0; i < g.length; i++) if (g[i] <= t) dark++;
     const flip = dark > g.length * 0.5;   // light writing on a dark colour: the writing becomes black
     const out = { width: b.width, height: b.height, data: new Uint8ClampedArray(b.data.length), ink: (flip ? g.length - dark : dark) / g.length };
+    const ink = new Uint8Array(g.length);
+    for (let i = 0; i < g.length; i++) ink[i] = (g[i] <= t) !== flip ? 1 : 0;
+    // what is left of the borders: rows dark across most of the width, columns dark for most of the height
+    const W = b.width, H = b.height;
+    for (let y = 0; y < H; y++) {
+      let n = 0;
+      for (let x = 0; x < W; x++) n += ink[y * W + x];
+      if (n > W * 0.7) for (let x = 0; x < W; x++) ink[y * W + x] = 0;
+    }
+    for (let x = 0; x < W; x++) {
+      let n = 0;
+      for (let y = 0; y < H; y++) n += ink[y * W + x];
+      if (n > H * 0.8) for (let y = 0; y < H; y++) ink[y * W + x] = 0;
+    }
     for (let i = 0; i < g.length; i++) {
-      const v = (g[i] <= t) !== flip ? 0 : 255;
+      const v = ink[i] ? 0 : 255;
       out.data[i * 4] = out.data[i * 4 + 1] = out.data[i * 4 + 2] = v;
       out.data[i * 4 + 3] = 255;
     }
@@ -3827,7 +3856,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
    * numbers) make the row of the numbers; the street names are just under it.
    * Returns { x0, y0, x1, y1 } as parts of the photo (0..1), or null if there is no strip.
    */
-  function findStrip(img) {
+  function findStrip(img, tallest) {
     const W = img.width, H = img.height, g = toGray(img);
     const step = Math.max(2, Math.round(W / 200));   // a stroke is a few points wide in a small copy
     const raw = new Float64Array(H);
@@ -3867,7 +3896,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     // the row of the numbers is thin (a few hundredths of the photo): the band stops there, even if the
     // pigeonholes above (grey fins, also full of strokes) go on
     let a = at, b = at;
-    const most = Math.max(4, Math.round(H * 0.06));
+    const most = Math.max(4, Math.round(H * (tallest || 0.06)));   // in a whole photo the strip is thin
     while (b - a < most && ((a > 0 && score[a - 1] > best * 0.5) || (b < H - 1 && score[b + 1] > best * 0.5))) {
       if (a > 0 && score[a - 1] >= (b < H - 1 ? score[b + 1] : 0)) a--; else b++;
     }
@@ -3936,8 +3965,21 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     return out;
   }
 
+  // Rows y0..y1 of an image, as an image of their own.
+  function rowsOf(img, y0, y1) {
+    const W = img.width, H = Math.max(1, y1 - y0);
+    return { width: W, height: H, data: img.data.slice(y0 * W * 4, (y0 + H) * W * 4) };
+  }
+
   async function readStrip(photo, recognize, progress) {
-    const img = straighten(photo);
+    // a rectangle much taller than a strip (frame above, papers below; a strip is many times wider than
+    // tall): only the strip is kept
+    let part = photo;
+    if (photo.width / photo.height < 7) {
+      const band = findStrip(photo, 0.3);
+      if (band && band.y1 - band.y0 < 0.8) part = rowsOf(photo, Math.floor(band.y0 * photo.height), Math.ceil(band.y1 * photo.height));
+    }
+    const img = straighten(part);
     const seg = segmentStrip(img);
     const S = 2;
     const up = cleanBand(img, seg.top, seg.split, S);
