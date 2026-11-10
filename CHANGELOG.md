@@ -29,6 +29,7 @@ Richieste di Garadron del 10 novembre 2026 (prove su Android, ColorOS 13, Oppo C
   programma, il browser e gli ultimi errori che il programma ha visto (un diario degli errori, tenuto solo per questo).
   Serve un account. Lato PC: `tools/scarica_segnalazioni.py`.
 - Server: `server/migrations/0003_segnalazioni.sql`, `/api/segnala`, `/api/segnalazioni` (solo con la chiave del PC).
+  Pubblicato il 10 novembre 2026 con il sì di Garadron; le segnalazioni arrivano nella cartella dei bug del PC.
 - File: `app/src/foto.js` (`findStrip`, `routeItems`, `itemLines`, `withoutOverlap`, `zoneSign`), `app/src/ui.js`,
   `app/src/style.css`, `app/index.src.html`, `server/src/worker.js`, `server/migrations/0003_segnalazioni.sql`,
   `tools/scarica_segnalazioni.py`, `tests/test_server.js`, `tests/test_account_pagina.js`, `README.md`,

@@ -5,11 +5,6 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
-0. **Pubblicare il server con le segnalazioni** (v0.27.0): aspetta il «sì» di Garadron. In `server/`:
-   `npx wrangler d1 migrations apply casellino --remote`, la chiave del PC con
-   `npx wrangler secret put ADMIN < ../dati/admin-segnalazioni.txt`, poi `npx wrangler deploy`. Poi
-   `python tools/scarica_segnalazioni.py` porta le segnalazioni nella cartella dei bug scritta in
-   `dati/cartella-segnalazioni.txt` (il giro automatico lo decide Garadron nella chat di Archivista).
 1. **Prova di stampa** del PDF (A4 orizzontale, «dimensioni reali / 100%») appoggiata alle caselle del mobile vero:
    larghezza delle caselle, caselle oblique, colori scuri. Se non combacia, si aggiunge una regolazione della larghezza
    nel PDF (proposta, non fatta).
