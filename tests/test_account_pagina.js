@@ -119,6 +119,14 @@ async function until(fn, ms, label) {
   assert.strictEqual(w2.localStorage.getItem('casellino.progetto'), null);
   assert.strictEqual(w2.localStorage.getItem('casellino.account'), null);
 
+  // a problem reported from the page: system written by itself, sent to the server
+  d1.getElementById('btn-bug').dispatchEvent(new w1.Event('click'));
+  await until(function () { return d1.getElementById('dlg-bug').open; }, 3000, 'finestra della segnalazione');
+  d1.getElementById('bug-text').value = 'prova di segnalazione';
+  d1.getElementById('bug-send').dispatchEvent(new w1.Event('click'));
+  await until(function () { return !d1.getElementById('dlg-bug').open; }, 8000, 'segnalazione inviata');
+  assert.ok(/Segnalazione inviata/.test(d1.querySelector('.toast').textContent));
+
   // clean up: delete the test account
   await fetch(API + '/api/accedi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ utente: renamed, password: pass }) })
     .then(function (r) { return r.json(); })

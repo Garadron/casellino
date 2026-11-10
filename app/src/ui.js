@@ -1714,7 +1714,12 @@
   // ------------------------------------------------------------ reading strips from photos (free, on the device)
 
   const F = window.CasellinoFoto;
-  const photo = { files: [], index: 0, image: null, angle: 0, rect: null, view: null, worker: null, busy: false };
+  /*
+   * The photos chosen and, for each, its rectangle on the strip (parts of the photo, 0..1: found by
+   * itself, changed by hand), its angle and whether it was read; what was read so far, to leave out
+   * the piece two photos one after the other have in common.
+   */
+  const photo = { files: [], index: 0, image: null, rects: [], angles: [], done: [], items: [], view: null, worker: null, busy: false, stop: false, first: '' };
   let tesseractReady = null;
 
   function loadTesseract() {
@@ -1742,10 +1747,9 @@
     return c;
   }
 
-  // The photo turned by the chosen angle, at a given scale, on a canvas.
-  function turned(scale) {
-    const img = photo.image;
-    const a = photo.angle * Math.PI / 180;
+  // A photo turned by its angle, at a given scale, on a canvas.
+  function turned(img, angle, scale) {
+    const a = (angle || 0) * Math.PI / 180;
     const w = img.naturalWidth * scale, hh = img.naturalHeight * scale;
     const W = Math.ceil(Math.abs(w * Math.cos(a)) + Math.abs(hh * Math.sin(a)));
     const H = Math.ceil(Math.abs(w * Math.sin(a)) + Math.abs(hh * Math.cos(a)));
@@ -1759,27 +1763,70 @@
     return c;
   }
 
+  function loadImage(i) {
+    return new Promise(function (ok, ko) {
+      const img = new Image();
+      img.onload = function () { ok(img); };
+      img.onerror = function () { ko(new Error('la foto ' + (i + 1) + ' non si apre')); };
+      img.src = URL.createObjectURL(photo.files[i]);
+    });
+  }
+
+  // The strip of a photo, found by itself on a small copy (parts of the photo, 0..1), or null.
+  function autoRect(img) {
+    const w = 600, hgt = Math.max(1, Math.round(600 * img.naturalHeight / img.naturalWidth));
+    const c = imageToCanvas(w, hgt);
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, w, hgt);
+    const d = g.getImageData(0, 0, w, hgt);
+    try { return F.findStrip({ width: w, height: hgt, data: d.data }); } catch (e) { return null; }
+  }
+
+  // The rectangle of the photo shown, in points of the canvas; its 8 handles (corners and sides).
+  const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+  function rectPx() {
+    const r = photo.rects[photo.index], c = $('foto-canvas');
+    return r ? { x0: r.x0 * c.width, y0: r.y0 * c.height, x1: r.x1 * c.width, y1: r.y1 * c.height } : null;
+  }
+  function handlePoints(r) {
+    const mx = (r.x0 + r.x1) / 2, my = (r.y0 + r.y1) / 2;
+    return { nw: [r.x0, r.y0], n: [mx, r.y0], ne: [r.x1, r.y0], e: [r.x1, my], se: [r.x1, r.y1], s: [mx, r.y1], sw: [r.x0, r.y1], w: [r.x0, my] };
+  }
+  // canvas points for one point on the screen (the canvas is shown smaller on a phone)
+  function pointsPerScreen() {
+    const c = $('foto-canvas');
+    const shown = c.getBoundingClientRect().width;
+    return shown ? c.width / shown : 1;
+  }
+
   function drawPhoto() {
     const stage = $('foto-canvas');
     if (!photo.image) { stage.width = stage.height = 0; return; }
     const box = $('foto-stage');
     const scale = Math.min(1, (box.clientWidth || 800) / photo.image.naturalWidth);
-    const c = turned(scale);
+    const c = turned(photo.image, photo.angles[photo.index], scale);
     stage.width = c.width; stage.height = c.height;
     const g = stage.getContext('2d');
     g.drawImage(c, 0, 0);
     photo.view = { scale: scale };
-    if (photo.rect) {
-      const r = photo.rect;
+    const r = rectPx();
+    const k = pointsPerScreen();
+    if (r) {
       g.fillStyle = 'rgba(0,0,0,0.35)';
       g.fillRect(0, 0, stage.width, r.y0);
       g.fillRect(0, r.y1, stage.width, stage.height - r.y1);
       g.fillRect(0, r.y0, r.x0, r.y1 - r.y0);
       g.fillRect(r.x1, r.y0, stage.width - r.x1, r.y1 - r.y0);
-      g.strokeStyle = '#d93025'; g.lineWidth = 2;
+      g.strokeStyle = '#d93025'; g.lineWidth = 2 * k;
       g.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+      // the handles to make it bigger or smaller
+      const hp = handlePoints(r), s = 11 * k;
+      HANDLES.forEach(function (n) {
+        g.fillStyle = '#fff'; g.fillRect(hp[n][0] - s / 2, hp[n][1] - s / 2, s, s);
+        g.strokeStyle = '#d93025'; g.lineWidth = 2 * k; g.strokeRect(hp[n][0] - s / 2, hp[n][1] - s / 2, s, s);
+      });
     } else {
-      // no rectangle yet: say what to do, on the photo itself
+      // no rectangle: say what to do, on the photo itself
       const fs = Math.max(13, Math.round(stage.width / 28));
       g.fillStyle = 'rgba(0,0,0,0.6)';
       g.fillRect(0, 0, stage.width, fs * 2.2);
@@ -1787,23 +1834,26 @@
       g.fillText('Trascina un rettangolo intorno a una sola striscia', fs * 0.6, fs * 1.1, stage.width - fs * 1.2);
     }
     $('foto-count').textContent = 'Foto ' + (photo.index + 1) + ' di ' + photo.files.length;
+    $('foto-state').textContent = photo.done[photo.index] ? '✓ letta' : (photo.rects[photo.index] ? 'striscia trovata: controlla il riquadro' : '');
   }
 
-  function showPhoto(i) {
-    photo.index = i;
-    photo.rect = null;
-    photo.angle = 0;
-    $('foto-rot').value = '0';
-    if (i >= photo.files.length) {
+  // Shows photo i (waits for it), with its rectangle found by itself the first time.
+  async function showPhoto(i) {
+    photo.index = Math.max(0, i);
+    if (photo.index >= photo.files.length) {
       photo.image = null;
       drawPhoto();
-      $('foto-count').textContent = 'Foto finite: controlla il testo e premi «Aggiungi al giro».';
+      $('foto-count').textContent = photo.files.length ? 'Foto finite: controlla il testo e premi «Aggiungi al giro».' : 'Scegli le foto.';
+      $('foto-state').textContent = '';
       return;
     }
-    const url = URL.createObjectURL(photo.files[i]);
-    const img = new Image();
-    img.onload = function () { photo.image = img; drawPhoto(); };
-    img.src = url;
+    const at = photo.index;
+    $('foto-rot').value = String(photo.angles[at] || 0);
+    const img = await loadImage(at);
+    if (photo.index !== at) return;   // another photo was asked meanwhile
+    photo.image = img;
+    if (photo.rects[at] === undefined) photo.rects[at] = autoRect(img);
+    drawPhoto();
   }
 
   function stagePoint(e) {
@@ -1812,100 +1862,307 @@
     return { x: (e.clientX - r.left) * c.width / r.width, y: (e.clientY - r.top) * c.height / r.height };
   }
 
-  async function readPhoto() {
-    if (photo.busy || !photo.image) return;
-    photo.busy = true;
-    const status = $('foto-status');
+  /*
+   * Reads photo i: its rectangle (or the strip found by itself; the whole photo if none). With no house
+   * numbers, it may be the photo of the sign of a sub-zone ("2A"): then { zone }.
+   */
+  async function readOne(i, progress) {
+    const w = await ocrWorker();
+    const img = i === photo.index && photo.image ? photo.image : await loadImage(i);
+    if (photo.rects[i] === undefined) photo.rects[i] = autoRect(img);
+    const full = turned(img, photo.angles[i], 1);
+    const r = photo.rects[i] || { x0: 0, y0: 0, x1: 1, y1: 1 };
+    const x0 = Math.max(0, Math.round(r.x0 * full.width)), y0 = Math.max(0, Math.round(r.y0 * full.height));
+    const cw = Math.max(1, Math.min(full.width - x0, Math.round((r.x1 - r.x0) * full.width)));
+    const ch = Math.max(1, Math.min(full.height - y0, Math.round((r.y1 - r.y0) * full.height)));
+    const data = full.getContext('2d').getImageData(x0, y0, cw, ch);   // at the size of the photo: each pigeonhole is enlarged in foto.js
+    // test mode (localStorage casellino.prova = 1): the piece given to the reader is kept, to look at it
+    let testing = false;
+    try { testing = localStorage.getItem('casellino.prova') === '1'; } catch (e) { /* no test mode */ }
+    if (testing) {
+      const keep = imageToCanvas(cw, ch);
+      keep.getContext('2d').putImageData(data, 0, 0);
+      (window.CasellinoProva = window.CasellinoProva || []).push({ foto: i + 1, rect: r, ritaglio: keep.toDataURL('image/png') });
+    }
+    const toCanvas = function (band) {
+      const c = imageToCanvas(band.width, band.height);
+      c.getContext('2d').putImageData(new ImageData(band.data, band.width, band.height), 0, 0);
+      return c;
+    };
+    // the reading itself is in foto.js (straightened, pigeonhole by pigeonhole); here only Tesseract and the progress
+    const res = await F.readStrip({ width: data.width, height: data.height, data: data.data }, async function (band, mode, whitelist) {
+      await w.setParameters({ tessedit_pageseg_mode: mode, tessedit_char_whitelist: whitelist });
+      return (await w.recognize(toCanvas(band))).data;
+    }, progress);
+    const unsure = res.cells.filter(function (c) { return c.unsure; }).length;
+    if (res.cells.length >= 5 && unsure < res.cells.length * 0.6) return res;
+    // few numbers, or almost all uncertain: maybe the photo of the sign of a sub-zone ("2A", written big)
+    const small = turned(img, photo.angles[i], Math.min(1, 2600 / img.naturalWidth));
+    await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
+    const words = (await w.recognize(small)).data.words;
+    const zone = F.zoneSign(words, state.project.subzones.map(function (s) { return s.name; }), small.height * 0.06);
+    return zone ? { cells: [], phrases: [], zone: zone } : res;
+  }
+
+  // What photo i read goes at the end of the text: without the piece the photo before showed too.
+  function addReading(i, res) {
+    const out = $('foto-result');
+    const add = function (text) { out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + text + '\n'; out.scrollTop = out.scrollHeight; };
+    if (res.zone) {
+      add('# sottozona ' + res.zone + ' (cartello nella foto ' + (i + 1) + ')');
+      photo.items = [];   // a new sub-zone: nothing in common with the photos before
+      setTarget(res.zone);
+      return;
+    }
+    const items = F.routeItems(res.cells, res.phrases);
+    const fresh = F.withoutOverlap(photo.items, items);
+    photo.items = photo.items.concat(fresh);
+    const same = items.length - fresh.length;
+    add('# foto ' + (i + 1) + ' (letta in automatico: da controllare)' + (same ? ' · ' + same + (same === 1 ? ' casella uguale' : ' caselle uguali') + ' alla foto prima, non ripetute' : ''));
+    // two numbers in one pigeonhole follow the way of the street (read "7/5" between 4 and 6: it is 5/7)
+    if (fresh.length) add(C.fixPairOrder(F.itemLines(fresh).join('\n'), sz().town).text);
+  }
+
+  /*
+   * The first photo is the sign of the zone ("2A") with the sheet of its streets: the program reads the
+   * name and says whether the sheet can be read; the person looks at the photo and confirms it (or takes
+   * it again). It gives its name to the sub-zone of the strips that follow.
+   */
+  async function checkFirst() {
+    const box = $('foto-first'), msg = $('foto-first-msg');
+    box.hidden = false;
+    $('foto-first-name').value = '';
+    msg.textContent = 'La controllo…';
     try {
       const w = await ocrWorker();
-      // the chosen part at full size (or all the photo)
-      const full = turned(1);
-      const k = 1 / photo.view.scale;
-      const r = photo.rect || { x0: 0, y0: 0, x1: full.width * photo.view.scale, y1: full.height * photo.view.scale };
-      const x0 = Math.max(0, Math.round(r.x0 * k)), y0 = Math.max(0, Math.round(r.y0 * k));
-      const cw = Math.min(full.width - x0, Math.round((r.x1 - r.x0) * k)), ch = Math.min(full.height - y0, Math.round((r.y1 - r.y0) * k));
-      const data = full.getContext('2d').getImageData(x0, y0, cw, ch);
-      const img = { width: data.width, height: data.height, data: data.data };
-      const toCanvas = function (band) {
-        const c = imageToCanvas(band.width, band.height);
-        c.getContext('2d').putImageData(new ImageData(band.data, band.width, band.height), 0, 0);
-        return c;
-      };
-      // the reading itself is in foto.js (straightened, pigeonhole by pigeonhole); here only Tesseract and the progress
-      const res = await F.readStrip(img, async function (band, mode, whitelist) {
-        await w.setParameters({ tessedit_pageseg_mode: mode, tessedit_char_whitelist: whitelist });
-        return (await w.recognize(toCanvas(band))).data;
-      }, function (i, n) { status.textContent = 'Leggo i civici: ' + (i + 1) + ' di ' + n + '…'; });
-      const cells = res.cells, phrases = res.phrases;
-      // two numbers in one pigeonhole follow the way of the street (read "7/5" between 4 and 6: it is 5/7)
-      if (!cells.length) {
-        // nothing read: the same photo stays, to try again
-        status.textContent = 'Non ho trovato civici in questa foto. ' + (photo.rect
-          ? 'Stringi il rettangolo sulla sola striscia (dal bordo sopra i numeri al bordo sotto le vie), raddrizzala se è storta, e premi di nuovo «Leggi».'
-          : 'Trascina con il dito un rettangolo intorno a una sola striscia (dal bordo sopra i numeri al bordo sotto le vie) e premi di nuovo «Leggi».');
-        return;
+      const img = await loadImage(0);
+      const small = turned(img, 0, Math.min(1, 2600 / img.naturalWidth));   // at full size: the name on the sheet is small
+      await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
+      const words = (await w.recognize(small)).data.words;
+      const name = F.zoneSign(words, state.project.subzones.map(function (s) { return s.name; }), small.height * 0.06);
+      const clear = words.filter(function (x) { return x.confidence > 70 && /[A-Za-zÀ-ù]{3}/.test(x.text); }).length;
+      $('foto-first-name').value = name;
+      msg.textContent = (name ? 'Sul cartello leggo «' + name + '». ' : 'Non leggo il numero della zona sul cartello: scrivilo tu (per esempio 2A). ') +
+        (clear >= 15 ? 'Il foglio delle vie si legge bene. ' : 'Il foglio delle vie si legge poco: se puoi, rifai la foto più vicina e dritta, con tutto il cartello e tutto il foglio. ') +
+        'Guarda la foto qui sotto e conferma.';
+    } catch (e) {
+      msg.textContent = 'Non riesco a controllarla (' + e.message + '): scrivi tu la sottozona e conferma.';
+    }
+  }
+
+  // The sub-zone chosen in the list at the bottom: one of the work, or a new one with that name.
+  function setTarget(name) {
+    const sel = $('foto-target');
+    let opt = Array.prototype.find.call(sel.options, function (o) { return C.norm(o.dataset.name || o.textContent) === C.norm(name); });
+    if (!opt) { opt = h('option', { value: 'nuova:' + name, 'data-name': name }, name + ' (nuova)'); sel.append(opt); }
+    sel.value = opt.value;
+  }
+
+  function confirmFirst() {
+    const name = $('foto-first-name').value.toUpperCase().replace(/\s+/g, '');
+    if (!name) { $('foto-first-msg').textContent = 'Scrivi la sottozona (per esempio 2A), poi «Va bene».'; return; }
+    photo.first = name;
+    photo.done[0] = true;
+    photo.items = [];
+    const out = $('foto-result');
+    out.value = '# sottozona ' + name + ' (cartello nella foto 1)\n' + out.value.replace(/^# sottozona .*\(cartello nella foto 1\)\n/, '');
+    setTarget(name);
+    $('foto-first').hidden = true;
+    $('foto-status').textContent = 'Prima foto confermata: sottozona ' + name + '. Ora «📚 Leggi tutte le foto».';
+    showPhoto(1);
+  }
+
+  function setBusy(on) {
+    $('foto-all').textContent = on ? '⏹ Ferma' : '📚 Leggi tutte le foto';
+    ['foto-read', 'foto-prev', 'foto-next', 'foto-files'].forEach(function (id) { $(id).disabled = on; });
+  }
+  const NOTHING = 'Non ho trovato civici in questa foto. Allarga o stringi il riquadro rosso sulla sola striscia (dal bordo sopra i numeri al bordo sotto le vie), raddrizzala se è storta, e premi «Leggi solo questa».';
+
+  async function readCurrent() {
+    if (photo.busy || !photo.image) return;
+    photo.busy = true; setBusy(true);
+    const status = $('foto-status');
+    const i = photo.index;
+    try {
+      const res = await readOne(i, function (k, n) { status.textContent = 'Leggo i civici: ' + (k + 1) + ' di ' + n + '…'; });
+      if (!res.cells.length && !res.zone) { status.textContent = NOTHING; return; }
+      addReading(i, res);
+      photo.done[i] = true;
+      status.textContent = res.zone ? 'Foto ' + (i + 1) + ': cartello della ' + res.zone + '.' : res.cells.length + ' civici letti nella foto ' + (i + 1) + '.';
+      photo.busy = false; setBusy(false);
+      await showPhoto(i + 1);
+    } catch (e) {
+      status.textContent = 'Non riesco a leggere: ' + e.message;
+      note('lettura foto ' + (i + 1) + ': ' + e.message);
+    } finally {
+      photo.busy = false; setBusy(false);
+    }
+  }
+
+  // All the photos not read yet, one after the other ("Ferma" stops after the photo being read).
+  async function readAll() {
+    if (photo.busy) { photo.stop = true; $('foto-all').textContent = 'Mi fermo dopo questa foto…'; return; }
+    if (!photo.files.length) { $('foto-status').textContent = 'Scegli prima le foto.'; return; }
+    if (!$('foto-first').hidden) { $('foto-status').textContent = 'Prima conferma la prima foto (il cartello della zona), qui sopra.'; return; }
+    photo.busy = true; photo.stop = false; setBusy(true);
+    const status = $('foto-status');
+    let read = 0;
+    const empty = [];
+    try {
+      for (let i = 0; i < photo.files.length && !photo.stop; i++) {
+        if (photo.done[i]) continue;
+        await showPhoto(i);
+        const res = await readOne(i, function (k, n) { status.textContent = 'Foto ' + (i + 1) + ' di ' + photo.files.length + ': civici ' + (k + 1) + ' di ' + n + '…'; });
+        if (!res.cells.length && !res.zone) { empty.push(i + 1); note('foto ' + (i + 1) + ' di ' + photo.files.length + ': nessun civico letto'); continue; }
+        addReading(i, res);
+        photo.done[i] = true;
+        read++;
+        drawPhoto();
       }
-      const read = F.routeLines(cells, phrases);
-      const lines = C.fixPairOrder(read.join('\n'), sz().town).text.split('\n');
-      const out = $('foto-result');
-      out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + '# foto ' + (photo.index + 1) + ' (letta in automatico: da controllare)\n' +
-        lines.join('\n') + '\n';
-      status.textContent = cells.length + ' civici letti nella foto ' + (photo.index + 1) + '.';
-      showPhoto(photo.index + 1);
+      status.textContent = (photo.stop ? 'Fermato. ' : 'Fatto. ') + 'Foto lette: ' + read + '.' +
+        (empty.length ? ' Senza civici: foto ' + empty.join(', ') + '. Sistema il riquadro e premi «Leggi solo questa».' : ' Controlla il testo e premi «Aggiungi al giro».');
+      if (empty.length) { photo.busy = false; await showPhoto(empty[0] - 1); }
     } catch (e) {
       status.textContent = 'Non riesco a leggere: ' + e.message;
     } finally {
-      photo.busy = false;
+      photo.busy = false; photo.stop = false; setBusy(false);
     }
+  }
+
+  // The sub-zone with that name ("2A"): one of the work, the empty one of a new work, or a new one.
+  function subzoneNamed(name) {
+    const subs = state.project.subzones;
+    let k = subs.findIndex(function (s) { return C.norm(s.name) === C.norm(name); });
+    if (k < 0) k = subs.findIndex(function (s) { return !s.name.trim() && !s.route.trim(); });
+    if (k >= 0) { subs[k].name = subs[k].name.trim() || name; }
+    else {
+      const last = subs[subs.length - 1];
+      const s = C.newSubzone(name, last ? last.town : '');
+      if (last) s.modules = Object.assign({}, last.modules);
+      subs.push(s);
+      k = subs.length - 1;
+    }
+    const zone = /^(\d+)[A-Z]$/i.exec(name);
+    if (zone && !String(state.project.zone || '').trim()) { state.project.zone = zone[1]; renderProjectFields(); }   // "2A": zone 2
+    return k;
   }
 
   function openPhotos() {
     $('foto-result').value = '';
     $('foto-status').textContent = '';
-    photo.files = [];
+    Object.assign(photo, { files: [], rects: [], angles: [], done: [], items: [], image: null });
+    const sel = $('foto-target');
+    sel.textContent = '';
+    state.project.subzones.forEach(function (s, k) {
+      sel.append(h('option', { value: String(k), selected: k === state.current, 'data-name': s.name }, s.name || 'sottozona ' + (k + 1)));
+    });
+    $('foto-first').hidden = true;
+    photo.first = '';
     showPhoto(0);
-    $('foto-count').textContent = 'Scegli le foto.';
     $('dlg-foto').showModal();
   }
 
   function wirePhotos() {
     $('foto-files').addEventListener('change', function (e) {
-      photo.files = Array.prototype.slice.call(e.target.files || []);
-      if (photo.files.length) showPhoto(0);
+      Object.assign(photo, { files: Array.prototype.slice.call(e.target.files || []), rects: [], angles: [], done: [], items: [], first: '' });
+      if (photo.files.length) { showPhoto(0); checkFirst(); }
       if (photo.files.length && window.indexedDB) keepPhotos(photo.files).then(renderPhotoButton).catch(function () { /* only a convenience */ });
     });
-    $('foto-rot').addEventListener('input', function (e) { photo.angle = +e.target.value; photo.rect = null; drawPhoto(); });
+    $('foto-rot').addEventListener('input', function (e) { photo.angles[photo.index] = +e.target.value; drawPhoto(); });
+    // the red rectangle: drag a handle to make it bigger or smaller, drag inside to move it, elsewhere to draw a new one
     const stage = $('foto-canvas');
-    let start = null;
-    stage.addEventListener('pointerdown', function (e) { if (!photo.image) return; start = stagePoint(e); stage.setPointerCapture(e.pointerId); });
+    let drag = null;
+    stage.addEventListener('pointerdown', function (e) {
+      if (!photo.image || photo.busy) return;
+      const p = stagePoint(e), r = rectPx(), k = pointsPerScreen();
+      let mode = 'new';
+      if (r) {
+        const hp = handlePoints(r);
+        const near = HANDLES.find(function (n) { return Math.abs(p.x - hp[n][0]) < 22 * k && Math.abs(p.y - hp[n][1]) < 22 * k; });
+        if (near) mode = near;
+        else if (p.x > r.x0 && p.x < r.x1 && p.y > r.y0 && p.y < r.y1) mode = 'move';
+      }
+      drag = { mode: mode, start: p, rect0: r };
+      stage.setPointerCapture(e.pointerId);
+    });
     stage.addEventListener('pointermove', function (e) {
-      if (!start) return;
-      const p = stagePoint(e);
-      photo.rect = { x0: Math.min(start.x, p.x), y0: Math.min(start.y, p.y), x1: Math.max(start.x, p.x), y1: Math.max(start.y, p.y) };
+      if (!drag) return;
+      const p = stagePoint(e), W = stage.width, H = stage.height;
+      let r;
+      if (drag.mode === 'new') r = { x0: drag.start.x, y0: drag.start.y, x1: p.x, y1: p.y };
+      else if (drag.mode === 'move') {
+        const r0 = drag.rect0;
+        const dx = Math.max(-r0.x0, Math.min(W - r0.x1, p.x - drag.start.x)), dy = Math.max(-r0.y0, Math.min(H - r0.y1, p.y - drag.start.y));
+        r = { x0: r0.x0 + dx, y0: r0.y0 + dy, x1: r0.x1 + dx, y1: r0.y1 + dy };
+      } else {
+        r = Object.assign({}, drag.rect0);
+        if (drag.mode.indexOf('n') >= 0) r.y0 = p.y;
+        if (drag.mode.indexOf('s') >= 0) r.y1 = p.y;
+        if (drag.mode.indexOf('w') >= 0) r.x0 = p.x;
+        if (drag.mode.indexOf('e') >= 0) r.x1 = p.x;
+      }
+      const cut = function (v, most) { return Math.max(0, Math.min(most, v)); };
+      const x0 = cut(Math.min(r.x0, r.x1), W), x1 = cut(Math.max(r.x0, r.x1), W), y0 = cut(Math.min(r.y0, r.y1), H), y1 = cut(Math.max(r.y0, r.y1), H);
+      photo.rects[photo.index] = { x0: x0 / W, y0: y0 / H, x1: x1 / W, y1: y1 / H };
       drawPhoto();
     });
     stage.addEventListener('pointerup', function () {
-      start = null;
-      if (photo.rect && (photo.rect.x1 - photo.rect.x0 < 20 || photo.rect.y1 - photo.rect.y0 < 10)) { photo.rect = null; drawPhoto(); }
+      if (!drag) return;
+      drag = null;
+      const r = rectPx();
+      if (r && (r.x1 - r.x0 < 20 || r.y1 - r.y0 < 10)) { photo.rects[photo.index] = null; drawPhoto(); }
     });
-    $('foto-read').addEventListener('click', readPhoto);
-    $('foto-skip').addEventListener('click', function () { showPhoto(photo.index + 1); });
+    $('foto-first-ok').addEventListener('click', confirmFirst);
+    $('foto-first-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); confirmFirst(); } });
+    $('foto-first-redo').addEventListener('click', function () {
+      $('foto-files').value = '';
+      Object.assign(photo, { files: [], rects: [], angles: [], done: [], items: [], first: '', image: null });
+      $('foto-first').hidden = true;
+      showPhoto(0);
+      $('foto-status').textContent = 'Rifai la prima foto: il cartello e il foglio delle vie interi, vicini e dritti. Poi scegli di nuovo le foto.';
+    });
+    $('foto-first-skip').addEventListener('click', function () {
+      $('foto-first').hidden = true;
+      $('foto-status').textContent = 'Senza la foto del cartello: scegli qui sotto in quale sottozona vanno le vie lette.';
+    });
+    $('foto-read').addEventListener('click', readCurrent);
+    $('foto-all').addEventListener('click', readAll);
+    $('foto-prev').addEventListener('click', function () { if (photo.index > 0) showPhoto(photo.index - 1); });
+    $('foto-next').addEventListener('click', function () { if (photo.index < photo.files.length - 1) showPhoto(photo.index + 1); });
     $('dlg-foto').addEventListener('close', function () {
+      photo.stop = true;   // a reading going on stops after its photo
       if ($('dlg-foto').returnValue !== 'ok') return;
       const text = $('foto-result').value.trim();
       if (!text) return;
-      const s = sz();
-      if (s.locked) { toast('Il giro è bloccato: sbloccalo per aggiungere quello letto dalle foto.'); return; }
-      s.route = (s.route.replace(/\s+$/, '') + (s.route.trim() ? '\n' : '') + text + '\n');
-      state.els.ta.value = s.route;
-      fitTextarea(state.els.ta);
+      // the lines go to the chosen sub-zone; those after "# sottozona 2B" (a sign in the photos) to that one
+      const parts = {};
+      const before = state.project.subzones.length;
+      const target = String($('foto-target').value);
+      let to = target.indexOf('nuova:') === 0 ? subzoneNamed(target.slice(6)) : +target || 0;
+      text.split('\n').forEach(function (line) {
+        const m = /^#\s*sottozona\s+(\S+)/i.exec(line.trim());
+        if (m) { to = subzoneNamed(m[1]); return; }
+        (parts[to] = parts[to] || []).push(line);
+      });
+      if (state.project.subzones.length !== before) renderTabs();
+      const added = [], locked = [];
+      Object.keys(parts).forEach(function (k) {
+        const s = state.project.subzones[k];
+        const t = parts[k].join('\n').trim();
+        const name = s.name || 'sottozona ' + (+k + 1);
+        if (!t) return;
+        if (s.locked) { locked.push(name); return; }
+        s.route = s.route.replace(/\s+$/, '') + (s.route.trim() ? '\n' : '') + t + '\n';
+        added.push(name);
+      });
+      if (state.els.ta) { state.els.ta.value = sz().route; fitTextarea(state.els.ta); }
       changed();
       refreshRoute();
       refreshSide();
-      toast('Aggiunto in fondo al giro: controlla le righe con «?».');
+      toast((added.length ? 'Aggiunto in fondo al giro della ' + added.join(' e della ') + ': controlla le righe con «?».' : '') +
+        (locked.length ? ' Il giro della ' + locked.join(' e della ') + ' è bloccato: lì non ho aggiunto niente.' : ''));
     });
   }
-
 
   // ------------------------------------------------------------ the photos of the strips, to look at while writing
 
@@ -2032,6 +2289,88 @@
     });
   }
 
+  // ------------------------------------------------------------ problems: the diary of errors and the report
+
+  // The last problems the program met (shown to nobody: they go with a report, to understand it).
+  const diary = [];
+  function note(text) {
+    diary.push(new Date().toLocaleString('it-IT') + ' · ' + String(text).slice(0, 300));
+    if (diary.length > 30) diary.shift();
+  }
+  window.addEventListener('error', function (e) { note('errore: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '')); });
+  window.addEventListener('unhandledrejection', function (e) { note('errore: ' + ((e.reason && e.reason.message) || e.reason)); });
+
+  // The operating system, from what the browser says ("Android 13", "iOS 18.1", "Windows 10/11").
+  function systemName() {
+    const ua = navigator.userAgent || '';
+    let m = /Android\s([\d.]+)/.exec(ua);
+    if (m) return 'Android ' + m[1];
+    m = /(?:iPhone|iPad).*?OS\s([\d_]+)/.exec(ua);
+    if (m) return 'iOS ' + m[1].replace(/_/g, '.');
+    if (/Windows NT 10/.test(ua)) return 'Windows 10/11';
+    if (/Windows/.test(ua)) return 'Windows';
+    if (/Mac OS X/.test(ua)) return 'macOS';
+    if (/Linux/.test(ua)) return 'Linux';
+    return '';
+  }
+
+  async function openReport() {
+    document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
+    if (!account.token) { toast('Per segnalare un problema accedi al tuo account (è gratis).'); openAccount(); return; }
+    $('bug-msg').textContent = '';
+    $('bug-text').value = '';
+    $('bug-image').value = '';
+    $('bug-system').value = systemName();
+    $('bug-phone').value = '';
+    $('dlg-bug').showModal();
+    // Chrome on Android can say the model of the phone: written for the person to check
+    try {
+      if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+        const v = await navigator.userAgentData.getHighEntropyValues(['model', 'platformVersion']);
+        if (v.model && !$('bug-phone').value) $('bug-phone').value = v.model;
+      }
+    } catch (e) { /* not said: the person writes it, if they remember it */ }
+  }
+
+  // The screenshot made small (JPEG, at most 1600 points wide): it travels fast and fits the free server.
+  async function smallScreenshot(file) {
+    const img = await createImageBitmap(file);
+    for (const [wide, quality] of [[1600, 0.75], [1200, 0.6], [900, 0.5]]) {
+      const k = Math.min(1, wide / img.width);
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const url = c.toDataURL('image/jpeg', quality);
+      if (url.length < 1400000) return url;
+    }
+    throw new Error('lo screenshot è troppo grande');
+  }
+
+  async function sendReport() {
+    const btn = $('bug-send'), msg = $('bug-msg');
+    btn.disabled = true;
+    msg.textContent = 'Invio…';
+    try {
+      const f = $('bug-image').files[0];
+      const image = f ? await smallScreenshot(f) : '';
+      const details = {
+        versione: window.CASELLINO_VERSION || '', browser: navigator.userAgent, lingua: navigator.language,
+        schermo: screen.width + '×' + screen.height + ' (finestra ' + window.innerWidth + '×' + window.innerHeight + ')',
+        installata: window.matchMedia ? window.matchMedia('(display-mode: standalone)').matches : false,
+        sottozone: state.project.subzones.length, errori: diary.slice(),
+      };
+      await api('POST', '/api/segnala', { testo: $('bug-text').value, sistema: $('bug-system').value, telefono: $('bug-phone').value,
+        dettagli: JSON.stringify(details), immagine: image });
+      $('dlg-bug').close();
+      toast('Segnalazione inviata: grazie! Arriva a chi fa Casellino.');
+    } catch (e) {
+      msg.textContent = e.status === 404 ? "Le segnalazioni non sono ancora attive sul server: riprova tra un po'." : 'Non inviata: ' + e.message;
+      note('segnalazione non inviata: ' + e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   // ------------------------------------------------------------ account: works saved online (free, Cloudflare)
 
   const API = window.CASELLINO_API || 'https://casellino.ricettaio-mannisi.workers.dev';
@@ -2153,6 +2492,7 @@
         return openWork(p.cloud.id, true);
       }
       account.lastError = e.message;
+      note('salvataggio nell\'account: ' + e.message);
       savedLine(e.offline ? 'Senza internet: salvato su questo dispositivo' : 'Non salvato nell\'account: ' + e.message);
     } finally {
       account.saving = false;
@@ -2365,6 +2705,7 @@
     worksList(box);
     accountDetails(box);
     box.append(h('p', { class: 'actions-inline account-end' },
+      h('button', { type: 'button', onclick: openReport }, '🐞 Segnala un problema'),
       h('button', { type: 'button', onclick: signOut }, 'Esci'),
       h('button', { type: 'button', class: 'danger', onclick: deleteAccount }, 'Elimina l\'account')));
   }
@@ -2476,6 +2817,7 @@
         'Stampa su A4 orizzontale a dimensioni reali (100%), senza «adatta alla pagina».');
     } catch (e) {
       toast('Non sono riuscito a crearlo: ' + e.message);
+      note('stampa ' + kind + ': ' + e.message);
     }
   }
 
@@ -2579,6 +2921,8 @@
     $('btn-example').addEventListener('click', function () { closeMenu(); loadExample(); });
     $('btn-help').addEventListener('click', function () { closeMenu(); $('dlg-help').showModal(); });
     $('btn-photos').addEventListener('click', function () { closeMenu(); openPhotos(); });
+    $('btn-bug').addEventListener('click', openReport);
+    $('bug-send').addEventListener('click', sendReport);
     $('btn-open-excel').addEventListener('click', function () { closeMenu(); $('file-input').click(); });
     $('dlg-import').addEventListener('close', function () {
       if ($('dlg-import').returnValue !== 'ok') return;

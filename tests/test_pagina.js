@@ -193,6 +193,8 @@ function caretAt(ta, needle, offset) {
   doc.getElementById('dlg-foto').open = false;
   doc.getElementById('btn-photos').dispatchEvent(new win.Event('click'));
   assert.ok(doc.getElementById('dlg-foto').open, 'finestra delle foto dal menu');
+  assert.ok(doc.getElementById('foto-first').hidden, 'il riquadro della prima foto compare solo con le foto');
+  assert.strictEqual(doc.getElementById('foto-target').value, '0', 'la sottozona aperta è già scelta');
   doc.getElementById('dlg-foto').open = false;
 
   // the drawing of the whole frame: two modules (casello, ala B), then one more casello
@@ -227,6 +229,20 @@ function caretAt(ta, needle, offset) {
   route9A.dispatchEvent(new win.Event('input'));
   await wait(900);
   assert.ok([...doc.querySelectorAll('.cell.run.two')].some(function (el) { return /C\.NA UNO/.test(el.textContent) && /C\.NA DUE/.test(el.textContent); }), 'due nomi nella stessa casella');
+
+  // photos read: the lines go to the chosen sub-zone; after "# sottozona 9C" (a sign in the photos) to a new 9C
+  doc.getElementById('btn-photos').dispatchEvent(new win.Event('click'));
+  doc.getElementById('foto-result').value = 'VIA DA FOTO: 1, 3\n# sottozona 9C (cartello nella foto 3)\nVIA DELLA C: 2, 4';
+  const dlgFoto = doc.getElementById('dlg-foto');
+  dlgFoto.open = false;
+  dlgFoto.returnValue = 'ok';
+  dlgFoto.dispatchEvent(new win.Event('close'));
+  await wait(600);
+  const afterPhotos = JSON.parse(win.localStorage.getItem('casellino.progetto'));
+  assert.ok(/VIA DA FOTO: 1, 3\n$/.test(afterPhotos.subzones[0].route), 'nel giro della sottozona scelta');
+  const c9 = afterPhotos.subzones.find(function (s) { return s.name === '9C'; });
+  assert.ok(c9 && /^VIA DELLA C: 2, 4\n$/.test(c9.route), 'una 9C nuova con le sue vie');
+  assert.ok([...doc.querySelectorAll('#tabs button')].some(function (b) { return /9C/.test(b.textContent); }), 'la linguetta della 9C');
 
   assert.ok(/Versione \d+\.\d+\.\d+/.test(text('#version')), 'versione nel menu');
   console.log('Pagina: tutte le prove superate');

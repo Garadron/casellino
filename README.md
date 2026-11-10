@@ -57,6 +57,8 @@ per venderlo o farlo adottare da un'azienda serve il permesso scritto dell'autor
     qualsiasi, poi `JSDOM_PATH=<cartella>/node_modules/jsdom`);
   - `python tests/verifica_misure.py <file.xlsx>`: misure uguali al modello (da `tests/misure_modello.json`);
   - `python tests/prova_foto_edge.py`: le foto delle strisce in Edge vero (serve `pip install websocket-client`);
+  - `python tools/scarica_segnalazioni.py`: porta sul PC i problemi segnalati dagli utenti (cartella in
+    `dati/cartella-segnalazioni.txt`, chiave in `dati/admin-segnalazioni.txt`, tutte e due private);
   - `node tools/misura_lettura_foto.js`: quanti civici la lettura delle foto azzecca sulle strisce di prova private
     (serve `npm install tesseract.js@5.1.1 pngjs@7` in una cartella qualsiasi, poi `OCR_NM=<cartella>/node_modules`);
   - `tools/prova_in_excel.ps1`: apre il file in Excel, confronta le misure con il modello e crea il PDF della stampa.

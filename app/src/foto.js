@@ -355,6 +355,11 @@
    * A pigeonhole takes the street written under it, or the nearest one.
    */
   function routeLines(cells, phrases) {
+    return itemLines(routeItems(cells, phrases));
+  }
+
+  // The same, one item per pigeonhole: [{ street, tok }] (to compare two photos before writing the lines).
+  function routeItems(cells, phrases) {
     const streetOf = function (c) {
       if (!phrases.length) return '?';
       const mid = (c.x0 + c.x1) / 2;
@@ -365,18 +370,56 @@
       });
       return best.text;
     };
-    const lines = [];
-    cells.forEach(function (c) {
+    return cells.map(function (c) {
       let tok = c.top || (c.empty ? 'vuota' : '?');
       if (c.second) tok += '/' + c.second;
       if (c.unsure && tok !== 'vuota' && !/\?$/.test(tok)) tok += '?';
       if (c.span > 1) tok += ' (' + c.span + ')';
-      const street = streetOf(c);
+      return { street: streetOf(c), tok: tok };
+    });
+  }
+
+  // Items -> lines of a route: the pigeonholes of the same street one after the other on one line.
+  function itemLines(items) {
+    const lines = [];
+    items.forEach(function (it) {
       const last = lines[lines.length - 1];
-      if (last && last.street === street) last.tokens.push(tok);
-      else lines.push({ street: street, tokens: [tok] });
+      if (last && last.street === it.street) last.tokens.push(it.tok);
+      else lines.push({ street: it.street, tokens: [it.tok] });
     });
     return lines.map(function (l) { return l.street + ': ' + l.tokens.join(', '); });
+  }
+
+  /*
+   * Two photos taken one after the other show some of the same pigeonholes: the end of the first is
+   * the start of the second. That piece is not written twice: the new items come back without it.
+   * At least 2 pigeonholes must be the same in a row; from 4 on, one in four may be read a little
+   * differently in the two photos.
+   */
+  function withoutOverlap(before, after) {
+    const key = function (it) { return String(it.tok).toUpperCase().replace(/[?\s]/g, '').replace(/\\/g, '/'); };
+    for (let k = Math.min(before.length, after.length); k >= 2; k--) {
+      let wrong = 0;
+      for (let i = 0; i < k; i++) if (key(before[before.length - k + i]) !== key(after[i])) wrong++;
+      if (wrong === 0 || (k >= 4 && wrong <= Math.floor(k / 4))) return after.slice(k);
+    }
+    return after;
+  }
+
+  // The photo of the sign of a sub-zone ("2A"): which of the names given is written big in it, or ''.
+  // Only writing at least minTall points tall counts: a small sign in the background of a strip photo is not it.
+  function zoneSign(words, names, minTall) {
+    const wanted = {};
+    names.forEach(function (n) { if (n) wanted[String(n).toUpperCase().replace(/\s+/g, '')] = n; });
+    let found = '', size = minTall || 0;
+    (words || []).forEach(function (w) {
+      const t = String(w.text || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+      const tall = w.bbox ? w.bbox.y1 - w.bbox.y0 : 0;
+      // a name already in the work, or one shaped like a sub-zone (a number and a letter: "8B")
+      const name = wanted[t] || (/^\d{1,3}[A-Z]$/.test(t) ? t : '');
+      if (name && tall >= size) { found = name; size = tall; }   // the biggest writing is the sign
+    });
+    return found;
   }
 
   const NUMBER_CHARS = '0123456789ABCDEFGHILMNOPQRSTUVZ/\\-';
@@ -387,12 +430,71 @@
    * band image and returns its data { text, confidence, words }; progress(i, n) says how far it is.
    * Returns { cells, phrases }, positions in pixels of the photo.
    */
-  // One pigeonhole of the photo, grey, enlarged 3 times (Tesseract reads small print better so), without its borders.
+  /*
+   * Where the strip is in a whole photo (best on a small copy, about 600 points wide): the rows of
+   * light paper crossed by many thin dark strokes (the lines between pigeonholes and the printed
+   * numbers) make the row of the numbers; the street names are just under it.
+   * Returns { x0, y0, x1, y1 } as parts of the photo (0..1), or null if there is no strip.
+   */
+  function findStrip(img) {
+    const W = img.width, H = img.height, g = toGray(img);
+    const step = Math.max(2, Math.round(W / 200));   // a stroke is a few points wide in a small copy
+    const raw = new Float64Array(H);
+    for (let y = 0; y < H; y++) {
+      let strokes = 0, light = 0;
+      for (let x = step; x < W - step; x++) {
+        const v = g[y * W + x];
+        if (v > 150) light++;
+        if (v < g[y * W + x - step] - 25 && v < g[y * W + x + step] - 25) { strokes++; x += step; }
+      }
+      raw[y] = strokes * light / W;
+    }
+    const score = new Float64Array(H);   // a little smoothed: one row alone does not count
+    for (let y = 0; y < H; y++) {
+      let s = 0, k = 0;
+      for (let d = -2; d <= 2; d++) if (y + d >= 0 && y + d < H) { s += raw[y + d]; k++; }
+      score[y] = s / k;
+    }
+    // the strip has long straight edges (above and below its white row) across most of the photo;
+    // fins and papers do not: rows near such an edge count more
+    const edge = new Float64Array(H);
+    for (let y = 2; y < H - 2; y++) {
+      let k = 0;
+      for (let x = 0; x < W; x++) if (Math.abs(g[(y + 2) * W + x] - g[(y - 2) * W + x]) > 35) k++;
+      edge[y] = k / W;
+    }
+    const near = Math.max(3, Math.round(H * 0.04));
+    let best = 0, at = -1;
+    for (let y = 0; y < H; y++) {
+      let e = 0;
+      for (let d = -near; d <= near; d++) if (y + d >= 0 && y + d < H && edge[y + d] > e) e = edge[y + d];
+      const v = score[y] * (0.3 + e);
+      if (v > best) { best = v; at = y; }
+    }
+    if (at < 0 || score[at] < 3) return null;
+    best = score[at];
+    // the row of the numbers is thin (a few hundredths of the photo): the band stops there, even if the
+    // pigeonholes above (grey fins, also full of strokes) go on
+    let a = at, b = at;
+    const most = Math.max(4, Math.round(H * 0.06));
+    while (b - a < most && ((a > 0 && score[a - 1] > best * 0.5) || (b < H - 1 && score[b + 1] > best * 0.5))) {
+      if (a > 0 && score[a - 1] >= (b < H - 1 ? score[b + 1] : 0)) a--; else b++;
+    }
+    const h = Math.max(b - a + 1, Math.round(H * 0.015));
+    // a little paper above the numbers, and the street names under them (about 0.7 of their height) with some room
+    const y0 = Math.max(0, a - h * 0.35), y1 = Math.min(H, b + h * 1.25);
+    return { x0: 0, y0: y0 / H, x1: 1, y1: y1 / H };
+  }
+
+  // One pigeonhole of the photo, grey and enlarged, without its borders.
   function cellImage(img, x0, x1, y0, y1) {
     const gray = img._gray || (img._gray = toGray(img));
     const mx = Math.max(2, Math.round((x1 - x0) * 0.07)), my = Math.max(1, Math.round((y1 - y0) * 0.1));
     const ax = Math.max(0, x0 + mx), bx = Math.min(img.width, x1 - mx), ay = Math.max(0, y0 + my), by = Math.min(img.height, y1 - my);
-    const k = 3, pad = 12, w = Math.max(1, bx - ax) * k + 2 * pad, h = Math.max(1, by - ay) * k + 2 * pad;
+    // enlarged so the row of the number is about 130 points tall, whatever the size of the photo:
+    // Tesseract reads small print badly, and print made too big and blurred too
+    const k = Math.max(1, Math.min(4, Math.round(130 / Math.max(1, y1 - y0))));
+    const pad = 12, w = Math.max(1, bx - ax) * k + 2 * pad, h = Math.max(1, by - ay) * k + 2 * pad;
     const out = { width: w, height: h, data: new Uint8ClampedArray(w * h * 4).fill(255) };
     for (let y = 0; y < (by - ay) * k; y++) for (let x = 0; x < (bx - ax) * k; x++) {
       const v = gray[(ay + Math.floor(y / k)) * img.width + ax + Math.floor(x / k)];
@@ -492,5 +594,6 @@
   }
 
   return { toGray: toGray, threshold: threshold, segmentStrip: segmentStrip, cleanBand: cleanBand, inkClusters: inkClusters, cropBand: cropBand, cleanNumber: cleanNumber,
-    streetPhrases: streetPhrases, routeLines: routeLines, readStrip: readStrip };
+    streetPhrases: streetPhrases, routeLines: routeLines, routeItems: routeItems, itemLines: itemLines, withoutOverlap: withoutOverlap,
+    zoneSign: zoneSign, readStrip: readStrip, findStrip: findStrip };
 });

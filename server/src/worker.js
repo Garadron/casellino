@@ -23,6 +23,9 @@ const LIMITS = {
   bytes: 1500000,           // size of one work
   sessionDays: 180,         // a device stays signed in this long without being used
   renameDays: 7,            // days between two changes of the user name
+  reportsPerDay: 10,        // problems reported by one account in a day
+  reportText: 3000,         // characters of the explanation
+  reportImage: 1500000,     // characters of the screenshot (a small JPEG as data: address)
 };
 const ORIGINS = ['https://garadron.github.io', 'null'];
 
@@ -342,6 +345,39 @@ async function deleteWork(request, env, me, id) {
   return json(request, { ok: true });
 }
 
+// ---------------------------------------------------------------- problems reported from the page
+
+const clip = function (v, n) { return String(v || '').slice(0, n); };
+
+async function report(request, env, me) {
+  const b = await body(request);
+  const day = Date.now() - DAY;
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM segnalazioni WHERE account_id = ? AND creata_il > ?').bind(me.id, day).first();
+  if (n && n.n >= LIMITS.reportsPerDay) throw new UserError(429, 'Oggi hai già mandato tante segnalazioni: riprova domani.');
+  const image = String(b.immagine || '');
+  if (image && (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image) || image.length > LIMITS.reportImage)) {
+    throw new UserError(400, 'Lo screenshot non va bene: prova con un\'altra immagine.');
+  }
+  if (!String(b.testo || '').trim() && !image) throw new UserError(400, 'Scrivi che cosa è successo o aggiungi lo screenshot.');
+  const id = randomId(12);
+  await env.DB.prepare(
+    'INSERT INTO segnalazioni (id, account_id, utente, testo, sistema, telefono, dettagli, immagine, creata_il) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  ).bind(id, me.id, me.utente, clip(b.testo, LIMITS.reportText), clip(b.sistema, 120), clip(b.telefono, 120), clip(b.dettagli, 8000), image, Date.now()).run();
+  return json(request, { ok: true, id: id });
+}
+
+// The PC picks the reports up (with the key ADMIN, set only on Cloudflare and in the private folder) and removes them.
+function isAdmin(request, env) {
+  const m = /^Bearer\s+(\S+)$/.exec(request.headers.get('Authorization') || '');
+  return !!(env.ADMIN && m && sameText(m[1], env.ADMIN));
+}
+async function listReports(request, env) {
+  const { results } = await env.DB.prepare(
+    'SELECT id, utente, testo, sistema, telefono, dettagli, immagine, creata_il FROM segnalazioni ORDER BY creata_il LIMIT 20',
+  ).all();
+  return json(request, { segnalazioni: results });
+}
+
 // ---------------------------------------------------------------- routes
 
 async function route(request, env) {
@@ -353,7 +389,16 @@ async function route(request, env) {
   if (path === '/api/registrati' && m === 'POST') return register(request, env);
   if (path === '/api/accedi' && m === 'POST') return login(request, env);
   if (path === '/api/recupera' && m === 'POST') return recover(request, env);
+  if (path.indexOf('/api/segnalazioni') === 0 && isAdmin(request, env)) {
+    if (path === '/api/segnalazioni' && m === 'GET') return listReports(request, env);
+    const r = /^\/api\/segnalazioni\/([A-Za-z0-9_-]{8,40})$/.exec(path);
+    if (r && m === 'DELETE') {
+      await env.DB.prepare('DELETE FROM segnalazioni WHERE id = ?').bind(r[1]).run();
+      return json(request, { ok: true });
+    }
+  }
   const me = await signedIn(request, env);
+  if (path === '/api/segnala' && m === 'POST') return report(request, env, me);
   if (path === '/api/io' && m === 'GET') return aboutMe(request, env, me);
   if (path === '/api/cambia-nome' && m === 'POST') return rename(request, env, me);
   if (path === '/api/cambia-email' && m === 'POST') return changeEmail(request, env, me);

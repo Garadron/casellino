@@ -1,5 +1,39 @@
 # Registro delle versioni
 
+## v0.27.0 · 2026-11-10 · Foto lette tutte insieme, prima foto del cartello, segnalazioni
+
+Richieste di Garadron del 10 novembre 2026 (prove su Android, ColorOS 13, Oppo CPH2333).
+
+- **La striscia si trova da sola**: scelte le foto, ognuna ha già il suo riquadro rosso sulla striscia (provato su 26
+  foto vere: giusto quasi sempre). Il riquadro ha i **quadratini** per allargarlo o stringerlo, e si sposta
+  trascinandolo da dentro; fuori se ne disegna uno nuovo.
+- **«📚 Leggi tutte le foto»**: le legge una dopo l'altra (prima si fermava alla prima), con «⏹ Ferma». ◀ ▶ per
+  passare da una foto all'altra; «Leggi solo questa» per riprovare una foto.
+- **Niente doppioni**: se una foto comincia con le stesse caselle con cui finiva quella prima, non si riscrivono (il
+  testo dice quante ne ha lasciate).
+- **Prima foto: il cartello della zona con il foglio delle vie**, come chiesto. Il programma la controlla (legge il nome
+  della sottozona se è scritto grande e chiaro, dice se il foglio si legge) e tu la confermi con «✓ Va bene» o la rifai.
+  Dà il nome alla sottozona: le strisce che seguono vanno lì. Un altro cartello in mezzo alle foto (per esempio la 2B)
+  manda le strisce dopo nella sua sottozona; se non c'è ancora nel lavoro, si crea. Se manca la foto del cartello, si
+  sceglie la sottozona in fondo alla finestra.
+- **Lettura**: ogni casella si ingrandisce quanto serve (non più sempre tre volte), così le foto di tutta la striscia,
+  con i numeri piccoli, si leggono meglio. Strisce di prova: **55%** dei civici giusti (prima 53%), più una striscia
+  intera fotografata dal telefono.
+- **Come fotografare** (nelle istruzioni): da vicino, 15-20 caselle per foto, dritte e con buona luce. Provato su foto
+  vere: con tutta la striscia in una foto i numeri sono alti una dozzina di punti, e scritti a mano su fondo colorato il
+  lettore gratuito non li legge.
+- **Modalità di prova** (`localStorage` `casellino.prova` = 1): la pagina tiene i ritagli dati al lettore, per capire
+  dove sbaglia.
+- **🐞 Segnala un problema** (nel menu «Altro» e nell'account): due righe se vuoi, lo screenshot, il sistema (scritto
+  da solo) e il modello del telefono se te lo ricordi. Arriva sul PC, nella cartella dei bug, con la versione del
+  programma, il browser e gli ultimi errori che il programma ha visto (un diario degli errori, tenuto solo per questo).
+  Serve un account. Lato PC: `tools/scarica_segnalazioni.py`.
+- Server: `server/migrations/0003_segnalazioni.sql`, `/api/segnala`, `/api/segnalazioni` (solo con la chiave del PC).
+- File: `app/src/foto.js` (`findStrip`, `routeItems`, `itemLines`, `withoutOverlap`, `zoneSign`), `app/src/ui.js`,
+  `app/src/style.css`, `app/index.src.html`, `server/src/worker.js`, `server/migrations/0003_segnalazioni.sql`,
+  `tools/scarica_segnalazioni.py`, `tests/test_server.js`, `tests/test_account_pagina.js`, `README.md`,
+  `PROMEMORIA.md`, `Casellino.html`, `sito/`, `docs/handoff.md`, `CHANGELOG.md`, `prove/`.
+
 ## v0.26.1 · 2026-11-09 · Il nome dell'autore anche in cima alla pagina
 
 - Regola Mondiale «I progetti portano il nome dell'autore» (nata qui, Casellino è il modello): la riga «© 2026 Emmanuel

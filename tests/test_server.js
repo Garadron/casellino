@@ -120,6 +120,25 @@ async function call(method, path, body, token) {
   r = await call('POST', '/api/cambia-email', { email: 'nuova@esempio.it', password: 'nuova password 1' }, token);
   assert.strictEqual(r.data.email, 'n***@esempio.it');
 
+  // a problem reported from the page; the PC picks it up with its key and removes it
+  r = await call('POST', '/api/segnala', { testo: '', immagine: '' }, token);
+  assert.strictEqual(r.status, 400, 'niente testo e niente screenshot');
+  r = await call('POST', '/api/segnala', { testo: 'si ferma alla prima foto', immagine: 'non-una-immagine' }, token);
+  assert.strictEqual(r.status, 400, 'screenshot non valido');
+  const shot = 'data:image/jpeg;base64,' + Buffer.from('finta immagine').toString('base64');
+  r = await call('POST', '/api/segnala', { testo: 'si ferma alla prima foto', sistema: 'Android 13', telefono: 'CPH2333', dettagli: '{"versione":"0.27.0"}', immagine: shot }, token);
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  const admin = process.env.CASELLINO_ADMIN || 'prova-locale-segnalazioni-1234567890';
+  r = await call('GET', '/api/segnalazioni', undefined, 'chiave-sbagliata-1234567890');
+  assert.strictEqual(r.status, 401, 'senza la chiave del PC niente');
+  r = await call('GET', '/api/segnalazioni', undefined, admin);
+  const mine = r.data.segnalazioni.find(function (x) { return x.utente === renamed && x.testo === 'si ferma alla prima foto'; });
+  assert.ok(mine && mine.telefono === 'CPH2333' && mine.immagine === shot, 'arriva intera');
+  r = await call('DELETE', '/api/segnalazioni/' + mine.id, undefined, admin);
+  assert.strictEqual(r.data.ok, true);
+  r = await call('GET', '/api/segnalazioni', undefined, admin);
+  assert.ok(!r.data.segnalazioni.some(function (x) { return x.id === mine.id; }), 'tolta dal server');
+
   // delete the account: works go too
   r = await call('POST', '/api/elimina-account', { password: 'sbagliata!!' }, token);
   assert.strictEqual(r.status, 403, 'password sbagliata, ma il dispositivo resta dentro');

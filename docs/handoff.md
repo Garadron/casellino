@@ -2,6 +2,22 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 10 novembre 2026 · Tappa 16 chiusa: foto tutte insieme, cartello, segnalazioni (v0.27.0)
+
+**Fatto.** `F.findStrip` (copia piccola 600 punti: righe di carta chiara con tanti tratti scuri sottili, pesate dalla
+vicinanza a bordi orizzontali lunghi; banda al più 6% dell'altezza). Finestra: `photo.rects[i]` in parti 0..1 (trovati
+da soli, maniglie per cambiarli), `readOne` (striscia, e se legge poco controlla se è un cartello con il nome grande),
+`readAll` con «Ferma», `F.withoutOverlap` (fine della foto prima = inizio della nuova: almeno 2 caselle, da 4 una su
+quattro può differire), `checkFirst`/`confirmFirst` (prima foto: nome dal cartello o scritto, conferma), righe
+`# sottozona X` che smistano il testo in «Aggiungi al giro» (`subzoneNamed` crea la sottozona se manca).
+`cellImage`: ingrandimento adattivo (riga del numero ~130 punti): ingrandire tutta la striscia peggiorava (8/44 contro
+18/44). Segnalazioni: tabella `segnalazioni` (cancellate con l'account), `ADMIN` su Cloudflare e in
+`dati/admin-segnalazioni.txt`, cartella in `dati/cartella-segnalazioni.txt` (la dice Archivista).
+**Verifiche.** core 41, pagina, account (segnalazione inviata dalla pagina), server (segnalazione, chiave del PC,
+cancellazione), scaricamento in una cartella con screenshot e scheda, Edge vero con 3-4 foto vere.
+**Limiti.** Il «2A» grande con le lettere contornate non si legge: la persona lo scrive. Le foto di tutta la striscia
+restano difficili (numeri di ~15 punti).
+
 ## 9 novembre 2026 · Tappa 15 chiusa: lettura delle foto (v0.26.0)
 
 **Fatto.** Tutta la lettura in `F.readStrip(img, recognize, progress)` (la pagina passa solo Tesseract), così si misura in
