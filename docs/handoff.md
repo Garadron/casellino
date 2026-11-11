@@ -2,6 +2,17 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 11 novembre 2026 · Tappa 20 chiusa: anteprima giallo e blu (v0.31.0)
+
+**Fatto.** Tavolozza `:root[data-palette="gialloblu"]` in `style.css` (chiaro, scuro col sistema, scuro forzato; in più
+`--brand`, `--brand-ink`, `--brand-edge` per la barra). `build.py --anteprima` scrive un file solo in
+`dati/anteprima/` con `data-palette`, `data-anteprima`, la nota (da `dati/anteprima/testo.txt`) e uno script in testa
+che mette `data-theme="light"` sul computer (puntatore fine) se non c'è una scelta salvata (`casellino.tema`).
+`wirePreview()` in `ui.js` fa l'interruttore ☀️/🌙 fisso e la nota; senza `window.CASELLINO_ANTEPRIMA` non fa niente.
+**Verifiche.** pagina (il programma resta senza anteprima), schermate computer chiaro/scuro e telefono scuro/chiaro.
+**Da decidere con Garadron.** Se e quando i colori giallo e blu passano al programma pubblico (allora: tavolozza su
+`:root`, l'interruttore per tutti, senza la nota né il nome dell'azienda).
+
 ## 11 novembre 2026 · Tappa 19 chiusa: tutorial a fumetto, cartello, mai civici doppi (v0.30.0)
 
 **Fatto.** Tutorial `#dlg-tutorial` (10 pagine, scritte da `tools/tutorial.py` tra i segni `tutorial:start/end` di

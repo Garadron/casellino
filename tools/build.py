@@ -8,6 +8,7 @@
 
 The version shown in the program comes from the first "## v..." line of CHANGELOG.md.
 Run it after every change in app/:   python tools/build.py
+The yellow-and-blue preview (private, in dati/anteprima/):   python tools/build.py --anteprima
 """
 import re
 import shutil
@@ -78,5 +79,31 @@ def build():
           f"({len(list(SITE.iterdir()))} file)")
 
 
+def preview():
+    """A preview of the yellow-and-blue colours, in one file in dati/anteprima/ (private: it may carry the
+    name of the company it is shown to, written in dati/anteprima/testo.txt). The program does not change."""
+    import json
+    out_dir = ROOT / "dati" / "anteprima"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    note = out_dir / "testo.txt"
+    text = note.read_text(encoding="utf-8").strip() if note.exists() else "Anteprima: Casellino in giallo e blu."
+    head = ("<head>\n<script>window.CASELLINO_ANTEPRIMA = { testo: " + json.dumps(text, ensure_ascii=False).replace("</", "<\\/") + " };\n"
+            "(function () { var t = ''; try { t = localStorage.getItem('casellino.tema') || ''; } catch (e) {}\n"
+            "  if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(pointer: coarse)').matches ? '' : 'light';\n"
+            "  if (t) document.documentElement.setAttribute('data-theme', t); })();</script>")
+    html = inline_icons(page(version()))
+    html = html.replace('<html lang="it">', '<html lang="it" data-palette="gialloblu" data-anteprima>', 1)
+    html = html.replace("<head>", head, 1)
+    html = re.sub(r'<meta name="theme-color" content="[^"]*">',
+                  '<meta name="theme-color" content="#ffcc00" media="(prefers-color-scheme: light)">\n'
+                  '<meta name="theme-color" content="#081d45" media="(prefers-color-scheme: dark)">', html, count=1)
+    target = out_dir / "Casellino anteprima.html"
+    target.write_text(html, encoding="utf-8", newline="\n")
+    print(f"Anteprima giallo e blu: {target} ({target.stat().st_size // 1024} KB)")
+
+
 if __name__ == "__main__":
-    build()
+    if "--anteprima" in sys.argv:
+        preview()
+    else:
+        build()

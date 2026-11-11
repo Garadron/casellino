@@ -263,6 +263,7 @@ function caretAt(ta, needle, offset) {
   assert.ok([...doc.querySelectorAll('#tabs button')].some(function (b) { return /9C/.test(b.textContent); }), 'la linguetta della 9C');
   assert.ok(!afterPhotos.subzones.some(function (s) { return s.name === '9D'; }), 'un cartello seguito solo da note non crea una sottozona vuota');
 
+  assert.ok(!doc.querySelector('.theme-switch') && !doc.documentElement.dataset.palette, 'il programma resta con i suoi colori: il giallo e blu è solo nell\'anteprima');
   assert.ok(/Versione \d+\.\d+\.\d+/.test(text('#version')), 'versione nel menu');
   console.log('Pagina: tutte le prove superate');
   win.close();

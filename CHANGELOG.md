@@ -1,5 +1,18 @@
 # Registro delle versioni
 
+## v0.31.0 · 2026-11-11 · Anteprima dei colori giallo e blu
+
+- **Anteprima** chiesta da Garadron (11 novembre 2026) per proporre Casellino in ufficio: un file a parte,
+  privato (`python tools/build.py --anteprima` → `dati/anteprima/Casellino anteprima.html`, con la nota scritta in
+  `dati/anteprima/testo.txt`); **il programma pubblico non cambia** finché Garadron non decide.
+- **Tema chiaro: il giallo guida** (barra in alto gialla, fondo color crema tenue) e il blu dà il contrasto (scritte,
+  bordi, pulsanti principali). **Tema scuro: il blu scuro guida** e il giallo accende pulsanti e collegamenti. Le
+  scritte stanno almeno a 7:1 sul loro fondo; i colori cambiano con una dissolvenza breve.
+- **Il tema si sceglie da solo**: sul telefono segue le impostazioni del telefono, sul computer parte chiaro.
+  L'interruttore **☀️ / 🌙** è sempre in alto a destra, fermo sullo schermo anche scorrendo; la scelta resta sul
+  dispositivo.
+- File: `app/src/style.css`, `app/src/ui.js`, `tools/build.py`, `tests/test_pagina.js`, `Casellino.html`, `sito/`.
+
 ## v0.30.0 · 2026-11-11 · Tutorial a fumetto, cartello e itinerario, mai civici doppi
 
 - **📖 Tutorial a fumetto** (richiesta di Garadron, 11 novembre 2026): 10 pagine su carta color pergamena, un disegno

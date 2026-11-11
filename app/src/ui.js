@@ -2230,6 +2230,39 @@
     if (!$('dlg-tutorial').open) $('dlg-tutorial').showModal();
     $('tut-next').focus();
   }
+  /*
+   * The preview (window.CASELLINO_ANTEPRIMA, put in by `build.py --anteprima`): its note on top and the sun / moon
+   * switch, fixed on screen. The theme follows the phone; on a computer it starts light (set before the page is
+   * drawn, in the preview's head). The choice made with the switch is kept on the device.
+   */
+  function wirePreview() {
+    const preview = window.CASELLINO_ANTEPRIMA;
+    if (!preview) return;
+    const root = document.documentElement;
+    const darkSystem = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    const isDark = function () { return root.dataset.theme ? root.dataset.theme === 'dark' : !!(darkSystem && darkSystem.matches); };
+    const knob = h('span', { class: 'ts-knob' });
+    const sw = h('button', { type: 'button', class: 'theme-switch', onclick: function () {
+      const next = isDark() ? 'light' : 'dark';
+      root.dataset.theme = next;
+      try { localStorage.setItem('casellino.tema', next); } catch (e) { /* only for this time */ }
+      show();
+    } }, h('span', { 'aria-hidden': 'true' }, '☀️'), h('span', { 'aria-hidden': 'true' }, '🌙'), knob);
+    const show = function () {
+      sw.classList.toggle('dark', isDark());
+      sw.setAttribute('aria-label', isDark() ? 'Tema scuro: tocca per il chiaro' : 'Tema chiaro: tocca per lo scuro');
+      sw.title = sw.getAttribute('aria-label');
+    };
+    if (darkSystem && darkSystem.addEventListener) darkSystem.addEventListener('change', show);
+    document.body.append(sw);
+    show();
+    if (preview.testo) {
+      const note = h('div', { class: 'preview-note', role: 'note' }, h('p', null, preview.testo),
+        h('button', { type: 'button', 'aria-label': 'Chiudi la nota', onclick: function () { note.remove(); } }, '✕'));
+      document.body.prepend(note);
+    }
+  }
+
   function wireTutorial() {
     const dlg = $('dlg-tutorial');
     $('tut-next').addEventListener('click', function () { if (tutPage >= tutPages().length - 1) dlg.close(); else showTutPage(tutPage + 1); });
@@ -3226,6 +3259,7 @@
     $('btn-optimize').addEventListener('click', optimizeRound);
     wirePhotos();
     wireTutorial();
+    wirePreview();
     wireViewer();
     $('btn-account').addEventListener('click', openAccount);
     window.addEventListener('online', function () { if (account.token) cloudSave(false); });
