@@ -57,6 +57,7 @@ per venderlo o farlo adottare da un'azienda serve il permesso scritto dell'autor
   - `node tests/test_core.js`: lettura del giro, ordine delle strisce, colori, Excel;
   - `node tests/test_pagina.js`: la pagina in un browser simulato (serve jsdom: `npm install jsdom` in una cartella
     qualsiasi, poi `JSDOM_PATH=<cartella>/node_modules/jsdom`);
+  - `node tests/test_anteprima.js`: l'anteprima (`python tools/build.py --anteprima`) con nota, logo e parole;
   - `python tests/verifica_misure.py <file.xlsx>`: misure uguali al modello (da `tests/misure_modello.json`);
   - `python tests/prova_foto_edge.py`: le foto delle strisce in Edge vero (serve `pip install websocket-client`);
   - `python tools/scarica_segnalazioni.py`: porta sul PC i problemi segnalati dagli utenti (cartella in

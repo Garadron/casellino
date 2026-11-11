@@ -2,6 +2,18 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 12 novembre 2026 · Tappa 21 chiusa: anteprima per l'azienda (v0.32.0)
+
+**Fatto.** I colori della tavolozza `gialloblu` sono quelli del sito dell'azienda (presi dal suo foglio di stile:
+`#eedc00`, `#0047bb`, `#00297a`, `#1a1c1e`, `#5d5e61`, `#c6c6c9`, `#f2f8ff`, `#ba1b1b`, `#006d36`, `#fff0e5`), più
+Inter da Google Fonts solo nell'anteprima. `build.py --anteprima` mette in `window.CASELLINO_ANTEPRIMA` anche `logo`
+(da `dati/anteprima/logo-azienda.svg`) e `termini` (da `dati/anteprima/termini.txt`); `wirePreview()` mette il logo
+in testa a `.brand` e `previewWords()` cambia le parole nei nodi di testo e in `placeholder`/`title`/`aria-label`,
+con un `MutationObserver` per quello che compare dopo; salta `textarea`, `script`, `style`.
+**Verifiche.** `tests/test_anteprima.js` (nuovo), `tests/test_pagina.js`, `tests/test_core.js` (42), schermate in Edge
+(computer chiaro e scuro, telefono, tutorial).
+**Da decidere con Garadron.** Che cosa va nel programma pubblico: per ora né nome né logo dell'azienda.
+
 ## 11 novembre 2026 · Tappa 20 chiusa: anteprima giallo e blu (v0.31.0)
 
 **Fatto.** Tavolozza `:root[data-palette="gialloblu"]` in `style.css` (chiaro, scuro col sistema, scuro forzato; in più

@@ -2261,6 +2261,53 @@
         h('button', { type: 'button', 'aria-label': 'Chiudi la nota', onclick: function () { note.remove(); } }, '✕'));
       document.body.prepend(note);
     }
+    if (preview.logo) {  // the logo of the company the preview is for (an SVG from dati/anteprima/, cleaned by hand)
+      const logo = h('span', { class: 'preview-logo' });
+      logo.innerHTML = preview.logo;
+      document.querySelector('.brand').prepend(logo);
+    }
+    if (preview.termini && preview.termini.length) previewWords(preview.termini);
+  }
+
+  /*
+   * The words of the company the preview is for (pairs [word, its word], from dati/anteprima/termini.txt): they
+   * replace ours in everything the page shows, now and later, with the same capital letters. What the person
+   * writes (the route text) stays as it is: the program reads both words.
+   */
+  function previewWords(pairs) {
+    const rules = pairs.map(function (p) { return [new RegExp('\\b' + p[0] + '\\b', 'gi'), p[1]]; });
+    const sameCase = function (found, word) {
+      if (found === found.toUpperCase()) return word.toUpperCase();
+      return found[0] === found[0].toUpperCase() ? word[0].toUpperCase() + word.slice(1) : word;
+    };
+    const swap = function (text) {
+      rules.forEach(function (r) { text = text.replace(r[0], function (found) { return sameCase(found, r[1]); }); });
+      return text;
+    };
+    const skip = 'textarea, script, style';
+    const fix = function (node) {
+      if (node.nodeType === 3) {
+        if (node.parentElement && !node.parentElement.closest(skip)) {
+          const t = swap(node.nodeValue);
+          if (t !== node.nodeValue) node.nodeValue = t;
+        }
+      } else if (node.nodeType === 1 && !node.matches(skip)) {
+        ['placeholder', 'title', 'aria-label'].forEach(function (a) {
+          const v = node.getAttribute(a);
+          if (v && swap(v) !== v) node.setAttribute(a, swap(v));
+        });
+        node.childNodes.forEach(fix);
+      }
+    };
+    fix(document.body);
+    document.title = swap(document.title);
+    new MutationObserver(function (changes) {
+      changes.forEach(function (c) {
+        if (c.type === 'childList') c.addedNodes.forEach(fix);
+        else fix(c.target);
+      });
+    }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true,
+      attributeFilter: ['placeholder', 'title', 'aria-label'] });
   }
 
   function wireTutorial() {

@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.31.0';</script>
+<script>window.CASELLINO_VERSION = '0.32.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -74,76 +74,80 @@
 }
 
 /*
- * The yellow-and-blue colours (only in the preview, <html data-palette="gialloblu">): in the light theme the
- * yellow leads (the bar on top, the soft yellow of the background) and the blue gives the contrast (writing,
- * borders, buttons); in the dark theme a deep blue leads and the yellow lights up buttons and links.
- * Text against its background stays at 7:1 or more, so it reads well in the sun and at night.
+ * The yellow-and-blue colours (only in the preview, <html data-palette="gialloblu">), the same as the website of
+ * the company the preview is for: yellow #eedc00, blue #0047bb, deep blue #00297a, writing #1a1c1e, greys, light
+ * blue and the colours for errors and for done. In the light theme the yellow leads (the bar on top, the soft yellow
+ * of the background) and the blue gives the contrast; in the dark theme the deep blue leads and the yellow lights up
+ * buttons and links. Text against its background stays at 6:1 or more.
  */
 :root[data-palette="gialloblu"] {
-  --bg: #fff8e1;
+  --bg: #fdfbe0;
   --panel: #ffffff;
-  --text: #0b2545;
-  --muted: #4a5d80;
-  --line: #e7d9a6;
-  --accent: #0a3d91;
+  --text: #1a1c1e;
+  --muted: #5d5e61;
+  --line: #c6c6c9;
+  --accent: #0047bb;
   --accent-ink: #ffffff;
-  --accent-soft: #fff1bf;
+  --accent-soft: #f2f8ff;
   --warn: #8a4b00;
-  --warn-soft: #fff0d1;
-  --bad: #b3261e;
-  --ok: #1f7a3a;
+  --warn-soft: #fff0e5;
+  --bad: #ba1b1b;
+  --ok: #006d36;
   --paper: #ffffff;
-  --paper-line: #c9d0d8;
-  --brand: #ffcc00;
-  --brand-ink: #0b2545;
-  --brand-edge: #0a3d91;
+  --paper-line: #c6c6c9;
+  --brand: #eedc00;
+  --brand-ink: #00297a;
+  --brand-edge: #0047bb;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-palette="gialloblu"]:not([data-theme="light"]) {
-    --bg: #061633;
-    --panel: #0c2148;
-    --text: #eef3fb;
-    --muted: #a9b9d8;
-    --line: #22417a;
-    --accent: #ffcf33;
-    --accent-ink: #0b2545;
-    --accent-soft: #16306a;
+    --bg: #001b52;
+    --panel: #00297a;
+    --text: #ffffff;
+    --muted: #c6c6c9;
+    --line: #1f4a9e;
+    --accent: #eedc00;
+    --accent-ink: #1a1c1e;
+    --accent-soft: #0a3a8f;
     --warn: #ffbe5c;
     --warn-soft: #3a2c12;
     --bad: #ff8a80;
     --ok: #7fd69a;
     --paper: #f7f7f2;
     --paper-line: #b9c0c8;
-    --brand: #081d45;
-    --brand-ink: #ffcf33;
-    --brand-edge: #ffcc00;
+    --brand: #00297a;
+    --brand-ink: #eedc00;
+    --brand-edge: #eedc00;
     color-scheme: dark;
   }
 }
 :root[data-palette="gialloblu"][data-theme="dark"] {
-  --bg: #061633;
-  --panel: #0c2148;
-  --text: #eef3fb;
-  --muted: #a9b9d8;
-  --line: #22417a;
-  --accent: #ffcf33;
-  --accent-ink: #0b2545;
-  --accent-soft: #16306a;
+  --bg: #001b52;
+  --panel: #00297a;
+  --text: #ffffff;
+  --muted: #c6c6c9;
+  --line: #1f4a9e;
+  --accent: #eedc00;
+  --accent-ink: #1a1c1e;
+  --accent-soft: #0a3a8f;
   --warn: #ffbe5c;
   --warn-soft: #3a2c12;
   --bad: #ff8a80;
   --ok: #7fd69a;
   --paper: #f7f7f2;
   --paper-line: #b9c0c8;
-  --brand: #081d45;
-  --brand-ink: #ffcf33;
-  --brand-edge: #ffcc00;
+  --brand: #00297a;
+  --brand-ink: #eedc00;
+  --brand-edge: #eedc00;
   color-scheme: dark;
 }
 :root[data-palette="gialloblu"] .bar { background: var(--brand); border-bottom: 3px solid var(--brand-edge); }
 :root[data-palette="gialloblu"] .bar h1 { color: var(--brand-ink); }
 :root[data-palette="gialloblu"] .bar .saved { color: var(--brand-ink); opacity: .8; }
+:root[data-palette="gialloblu"] body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.preview-logo { display: inline-flex; flex: 0 0 auto; }
+.preview-logo svg { display: block; height: 30px; width: auto; border-radius: 3px; }
 :root[data-palette="gialloblu"] body, :root[data-palette="gialloblu"] .bar, :root[data-palette="gialloblu"] button,
 :root[data-palette="gialloblu"] input, :root[data-palette="gialloblu"] select, :root[data-palette="gialloblu"] textarea {
   transition: background-color .25s ease, color .25s ease, border-color .25s ease;
@@ -151,8 +155,8 @@
 /* the preview: its note on top, and the sun / moon switch always on screen */
 .preview-note { display: flex; gap: 8px; align-items: center; padding: 8px 96px 8px 16px; background: var(--brand-edge, var(--accent));
   color: #fff; font-size: 14px; }
-:root[data-theme="dark"] .preview-note { color: #0b2545; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .preview-note { color: #0b2545; } }
+:root[data-theme="dark"] .preview-note { color: #1a1c1e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .preview-note { color: #1a1c1e; } }
 .preview-note p { margin: 0; flex: 1; }
 .preview-note button { background: none; border: 0; color: inherit; font-size: 18px; min-height: 0; padding: 2px 6px; }
 :root[data-anteprima] .bar { padding-right: 92px; }
@@ -7378,6 +7382,53 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
         h('button', { type: 'button', 'aria-label': 'Chiudi la nota', onclick: function () { note.remove(); } }, '✕'));
       document.body.prepend(note);
     }
+    if (preview.logo) {  // the logo of the company the preview is for (an SVG from dati/anteprima/, cleaned by hand)
+      const logo = h('span', { class: 'preview-logo' });
+      logo.innerHTML = preview.logo;
+      document.querySelector('.brand').prepend(logo);
+    }
+    if (preview.termini && preview.termini.length) previewWords(preview.termini);
+  }
+
+  /*
+   * The words of the company the preview is for (pairs [word, its word], from dati/anteprima/termini.txt): they
+   * replace ours in everything the page shows, now and later, with the same capital letters. What the person
+   * writes (the route text) stays as it is: the program reads both words.
+   */
+  function previewWords(pairs) {
+    const rules = pairs.map(function (p) { return [new RegExp('\\b' + p[0] + '\\b', 'gi'), p[1]]; });
+    const sameCase = function (found, word) {
+      if (found === found.toUpperCase()) return word.toUpperCase();
+      return found[0] === found[0].toUpperCase() ? word[0].toUpperCase() + word.slice(1) : word;
+    };
+    const swap = function (text) {
+      rules.forEach(function (r) { text = text.replace(r[0], function (found) { return sameCase(found, r[1]); }); });
+      return text;
+    };
+    const skip = 'textarea, script, style';
+    const fix = function (node) {
+      if (node.nodeType === 3) {
+        if (node.parentElement && !node.parentElement.closest(skip)) {
+          const t = swap(node.nodeValue);
+          if (t !== node.nodeValue) node.nodeValue = t;
+        }
+      } else if (node.nodeType === 1 && !node.matches(skip)) {
+        ['placeholder', 'title', 'aria-label'].forEach(function (a) {
+          const v = node.getAttribute(a);
+          if (v && swap(v) !== v) node.setAttribute(a, swap(v));
+        });
+        node.childNodes.forEach(fix);
+      }
+    };
+    fix(document.body);
+    document.title = swap(document.title);
+    new MutationObserver(function (changes) {
+      changes.forEach(function (c) {
+        if (c.type === 'childList') c.addedNodes.forEach(fix);
+        else fix(c.target);
+      });
+    }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true,
+      attributeFilter: ['placeholder', 'title', 'aria-label'] });
   }
 
   function wireTutorial() {

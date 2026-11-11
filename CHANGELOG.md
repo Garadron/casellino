@@ -1,5 +1,20 @@
 # Registro delle versioni
 
+## v0.32.0 · 2026-11-12 · Anteprima con i colori, il logo e le parole dell'azienda
+
+- Decisione di Garadron (12 novembre 2026): Casellino si propone all'azienda, con un'anteprima che ne usa i
+  colori, il logo e le parole. **Tutto quello che è dell'azienda sta solo in `dati/anteprima/`** (privata, mai su
+  GitHub): il programma pubblico non cambia.
+- **I colori esatti del sito dell'azienda** al posto di quelli fatti a occhio: giallo `#eedc00`, blu `#0047bb`,
+  blu scuro `#00297a`, scritte `#1a1c1e`, grigi, azzurro chiaro, rosso e verde dei messaggi, e il carattere Inter
+  (gratuito). Chiaro: barra gialla e fondo giallo tenue; scuro: blu scuro e giallo per pulsanti e collegamenti.
+- **Il logo** nella barra in alto, se c'è `dati/anteprima/logo-azienda.svg` (pulito: solo forme e colori).
+- **Le parole dell'azienda**, se c'è `dati/anteprima/termini.txt` (una coppia per riga, `nostra = loro`): prendono il
+  posto delle nostre in tutto quello che la pagina mostra, anche nel tutorial e in quello che compare dopo, con le
+  stesse maiuscole. Il testo del giro resta com'è: il programma capisce tutte e due le parole.
+- File: `app/src/ui.js` (`previewWords`, logo), `app/src/style.css`, `tools/build.py`, `tests/test_anteprima.js`
+  (nuovo, con parole e logo inventati), `README.md`, `Casellino.html`, `sito/`.
+
 ## v0.31.0 · 2026-11-11 · Anteprima dei colori giallo e blu
 
 - **Anteprima** chiesta da Garadron (11 novembre 2026) per proporre Casellino in ufficio: un file a parte,

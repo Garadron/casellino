@@ -12,8 +12,9 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
    (la conferma arriva da sola, gratis) e salvare.
 3. **Guida privata con le foto vere** pronta: `dati/Guida foto - zona 2 (privata).pdf`, da mandare ai colleghi (non
    pubblicarla: logo, indirizzo del centro, targa). Garadron dice se la guida pubblica resta con i disegni.
-4. **Anteprima per l'azienda** (Garadron, 12 novembre 2026: la propone alla sezione dedicata): colori ufficiali,
-   logo e termini ufficiali, solo nel file privato in `dati/anteprima/`.
+4. **Anteprima per l'azienda** pronta (v0.32.0, 12 novembre 2026): `dati/anteprima/Casellino anteprima.html`, con i
+   colori esatti, il logo e le parole ufficiali; in `dati/anteprima/` anche le parole e le sigle trovate. Garadron la
+   prova e decide come presentarla, e che cosa del nome dell'azienda va nel programma pubblico.
 
 ## Più avanti (solo cose gratuite)
 

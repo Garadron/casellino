@@ -80,26 +80,38 @@ def build():
 
 
 def preview():
-    """A preview of the yellow-and-blue colours, in one file in dati/anteprima/ (private: it may carry the
-    name of the company it is shown to, written in dati/anteprima/testo.txt). The program does not change."""
+    """A preview of the yellow-and-blue colours, in one file in dati/anteprima/ (private: it carries what belongs to
+    the company it is shown to). From that folder, when they are there: testo.txt (the note on top), logo-azienda.svg
+    (the logo, cleaned: only shapes and colours), termini.txt (their words, "ours = theirs", one pair a line).
+    The program does not change."""
     import json
     out_dir = ROOT / "dati" / "anteprima"
     out_dir.mkdir(parents=True, exist_ok=True)
-    note = out_dir / "testo.txt"
-    text = note.read_text(encoding="utf-8").strip() if note.exists() else "Anteprima: Casellino in giallo e blu."
-    head = ("<head>\n<script>window.CASELLINO_ANTEPRIMA = { testo: " + json.dumps(text, ensure_ascii=False).replace("</", "<\\/") + " };\n"
+
+    def read(name):
+        f = out_dir / name
+        return f.read_text(encoding="utf-8").strip() if f.exists() else ""
+
+    words = [[w.strip() for w in line.split("=", 1)] for line in read("termini.txt").splitlines()
+             if "=" in line and not line.lstrip().startswith("#")]
+    data = {"testo": read("testo.txt") or "Anteprima: Casellino in giallo e blu.", "logo": read("logo-azienda.svg"),
+            "termini": [w for w in words if re.fullmatch(r"[a-zà-ù]+", w[0]) and w[1]]}
+    head = ("<head>\n<script>window.CASELLINO_ANTEPRIMA = " + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + ";\n"
             "(function () { var t = ''; try { t = localStorage.getItem('casellino.tema') || ''; } catch (e) {}\n"
             "  if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(pointer: coarse)').matches ? '' : 'light';\n"
-            "  if (t) document.documentElement.setAttribute('data-theme', t); })();</script>")
+            "  if (t) document.documentElement.setAttribute('data-theme', t); })();</script>\n"
+            '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+            '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">')
     html = inline_icons(page(version()))
     html = html.replace('<html lang="it">', '<html lang="it" data-palette="gialloblu" data-anteprima>', 1)
     html = html.replace("<head>", head, 1)
     html = re.sub(r'<meta name="theme-color" content="[^"]*">',
-                  '<meta name="theme-color" content="#ffcc00" media="(prefers-color-scheme: light)">\n'
-                  '<meta name="theme-color" content="#081d45" media="(prefers-color-scheme: dark)">', html, count=1)
+                  '<meta name="theme-color" content="#eedc00" media="(prefers-color-scheme: light)">\n'
+                  '<meta name="theme-color" content="#00297a" media="(prefers-color-scheme: dark)">', html, count=1)
     target = out_dir / "Casellino anteprima.html"
     target.write_text(html, encoding="utf-8", newline="\n")
-    print(f"Anteprima giallo e blu: {target} ({target.stat().st_size // 1024} KB)")
+    print(f"Anteprima giallo e blu: {target} ({target.stat().st_size // 1024} KB, logo: {'sì' if data['logo'] else 'no'}, "
+          f"parole: {len(data['termini'])})")
 
 
 if __name__ == "__main__":
