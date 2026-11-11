@@ -1764,6 +1764,19 @@
     return c;
   }
 
+  // A canvas made smaller by halves, then to `width`: in one big step thin lines (the border of a letter) break up.
+  function halved(c, width) {
+    while (c.width / 2 >= width) {
+      const half = imageToCanvas(Math.round(c.width / 2), Math.round(c.height / 2));
+      half.getContext('2d').drawImage(c, 0, 0, half.width, half.height);
+      c = half;
+    }
+    if (c.width <= width) return c;
+    const out = imageToCanvas(width, Math.round(c.height * width / c.width));
+    out.getContext('2d').drawImage(c, 0, 0, out.width, out.height);
+    return out;
+  }
+
   function loadImage(i) {
     return new Promise(function (ok, ko) {
       const img = new Image();
@@ -1880,9 +1893,7 @@
     const ch = Math.max(1, Math.min(full.height - y0, Math.round((r.y1 - r.y0) * full.height)));
     const data = full.getContext('2d').getImageData(x0, y0, cw, ch);   // at the size of the photo: each pigeonhole is enlarged in foto.js
     // test mode (localStorage casellino.prova = 1): the piece given to the reader is kept, to look at it
-    let testing = false;
-    try { testing = localStorage.getItem('casellino.prova') === '1'; } catch (e) { /* no test mode */ }
-    if (testing) {
+    if (testMode()) {
       const keep = imageToCanvas(cw, ch);
       keep.getContext('2d').putImageData(data, 0, 0);
       (window.CasellinoProva = window.CasellinoProva || []).push({ foto: i + 1, rect: r, ritaglio: keep.toDataURL('image/png') });
@@ -1927,6 +1938,11 @@
     }
   }
 
+  // Test mode (localStorage casellino.prova = 1): what was given to the reader is kept, to look at it.
+  function testMode() {
+    try { return localStorage.getItem('casellino.prova') === '1'; } catch (e) { return false; }
+  }
+
   // The words of photo i, at most `wide` points wide (2600: the writing on the sheet is small).
   async function wordsOf(i, wide) {
     const w = await ocrWorker();
@@ -1941,8 +1957,9 @@
     if (name) return name;
     // on the whole photo the reader misses big letters: they are found, cut out and read by themselves
     const img = i === photo.index && photo.image ? photo.image : await loadImage(i);
-    const small = turned(img, photo.angles[i] || 0, Math.min(1, 1000 / img.naturalWidth));
+    const small = halved(turned(img, photo.angles[i] || 0, 1), 1000);
     const boxes = F.signBoxes(small.getContext('2d').getImageData(0, 0, small.width, small.height));
+    if (testMode()) (window.CasellinoSegni = window.CasellinoSegni || []).push({ foto: i + 1, piccola: small.toDataURL('image/png'), riquadri: boxes });
     if (!boxes.length) return '';
     const big = turned(img, photo.angles[i] || 0, Math.min(1, 2600 / img.naturalWidth));
     const w = await ocrWorker();
@@ -1959,7 +1976,9 @@
         g.putImageData(new ImageData(ink.data, ink.width, ink.height), 0, 0);
         for (const mode of ['11', '7', '8']) {
           await w.setParameters({ tessedit_pageseg_mode: mode, tessedit_char_whitelist: '0123456789ABCDEFGHILMNOPQRSTUVZ' });
-          const found = F.signText((await w.recognize(cut)).data.text);
+          const text = (await w.recognize(cut)).data.text;
+          if (testMode()) (window.CasellinoSegni = window.CasellinoSegni || []).push({ foto: i + 1, box: r, alta: tall, modo: mode, testo: text, ritaglio: cut.toDataURL('image/png') });
+          const found = F.signText(text, r.y1 - r.y0 >= 0.15);   // big letters: a photo of the sign itself
           if (found) return found;
         }
       }

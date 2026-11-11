@@ -422,6 +422,11 @@ test('photos one after the other: the pigeonholes they have in common are writte
   // empty pigeonholes alone do not say it is the same piece
   assert.deepStrictEqual(toks(F.withoutOverlap(items('VIA DEI TIGLI', [1, 'vuota', 'vuota']), items('VIA DEI TIGLI', ['vuota', 'vuota', 40]))),
     ['vuota', 'vuota', '40']);
+  // two photos read badly, full of "1?" and "7?": unsure numbers repeat by chance, the new photo is not removed
+  assert.deepStrictEqual(toks(F.withoutOverlap(items('VIA DEI TIGLI', ['2777?', '7?', '7?', '4?', '1?', '1?', '7?']),
+    items('VIA DEI TIGLI', ['1?', '7?', '4?', '1?', '7?', '3?', '9?']))), ['1?', '7?', '4?', '1?', '7?', '3?', '9?']);
+  // unsure ones between sure ones in common still go with them
+  assert.deepStrictEqual(toks(F.withoutOverlap(before, items('VIA DEI TIGLI', [7, '9?', 11, 13]))), ['13']);
   // the first photo: everything
   assert.deepStrictEqual(toks(F.withoutOverlap([], items('VIA DEI TIGLI', [1, 3]))), ['1', '3']);
   // the streets of the itinerary, from the words read on its photo (type and name in two columns, two streets a line)
@@ -436,6 +441,13 @@ test('photos one after the other: the pigeonholes they have in common are writte
   assert.strictEqual(F.snapStreet('VIA DEL MULINO', known), 'VIA DEL MULINO');
   assert.strictEqual(F.snapStreet('VIA ROMA', known), 'VIA ROMA');
   assert.strictEqual(F.snapStreet('?', known), '?');
+  // the name on a sign: a number and a letter; with big letters a last 8, 4, 1, 0 is B, A, A, D; small ones are house numbers
+  assert.strictEqual(F.signText('2B\n'), '2B');
+  assert.strictEqual(F.signText('28', true), '2B');
+  assert.strictEqual(F.signText('21', true), '2A');
+  assert.strictEqual(F.signText('124', true), '12A');
+  assert.strictEqual(F.signText('14'), '', 'on a strip 14 is a house number');
+  assert.strictEqual(F.signText('PANI', true), '');
   // a number read again further on is pointed out, not removed
   assert.deepStrictEqual(toks(F.repeatedItems(before, items('VIA DEI TIGLI', [21, 23, 5]).concat(items('VIA DELLE ROSE', [3])))), ['5']);
 });

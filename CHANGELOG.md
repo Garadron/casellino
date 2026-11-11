@@ -34,7 +34,11 @@
 - **Provato con le 27 foto vere della zona di Garadron** (come farebbe un collega) e sistemato quello che non andava:
   i pezzi di scritte delle buste davanti alle strisce non diventano più vie («LI LI», «TI DI»: una via ha una parola
   di almeno 4 lettere, o il tipo e il nome); il cartello della sottozona che si vede ancora sopra una striscia non è
-  una sottozona nuova; il nome sul cartello si prova a due grandezze. Le foto da lontano di una fila intera restano
+  una sottozona nuova; il nome sul cartello si prova a due grandezze e si trova anche nel browser (la foto si
+  rimpicciolisce a metà per volta, così i bordi sottili delle lettere gialle non si spezzano; con lettere grandi un
+  «21» letto è «2A»): sulle foto vere ora legge «2A» e «2B». Due foto lette male, piene di «1?» e «7?», non si
+  cancellano più a vicenda: per dire che due caselle sono la stessa contano solo i numeri letti sicuri (senza «?»).
+  Le foto da lontano di una fila intera restano
   lente (circa un minuto e mezzo l'una) e poco leggibili: il tutorial insegna le foto da vicino.
 - Misura sulle 6 strisce di prova invariata (59%); prove nuove per i doppi, il cartello, le vie e il tutorial.
 - File: `app/src/foto.js`, `app/src/ui.js`, `app/index.src.html`, `app/src/style.css`, `tools/tutorial.py`,

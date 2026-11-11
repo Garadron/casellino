@@ -429,7 +429,8 @@
    * That piece is never written twice: the new items come back without it.
    * The two pieces are compared like two lists, so a pigeonhole read differently, missed or cut at the
    * edge of a photo does not hide the overlap: the start of the new photo is lined up with the end of
-   * the old one, and the best line-up counts if at least 2 house numbers are the same (same street).
+   * the old one, and the best line-up counts if at least 2 house numbers read for sure (no "?") are the
+   * same, in the same street: numbers read unsure repeat by chance and alone never remove a photo.
    * After it, a house number of the same street that the last photos already had, right at the start
    * of the new photo, is left out too.
    */
@@ -452,7 +453,9 @@
     const x = overlapKey(a), y = overlapKey(b);
     if (!hasNumber(x) || !hasNumber(y)) return { score: x === y && x ? 0.5 : (x && y ? -0.5 : 0), exact: false };
     const street = sameStreet(a, b);
-    if (x === y) return { score: street ? 3 : 0, exact: street };
+    // only numbers read for sure count as the same pigeonhole: "7?" and "7?" may be two different ones
+    const sure = !/\?/.test(a.tok) && !/\?/.test(b.tok);
+    if (x === y) return { score: street ? (sure ? 3 : 1) : 0, exact: street && sure };
     // read a little differently: the same digits, or one character changed, added or missing
     const digits = function (s) { return s.replace(/\D/g, ''); };
     if (digits(x) === digits(y)) return { score: street ? 1.5 : 0, exact: false };
@@ -488,8 +491,8 @@
     let lead = 0;
     for (let k = 0; k < Math.min(fresh.length, 6); k++) {
       const key = overlapKey(fresh[k]);
-      if (!hasNumber(key)) continue;   // an empty or unread pigeonhole goes with the numbers around it
-      if (!(seen[key] || []).some(function (it) { return sameStreet(it, fresh[k]); })) break;
+      if (!hasNumber(key) || /\?/.test(fresh[k].tok)) continue;   // an empty, unread or unsure pigeonhole goes with the numbers around it
+      if (!(seen[key] || []).some(function (it) { return !/\?/.test(it.tok) && sameStreet(it, fresh[k]); })) break;
       lead = k + 1;
     }
     return fresh.slice(lead);
@@ -608,7 +611,7 @@
       const w = c.x1 - c.x0, h = c.y1 - c.y0, fill = c.n / (w * h);
       if (h < H * 0.04 || h > H * 0.45 || w < h * 0.2 || w > h * 1.3 || fill < 0.07 || fill > 0.8) return false;   // 0.07: outlined letters
       const light = ground(c);
-      return light >= 150 && light - c.ink >= 70;
+      return light >= 150 && light - c.ink >= 55;
     }).sort(function (a, b) { return a.x0 - b.x0; });
     const found = [];
     letters.forEach(function (c, i) {
@@ -650,12 +653,16 @@
     return { width: img.width, height: img.height, data: out };
   }
 
-  // A name read on a sign: a number and a letter ("2B"); a last 8, 4 or 0 is the letter B, A or D read as a digit.
-  function signText(text) {
+  /*
+   * A name read on a sign: a number and a letter ("2B"). With `big` letters (a photo of the sign itself) the last
+   * sign is surely a letter: an 8, 4, 1 or 0 is a B, A, A (a thick A loses its hole) or D read as a digit. Not
+   * with small ones: on a strip "14" is a house number. The person confirms the name anyway.
+   */
+  function signText(text, big) {
     const t = String(text || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
     if (/^\d{1,3}[A-Z]$/.test(t)) return t;
-    const m = /^(\d{1,3})([840])$/.exec(t);
-    return m ? m[1] + { 8: 'B', 4: 'A', 0: 'D' }[m[2]] : '';
+    const m = big && /^(\d{1,2})([8410])$/.exec(t);
+    return m ? m[1] + { 8: 'B', 4: 'A', 1: 'A', 0: 'D' }[m[2]] : '';
   }
 
   // The photo of the sign of a sub-zone ("2A"): which of the names given is written big in it, or ''.
