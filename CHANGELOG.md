@@ -1,9 +1,16 @@
 # Registro delle versioni
 
-## v0.30.0 · 2026-11-11 · Guida alle foto, cartello e itinerario, mai civici doppi
+## v0.30.0 · 2026-11-11 · Tutorial a fumetto, cartello e itinerario, mai civici doppi
 
-- **📖 Come fare le foto**: una guida con i disegni (si apre da sola la prima volta che si leggono le foto, poi dal
-  tasto nella finestra delle foto e da «Altro»). L'ordine deciso da Garadron (11 novembre 2026): prima una foto di
+- **📖 Tutorial a fumetto** (richiesta di Garadron, 11 novembre 2026): 10 pagine su carta color pergamena, un disegno
+  alla volta con un postino che spiega; tasto verde «Continua», «Salta» su ogni pagina, «◀» per tornare, anche col
+  dito (scorrendo). Si apre da solo dopo l'iscrizione e la prima volta che si leggono le foto; poi dal tasto
+  **«📖 Tutorial»** in alto, accanto ad «Accedi», e da «📖 Come fare le foto» nella finestra delle foto. Disegni fatti
+  guardando le foto vere ma con zona, vie e civici inventati (9A, 9B, «VIA DEI TIGLI»): tutto il mobile con i due
+  caselli e le due ali, cartello e itinerario (meglio in due foto), si legge?, le prime tre foto di una fila (la
+  seconda riparte un po' prima, la terza continua la via), fila dopo fila, l'altra sottozona, in Casellino. Alla fine
+  il rimando a «Come si scrive» per chi parte senza foto. I disegni li scrive `tools/tutorial.py`.
+- L'ordine delle foto deciso da Garadron (11 novembre 2026): prima una foto di
   **tutto il mobile**, poi **una sottozona alla volta**; di ogni sottozona prima il **cartello** con il nome e
   l'**itinerario** (anche in due foto, se insieme non vengono bene), poi le **strisce dall'inizio alla fine del
   casello**, fila dopo fila, da vicino; ogni foto riparte un po' prima di dove è finita quella di prima. Le foto devono
@@ -24,9 +31,14 @@
   chiaramente lo stesso nome; così l'elenco delle vie non si riempie di doppioni storpiati.
 - **Ordine delle foto**: se il telefono le dà in un ordine diverso da quello di scatto, «⇅ Mettile in ordine di
   scatto» (non da solo: una foto rifatta dopo può essere scelta al suo posto).
-- Misura sulle 6 strisce di prova invariata (59%); prove nuove per i doppi, il cartello e le vie.
-- File: `app/src/foto.js`, `app/src/ui.js`, `app/index.src.html`, `app/src/style.css`, `tests/test_core.js`,
-  `README.md`, `Casellino.html`, `sito/`.
+- **Provato con le 27 foto vere della zona di Garadron** (come farebbe un collega) e sistemato quello che non andava:
+  i pezzi di scritte delle buste davanti alle strisce non diventano più vie («LI LI», «TI DI»: una via ha una parola
+  di almeno 4 lettere, o il tipo e il nome); il cartello della sottozona che si vede ancora sopra una striscia non è
+  una sottozona nuova; il nome sul cartello si prova a due grandezze. Le foto da lontano di una fila intera restano
+  lente (circa un minuto e mezzo l'una) e poco leggibili: il tutorial insegna le foto da vicino.
+- Misura sulle 6 strisce di prova invariata (59%); prove nuove per i doppi, il cartello, le vie e il tutorial.
+- File: `app/src/foto.js`, `app/src/ui.js`, `app/index.src.html`, `app/src/style.css`, `tools/tutorial.py`,
+  `tests/test_core.js`, `tests/test_pagina.js`, `tests/test_account_pagina.js`, `README.md`, `Casellino.html`, `sito/`.
 
 ## v0.29.0 · 2026-11-11 · Password dimenticata: un codice per email
 

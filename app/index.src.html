@@ -25,6 +25,7 @@
       <h1>Casellino</h1>
       <p class="saved" id="saved">Non ancora salvato</p>
     </div>
+    <button type="button" id="btn-tutorial" class="tut-open">📖 Tutorial</button>
   </div>
   <nav class="actions">
     <button type="button" id="btn-account">Accedi</button>
@@ -49,7 +50,6 @@
       <div class="menu-list">
         <button type="button" id="btn-new">Comincia da capo</button>
         <button type="button" id="btn-photos">📷 Leggi le foto delle strisce</button>
-        <button type="button" id="btn-photo-guide">📖 Come fare le foto</button>
         <button type="button" id="btn-open-excel">📥 Apri un Excel già fatto</button>
         <button type="button" id="btn-import">Importa testo</button>
         <button type="button" id="btn-export-text">Scarica come testo</button>
@@ -208,59 +208,669 @@
   </form>
 </dialog>
 
-<dialog id="dlg-guida-foto" class="guide">
-  <form method="dialog" class="dlg">
-    <h2>📖 Come fare le foto</h2>
-    <p class="small muted">Il programma legge le foto e scrive il giro da solo; tu lo controlli. Più le foto sono chiare, meno c'è da correggere.</p>
-    <ol class="guide-steps">
-      <li><b>Prima di tutto, una foto di tutto il mobile</b>: tutti i caselli e le ali della zona insieme (per esempio la 2A e la 2B), da un po' lontano. Serve a ricordare com'è fatto; non si legge.</li>
-      <li><b>Poi una sottozona alla volta.</b> Prima tutte le foto della sottozona A, poi tutte quelle della B. Non mescolare i caselli vicini.</li>
-      <li><b>Il cartello</b> con il nome della sottozona (per esempio «2A»). Se ci sta, nella stessa foto anche l'<b>itinerario</b>, il foglio con l'elenco delle vie.
-        Se insieme non vengono bene, fai due foto: <b>prima il cartello, poi l'itinerario</b>.</li>
-      <li><b>Ogni foto deve leggersi bene.</b> Allargala con due dita: scritte e numeri devono restare chiari anche ingranditi. Se è mossa, sfocata, storta o con un riflesso, rifalla.</li>
-      <li><b>Poi le strisce, dall'inizio alla fine del casello</b>, nell'ordine in cui si leggono: la fila 1 da sinistra a destra (ala A, casello, ala B), poi la fila 2, e così via.
-        <svg class="guide-pic" viewBox="0 0 340 118" role="img" aria-label="L'ordine: fila 1 da sinistra a destra, poi fila 2">
-          <g fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.55">
-            <rect x="10" y="8" width="60" height="84" rx="3"/><rect x="80" y="8" width="180" height="84" rx="3"/><rect x="270" y="8" width="60" height="84" rx="3"/>
-            <path d="M10 29h60M10 50h60M10 71h60M80 29h180M80 50h180M80 71h180M270 29h60M270 50h60M270 71h60"/>
-          </g>
-          <g stroke="var(--accent)" stroke-width="3" fill="none" stroke-linecap="round">
-            <path d="M16 19H318"/><path d="M318 19L311 14M318 19L311 24"/>
-            <path d="M318 26C318 34 22 32 16 40" stroke-dasharray="4 5" stroke-width="2"/>
-            <path d="M16 40H318"/><path d="M318 40L311 35M318 40L311 45"/>
-          </g>
-          <g font-size="12" fill="currentColor" text-anchor="middle">
-            <text x="40" y="110">ala A</text><text x="170" y="110">casello</text><text x="300" y="110">ala B</text>
-          </g>
-          <g font-size="11" font-weight="700" fill="var(--accent)"><text x="2" y="23">1</text><text x="2" y="44">2</text></g>
-        </svg></li>
-      <li><b>La prima foto di ogni fila</b> comincia dalla prima casella: dentro deve esserci bene l'inizio della striscia. Poi arriva fin dove arriva l'inquadratura: <b>15-20 caselle, da vicino</b>, dritta e con buona luce.</li>
-      <li><b>Ogni foto dopo comincia un po' prima di dove è finita quella di prima</b>: 2 o 3 caselle già fotografate. Così non si perde niente, e i civici ripetuti il programma li scrive una volta sola.
-        <svg class="guide-pic" viewBox="0 0 340 96" role="img" aria-label="Tre foto della stessa striscia che si sovrappongono di 2 o 3 caselle">
-          <rect x="94" y="18" width="40" height="66" fill="var(--accent)" opacity="0.18"/><rect x="198" y="18" width="40" height="66" fill="var(--accent)" opacity="0.18"/>
-          <g fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.6">
-            <rect x="8" y="40" width="324" height="34"/>
-            <path d="M24 40v34M40 40v34M56 40v34M72 40v34M88 40v34M104 40v34M120 40v34M136 40v34M152 40v34M168 40v34M184 40v34M200 40v34M216 40v34M232 40v34M248 40v34M264 40v34M280 40v34M296 40v34M312 40v34"/>
-          </g>
-          <g font-size="8" fill="currentColor" text-anchor="middle">
-            <text x="16" y="55">1</text><text x="32" y="55">3</text><text x="48" y="55">5</text><text x="64" y="55">7</text><text x="80" y="55">9</text><text x="96" y="55">11</text><text x="112" y="55">13</text><text x="128" y="55">15</text><text x="144" y="55">17</text><text x="160" y="55">19</text><text x="176" y="55">21</text><text x="192" y="55">23</text><text x="208" y="55">25</text><text x="224" y="55">27</text><text x="240" y="55">29</text><text x="256" y="55">31</text><text x="272" y="55">33</text><text x="288" y="55">35</text><text x="304" y="55">37</text><text x="320" y="55">39</text>
-          </g>
-          <g fill="none" stroke-width="2.5">
-            <rect x="4" y="22" width="130" height="60" rx="4" stroke="#d93025"/>
-            <rect x="94" y="18" width="144" height="66" rx="4" stroke="var(--accent)" stroke-dasharray="6 3"/>
-            <rect x="198" y="22" width="138" height="60" rx="4" stroke="var(--ok)"/>
-          </g>
-          <g font-size="12" font-weight="700" text-anchor="middle">
-            <text x="60" y="14" fill="#d93025">foto 1</text><text x="166" y="12" fill="var(--accent)">foto 2</text><text x="276" y="14" fill="var(--ok)">foto 3</text>
-          </g>
-        </svg>
-        <span class="small muted">Le parti colorate sono le caselle che si vedono in due foto: il programma le riconosce e le scrive una volta sola.</span></li>
-      <li><b>In Casellino:</b> «📷 Carica e leggi le foto delle strisce», scegli le foto <b>nell'ordine in cui le hai scattate</b>, conferma il cartello (spunta «tutto il mobile» se la foto 1 è quella, e l'itinerario se è a parte), poi «📚 Leggi tutte le foto». Controlla il testo, correggi i «?» e premi «Aggiungi al giro». Poi lo stesso con la sottozona B.</li>
-    </ol>
-    <p class="small muted">Lo scritto a mano e i numeri piccoli si leggono poco: meglio una foto in più da vicino che una sola da lontano.</p>
-    <menu><button value="ok" class="primary">Ho capito</button></menu>
-  </form>
+<!-- tutorial:start (written by tools/tutorial.py: change it there) -->
+<dialog id="dlg-tutorial" class="tutorial" aria-label="Tutorial: il casello dalle foto">
+  <div class="tut">
+    <svg class="tut-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>
+  <symbol id="tut-postino" viewBox="0 0 100 130">
+    <path d="M30 128 L32 92 Q50 80 68 92 L70 128 Z" fill="#8ec5ff" stroke="#2b1d12" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M34 88 L72 122" stroke="#7a4a1f" stroke-width="5" stroke-linecap="round"/>
+    <rect x="58" y="104" width="30" height="22" rx="5" fill="#c98b4a" stroke="#2b1d12" stroke-width="3"/>
+    <path d="M58 110 Q73 118 88 110" fill="none" stroke="#2b1d12" stroke-width="2.5"/>
+    <path d="M70 94 Q86 84 90 66" fill="none" stroke="#2b1d12" stroke-width="9" stroke-linecap="round"/>
+    <path d="M70 94 Q86 84 90 66" fill="none" stroke="#8ec5ff" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="91" cy="60" r="8" fill="#ffd9b0" stroke="#2b1d12" stroke-width="3"/>
+    <circle cx="50" cy="56" r="27" fill="#ffd9b0" stroke="#2b1d12" stroke-width="3"/>
+    <path d="M22 50 Q24 18 50 16 Q76 18 78 50 Q50 40 22 50 Z" fill="#2c6db3" stroke="#2b1d12" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M58 46 Q80 42 92 50 Q76 56 60 52 Z" fill="#23558c" stroke="#2b1d12" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="50" cy="31" r="7" fill="#ffd23f" stroke="#2b1d12" stroke-width="2"/>
+    <text x="50" y="35" font-size="10" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">C</text>
+    <ellipse cx="41" cy="58" rx="4" ry="5.5" fill="#2b1d12"/><ellipse cx="60" cy="58" rx="4" ry="5.5" fill="#2b1d12"/>
+    <circle cx="42.5" cy="56" r="1.6" fill="#fff"/><circle cx="61.5" cy="56" r="1.6" fill="#fff"/>
+    <circle cx="33" cy="67" r="4.5" fill="#ff9e9e" opacity=".7"/><circle cx="68" cy="67" r="4.5" fill="#ff9e9e" opacity=".7"/>
+    <path d="M41 68 Q50 79 60 68 Z" fill="#a33b2a" stroke="#2b1d12" stroke-width="2.5" stroke-linejoin="round"/>
+  </symbol>
+  <pattern id="tut-fins" width="24" height="22" patternUnits="userSpaceOnUse">
+    <path d="M1 22 V8 a3 3 0 0 1 6 0 V22 Z M9 22 V8 a3 3 0 0 1 6 0 V22 Z" fill="#cfd3d6" stroke="#5c6368" stroke-width=".9"/>
+    <path d="M17 22 V8 a3 3 0 0 1 6 0 V22 Z" fill="#f7c948" stroke="#5c6368" stroke-width=".9"/>
+  </pattern>
+  <pattern id="tut-strip" width="44" height="8" patternUnits="userSpaceOnUse">
+    <rect width="11" height="8" fill="#8fd3ff"/><rect x="11" width="11" height="8" fill="#a6e28a"/>
+    <rect x="22" width="11" height="8" fill="#ffe37a"/><rect x="33" width="11" height="8" fill="#ffb3b3"/>
+    <path d="M11 0V8M22 0V8M33 0V8M44 0V8" stroke="#2b1d12" stroke-width=".6"/>
+  </pattern>
+</defs></svg>
+    <p class="tut-head"><span>Casellino · il casello dalle foto</span><span class="small" id="tut-count"></span></p>
+    <div class="tut-pages" id="tut-pages">
+    <section class="tut-page">
+      <svg class="tut-pic" viewBox="0 0 360 238" role="img" aria-label="Tutto il mobile: due caselli e due ali, con i cartelli sopra">
+<rect width="360" height="238" fill="#fdf6e3"/>
+<rect x="0" y="50" width="360" height="16" fill="#b5d99c"/>
+<rect x="30" y="6" width="64" height="46" rx="4" fill="#fffdf2" stroke="#2b1d12" stroke-width="3"/>
+<rect x="34" y="10" width="56" height="38" rx="2" fill="none" stroke="#f2c230" stroke-width="3"/>
+<path d="M39 20h19M39 27h16M39 34h19" stroke="#9a8f80" stroke-width="2" stroke-linecap="round"/>
+<text x="75" y="36" font-size="23" font-weight="900" text-anchor="middle" fill="#f7c948" stroke="#2b1d12" stroke-width="1.3" paint-order="stroke" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9A</text>
+<rect x="100" y="8" width="30" height="42" rx="2" fill="#fff" stroke="#2b1d12" stroke-width="2.5"/>
+<rect x="102" y="10" width="26" height="7" fill="#ffe37a"/>
+<text x="115" y="13" font-size="4.2" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9A</text>
+<path d="M104 19h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 24h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 29h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 34h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 39h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 43h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<rect x="222" y="8" width="30" height="42" rx="2" fill="#fff" stroke="#2b1d12" stroke-width="2.5"/>
+<rect x="224" y="10" width="26" height="7" fill="#ffe37a"/>
+<text x="237" y="13" font-size="4.2" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9B</text>
+<path d="M226 19h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 24h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 29h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 34h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 39h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 43h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<rect x="258" y="6" width="64" height="46" rx="4" fill="#fffdf2" stroke="#2b1d12" stroke-width="3"/>
+<rect x="262" y="10" width="56" height="38" rx="2" fill="none" stroke="#f2c230" stroke-width="3"/>
+<path d="M267 20h19M267 27h16M267 34h19" stroke="#9a8f80" stroke-width="2" stroke-linecap="round"/>
+<text x="303" y="36" font-size="23" font-weight="900" text-anchor="middle" fill="#f7c948" stroke="#2b1d12" stroke-width="1.3" paint-order="stroke" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9B</text>
+<rect x="12" y="72" width="120" height="142" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="16" y="75" width="112" height="25" fill="#4b5560"/>
+<rect x="16" y="79" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="15" y="99" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="13" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="125" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="16" y="109" width="112" height="25" fill="#4b5560"/>
+<rect x="16" y="113" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="15" y="133" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="13" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="125" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="16" y="143" width="112" height="25" fill="#4b5560"/>
+<rect x="16" y="147" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="15" y="167" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="13" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="125" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="16" y="177" width="112" height="25" fill="#4b5560"/>
+<rect x="16" y="181" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="15" y="201" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="13" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="125" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="136" y="72" width="42" height="142" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="140" y="75" width="34" height="25" fill="#4b5560"/>
+<rect x="140" y="79" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="139" y="99" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="137" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="171" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="140" y="109" width="34" height="25" fill="#4b5560"/>
+<rect x="140" y="113" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="139" y="133" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="137" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="171" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="140" y="143" width="34" height="25" fill="#4b5560"/>
+<rect x="140" y="147" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="139" y="167" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="137" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="171" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="140" y="177" width="34" height="25" fill="#4b5560"/>
+<rect x="140" y="181" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="139" y="201" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="137" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="171" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="186" y="72" width="120" height="142" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="190" y="75" width="112" height="25" fill="#4b5560"/>
+<rect x="190" y="79" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="189" y="99" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="187" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="299" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="190" y="109" width="112" height="25" fill="#4b5560"/>
+<rect x="190" y="113" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="189" y="133" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="187" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="299" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="190" y="143" width="112" height="25" fill="#4b5560"/>
+<rect x="190" y="147" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="189" y="167" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="187" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="299" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="190" y="177" width="112" height="25" fill="#4b5560"/>
+<rect x="190" y="181" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="189" y="201" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="187" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="299" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="310" y="72" width="42" height="142" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="314" y="75" width="34" height="25" fill="#4b5560"/>
+<rect x="314" y="79" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="313" y="99" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="311" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="345" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="314" y="109" width="34" height="25" fill="#4b5560"/>
+<rect x="314" y="113" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="313" y="133" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="311" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="345" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="314" y="143" width="34" height="25" fill="#4b5560"/>
+<rect x="314" y="147" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="313" y="167" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="311" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="345" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="314" y="177" width="34" height="25" fill="#4b5560"/>
+<rect x="314" y="181" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="313" y="201" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="311" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="345" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<text x="72" y="232" font-size="11" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">casello 9A</text>
+<text x="157" y="232" font-size="11" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">ala</text>
+<text x="246" y="232" font-size="11" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">casello 9B</text>
+<text x="331" y="232" font-size="11" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">ala</text>
+<g><rect x="4" y="2" width="352" height="218" rx="9" fill="none" stroke="#e0442f" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="16" cy="14" r="11" fill="#e0442f" stroke="#2b1d12" stroke-width="2"/>
+<text x="16" y="18.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text></g>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">1 · Tutto il mobile</b>Ciao! Ti faccio vedere come Casellino scrive il casello dalle tue foto. <b>Prima foto: tutto il mobile</b>, da un po' lontano: i caselli e le ali di tutte e due le sottozone. Non dimenticarla!</p></div>
+    </section>
+    <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 160" role="img" aria-label="Il cartello e l'itinerario: in una foto, o meglio in due">
+<rect width="360" height="160" fill="#fdf6e3"/>
+<rect x="4" y="4" width="172" height="150" rx="8" fill="#fbf0d2" stroke="#2b1d12" stroke-width="2"/>
+<rect x="184" y="4" width="172" height="150" rx="8" fill="#fbf0d2" stroke="#2b1d12" stroke-width="2"/>
+<rect x="14" y="40" width="90" height="66" rx="4" fill="#fffdf2" stroke="#2b1d12" stroke-width="3"/>
+<rect x="18" y="44" width="82" height="58" rx="2" fill="none" stroke="#f2c230" stroke-width="3"/>
+<path d="M23 60h27M23 70h22M23 80h27" stroke="#9a8f80" stroke-width="2" stroke-linecap="round"/>
+<text x="77" y="84" font-size="33" font-weight="900" text-anchor="middle" fill="#f7c948" stroke="#2b1d12" stroke-width="1.8" paint-order="stroke" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9A</text>
+<rect x="110" y="28" width="58" height="90" rx="2" fill="#fff" stroke="#2b1d12" stroke-width="2.5"/>
+<rect x="112" y="30" width="54" height="14" fill="#ffe37a"/>
+<text x="139" y="40" font-size="6.7" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Itinerario 9A</text>
+<text x="114" y="58" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DEI TIGLI</text>
+<text x="114" y="68" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DELLE ROSE</text>
+<text x="114" y="79" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">PIAZZA GRANDE</text>
+<text x="114" y="89" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">CASCINA ALTA</text>
+<text x="114" y="100" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VICOLO STRETTO</text>
+<text x="114" y="110" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA NUOVA</text>
+<g><rect x="9" y="18" width="163" height="108" rx="9" fill="none" stroke="#e0442f" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="21" cy="30" r="11" fill="#e0442f" stroke="#2b1d12" stroke-width="2"/>
+<text x="21" y="34.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text></g>
+<rect x="194" y="40" width="90" height="66" rx="4" fill="#fffdf2" stroke="#2b1d12" stroke-width="3"/>
+<rect x="198" y="44" width="82" height="58" rx="2" fill="none" stroke="#f2c230" stroke-width="3"/>
+<path d="M203 60h27M203 70h22M203 80h27" stroke="#9a8f80" stroke-width="2" stroke-linecap="round"/>
+<text x="257" y="84" font-size="33" font-weight="900" text-anchor="middle" fill="#f7c948" stroke="#2b1d12" stroke-width="1.8" paint-order="stroke" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9A</text>
+<rect x="290" y="28" width="58" height="90" rx="2" fill="#fff" stroke="#2b1d12" stroke-width="2.5"/>
+<rect x="292" y="30" width="54" height="14" fill="#ffe37a"/>
+<text x="319" y="40" font-size="6.7" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Itinerario 9A</text>
+<text x="294" y="58" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DEI TIGLI</text>
+<text x="294" y="68" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DELLE ROSE</text>
+<text x="294" y="79" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">PIAZZA GRANDE</text>
+<text x="294" y="89" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">CASCINA ALTA</text>
+<text x="294" y="100" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VICOLO STRETTO</text>
+<text x="294" y="110" font-size="6.0" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA NUOVA</text>
+<g><rect x="189" y="26" width="100" height="86" rx="9" fill="none" stroke="#e0442f" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="201" cy="38" r="11" fill="#e0442f" stroke="#2b1d12" stroke-width="2"/>
+<text x="201" y="42.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text></g>
+<g><rect x="286" y="12" width="66" height="112" rx="9" fill="none" stroke="#2f7de0" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="298" cy="24" r="11" fill="#2f7de0" stroke="#2b1d12" stroke-width="2"/>
+<text x="298" y="28.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">3</text></g>
+<text x="90" y="145" font-size="13" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">in una foto</text>
+<text x="270" y="145" font-size="13" font-weight="700" text-anchor="middle" fill="#2e9d4a" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">in due foto: meglio!</text>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">2 · Il cartello e l'itinerario</b>Poi <b>una sottozona alla volta</b>. Per primi il <b>cartello</b> con il nome (qui la 9A) e l'<b>itinerario</b>, il foglio con l'elenco delle vie. Meglio in due foto: prima il cartello, poi l'itinerario.</p></div>
+    </section>
+    <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 190" role="img" aria-label="Allarga la foto: deve leggersi bene, non mossa né storta">
+<rect width="360" height="190" fill="#fdf6e3"/>
+<rect x="22" y="6" width="124" height="178" rx="18" fill="#2b1d12"/>
+<rect x="31" y="22" width="106" height="146" rx="6" fill="#fffdf2"/>
+<rect x="31" y="40" width="53" height="70" fill="#bfe6ff"/><rect x="84" y="40" width="53" height="70" fill="#bfe6ff"/>
+<path d="M84 40V84M31 84H137" stroke="#2b1d12" stroke-width="2.5"/>
+<text x="57" y="76" font-size="30" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">17</text>
+<text x="110" y="76" font-size="30" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">19</text>
+<text x="84" y="102" font-size="11" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DEI TIGLI</text>
+<path d="M62 142 L44 124 M44 124 v9 M44 124 h9 M106 142 L124 124 M124 124 v9 M124 124 h-9" stroke="#2e9d4a" stroke-width="4" stroke-linecap="round" fill="none"/>
+<text x="84" y="162" font-size="10.5" font-weight="700" text-anchor="middle" fill="#2e9d4a" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">allarga con due dita</text>
+<g opacity=".55" transform="translate(-2 0)"><text x="180" y="80" font-size="15" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">15</text><text x="204" y="80" font-size="15" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">17</text></g><g opacity=".55" transform="translate(3 2)"><text x="180" y="80" font-size="15" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">15</text><text x="204" y="80" font-size="15" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">17</text></g>
+<rect x="166" y="54" width="56" height="40" rx="4" fill="none" stroke="#2b1d12" stroke-width="2"/>
+<g transform="rotate(-14 270 74)"><rect x="244" y="62" width="52" height="24" fill="#bfe6ff" stroke="#2b1d12" stroke-width="2"/><text x="258" y="79" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">15</text><text x="282" y="79" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">17</text></g>
+<rect x="240" y="54" width="56" height="40" rx="4" fill="none" stroke="#2b1d12" stroke-width="2"/>
+<rect x="314" y="62" width="40" height="24" fill="#bfe6ff" stroke="#2b1d12" stroke-width="2"/>
+<text x="324" y="79" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">15</text>
+<text x="344" y="79" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">17</text>
+<rect x="306" y="54" width="52" height="40" rx="4" fill="none" stroke="#2b1d12" stroke-width="2"/>
+<circle cx="194" cy="120" r="14" fill="#e0442f" stroke="#2b1d12" stroke-width="2"/><path d="M188 114l12 12M200 114l-12 12" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+<circle cx="268" cy="120" r="14" fill="#e0442f" stroke="#2b1d12" stroke-width="2"/><path d="M262 114l12 12M274 114l-12 12" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+<circle cx="332" cy="120" r="14" fill="#2e9d4a" stroke="#2b1d12" stroke-width="2"/><path d="M325 120l5 5 9-10" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<text x="194" y="152" font-size="13" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">mossa</text>
+<text x="268" y="152" font-size="13" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">storta</text>
+<text x="332" y="152" font-size="13" font-weight="700" text-anchor="middle" fill="#2e9d4a" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">chiara</text>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">3 · Si legge bene?</b>Allarga la foto con due dita: scritte e numeri devono restare <b>chiari</b>. Mossa, storta o con un riflesso? Rifalla subito.</p></div>
+    </section>
+    <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 172" role="img" aria-label="La striscia con la foto 1">
+<rect width="360" height="172" fill="#fdf6e3"/>
+<rect x="0" y="0" width="360" height="70" fill="#4b5560"/>
+<rect x="0" y="6" width="360" height="62" fill="url(#tut-fins)" transform="scale(1 1)"/>
+<rect x="5" y="70" width="350" height="62" fill="#fffdf2" stroke="#2b1d12" stroke-width="3"/>
+<rect x="5" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="17.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text>
+<rect x="30" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="42.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">3</text>
+<rect x="55" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="67.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">5</text>
+<rect x="80" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="92.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">7</text>
+<rect x="105" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="117.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9</text>
+<rect x="130" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="142.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">11</text>
+<rect x="155" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="167.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">13</text>
+<rect x="180" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="192.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">15</text>
+<rect x="205" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="217.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text>
+<rect x="230" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="242.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">4</text>
+<rect x="255" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="267.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">6</text>
+<rect x="280" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="292.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">8</text>
+<rect x="305" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="317.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">10</text>
+<rect x="330" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="342.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">12</text>
+<path d="M5 101H355" stroke="#2b1d12" stroke-width="2"/>
+<path d="M30 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M55 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M80 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M105 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M130 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M155 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M180 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M205 70V132" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M230 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M255 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M280 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M305 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M330 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<text x="105" y="121" font-size="12" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DEI TIGLI</text>
+<text x="280" y="121" font-size="12" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DELLE ROSE</text>
+<g><rect x="2" y="3" width="156" height="132" rx="9" fill="none" stroke="#e0442f" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="14" cy="15" r="11" fill="#e0442f" stroke="#2b1d12" stroke-width="2"/>
+<text x="14" y="19.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text></g>
+<path d="M15 158H145" stroke="#e0442f" stroke-width="4" stroke-linecap="round"/>
+<path d="M137 152L145 158L137 164" fill="none" stroke="#e0442f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">4 · Le strisce: la prima foto</b>Ora le strisce, <b>da vicino</b> (15-20 caselle per foto). La prima foto della fila <b>comincia dalla prima casella</b> a sinistra.</p></div>
+    </section>
+    <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 172" role="img" aria-label="La striscia con la foto 2">
+<rect width="360" height="172" fill="#fdf6e3"/>
+<rect x="0" y="0" width="360" height="70" fill="#4b5560"/>
+<rect x="0" y="6" width="360" height="62" fill="url(#tut-fins)" transform="scale(1 1)"/>
+<rect x="5" y="70" width="350" height="62" fill="#fffdf2" stroke="#2b1d12" stroke-width="3"/>
+<rect x="5" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="17.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text>
+<rect x="30" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="42.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">3</text>
+<rect x="55" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="67.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">5</text>
+<rect x="80" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="92.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">7</text>
+<rect x="105" y="71.5" width="25" height="59" fill="#ffe066"/>
+<text x="117.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9</text>
+<rect x="130" y="71.5" width="25" height="59" fill="#ffe066"/>
+<text x="142.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">11</text>
+<rect x="155" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="167.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">13</text>
+<rect x="180" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="192.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">15</text>
+<rect x="205" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="217.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text>
+<rect x="230" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="242.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">4</text>
+<rect x="255" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="267.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">6</text>
+<rect x="280" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="292.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">8</text>
+<rect x="305" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="317.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">10</text>
+<rect x="330" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="342.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">12</text>
+<path d="M5 101H355" stroke="#2b1d12" stroke-width="2"/>
+<path d="M30 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M55 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M80 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M105 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M130 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M155 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M180 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M205 70V132" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M230 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M255 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M280 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M305 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M330 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<text x="105" y="121" font-size="12" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DEI TIGLI</text>
+<text x="280" y="121" font-size="12" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DELLE ROSE</text>
+<rect x="105" y="70" width="50" height="62" fill="none" stroke="#2b1d12" stroke-width="1.5" stroke-dasharray="3 3"/>
+<text x="130" y="146" font-size="11" font-weight="700" text-anchor="middle" fill="#9a5200" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">in tutte e due</text>
+<g opacity=".35"><rect x="2" y="3" width="156" height="132" rx="9" fill="none" stroke="#e0442f" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="14" cy="15" r="11" fill="#e0442f" stroke="#2b1d12" stroke-width="2"/>
+<text x="14" y="19.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text></g>
+<g><rect x="102" y="5" width="156" height="128" rx="9" fill="none" stroke="#2f7de0" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="114" cy="17" r="11" fill="#2f7de0" stroke="#2b1d12" stroke-width="2"/>
+<text x="114" y="21.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text></g>
+<path d="M115 158H245" stroke="#2f7de0" stroke-width="4" stroke-linecap="round"/>
+<path d="M237 152L245 158L237 164" fill="none" stroke="#2f7de0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">5 · La seconda foto</b>La seconda <b>riparte un po' prima</b> di dove è finita la prima: 2 o 3 caselle già fotografate. Così non si perde niente.</p></div>
+    </section>
+    <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 172" role="img" aria-label="La striscia con la foto 3">
+<rect width="360" height="172" fill="#fdf6e3"/>
+<rect x="0" y="0" width="360" height="70" fill="#4b5560"/>
+<rect x="0" y="6" width="360" height="62" fill="url(#tut-fins)" transform="scale(1 1)"/>
+<rect x="5" y="70" width="350" height="62" fill="#fffdf2" stroke="#2b1d12" stroke-width="3"/>
+<rect x="5" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="17.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text>
+<rect x="30" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="42.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">3</text>
+<rect x="55" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="67.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">5</text>
+<rect x="80" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="92.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">7</text>
+<rect x="105" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="117.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9</text>
+<rect x="130" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="142.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">11</text>
+<rect x="155" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="167.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">13</text>
+<rect x="180" y="71.5" width="25" height="59" fill="#bfe6ff"/>
+<text x="192.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">15</text>
+<rect x="205" y="71.5" width="25" height="59" fill="#ffe066"/>
+<text x="217.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text>
+<rect x="230" y="71.5" width="25" height="59" fill="#ffe066"/>
+<text x="242.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">4</text>
+<rect x="255" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="267.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">6</text>
+<rect x="280" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="292.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">8</text>
+<rect x="305" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="317.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">10</text>
+<rect x="330" y="71.5" width="25" height="59" fill="#c9f0b4"/>
+<text x="342.5" y="94" font-size="13" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">12</text>
+<path d="M5 101H355" stroke="#2b1d12" stroke-width="2"/>
+<path d="M30 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M55 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M80 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M105 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M130 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M155 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M180 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M205 70V132" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M230 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M255 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M280 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M305 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<path d="M330 70V101" stroke="#2b1d12" stroke-width="1.6"/>
+<text x="105" y="121" font-size="12" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DEI TIGLI</text>
+<text x="280" y="121" font-size="12" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DELLE ROSE</text>
+<rect x="205" y="70" width="50" height="62" fill="none" stroke="#2b1d12" stroke-width="1.5" stroke-dasharray="3 3"/>
+<text x="230" y="146" font-size="11" font-weight="700" text-anchor="middle" fill="#9a5200" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">in tutte e due</text>
+<g opacity=".35"><rect x="2" y="3" width="156" height="132" rx="9" fill="none" stroke="#e0442f" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="14" cy="15" r="11" fill="#e0442f" stroke="#2b1d12" stroke-width="2"/>
+<text x="14" y="19.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text></g>
+<g opacity=".35"><rect x="102" y="5" width="156" height="128" rx="9" fill="none" stroke="#2f7de0" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="114" cy="17" r="11" fill="#2f7de0" stroke="#2b1d12" stroke-width="2"/>
+<text x="114" y="21.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text></g>
+<g><rect x="202" y="7" width="156" height="124" rx="9" fill="none" stroke="#2e9d4a" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="214" cy="19" r="11" fill="#2e9d4a" stroke="#2b1d12" stroke-width="2"/>
+<text x="214" y="23.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">3</text></g>
+<path d="M215 158H345" stroke="#2e9d4a" stroke-width="4" stroke-linecap="round"/>
+<path d="M337 152L345 158L337 164" fill="none" stroke="#2e9d4a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">6 · La terza foto</b>E così via: la via <b>continua</b> da una foto all'altra, poi ne comincia un'altra. Le caselle che si vedono in due foto Casellino le scrive <b>una volta sola</b>.</p></div>
+    </section>
+    <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 208" role="img" aria-label="Fila 1 da sinistra a destra, casello e ala, poi la fila 2">
+<rect width="360" height="208" fill="#fdf6e3"/>
+<rect x="14" y="14" width="236" height="174" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="18" y="17" width="228" height="33" fill="#4b5560"/>
+<rect x="18" y="21" width="228" height="29" fill="url(#tut-fins)"/>
+<rect x="17" y="49" width="230" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="15" y="47" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="243" y="47" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="18" y="59" width="228" height="33" fill="#4b5560"/>
+<rect x="18" y="63" width="228" height="29" fill="url(#tut-fins)"/>
+<rect x="17" y="91" width="230" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="15" y="89" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="243" y="89" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="18" y="101" width="228" height="33" fill="#4b5560"/>
+<rect x="18" y="105" width="228" height="29" fill="url(#tut-fins)"/>
+<rect x="17" y="133" width="230" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="15" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="243" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="18" y="143" width="228" height="33" fill="#4b5560"/>
+<rect x="18" y="147" width="228" height="29" fill="url(#tut-fins)"/>
+<rect x="17" y="175" width="230" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="15" y="173" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="243" y="173" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="256" y="14" width="90" height="174" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="260" y="17" width="82" height="33" fill="#4b5560"/>
+<rect x="260" y="21" width="82" height="29" fill="url(#tut-fins)"/>
+<rect x="259" y="49" width="84" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="257" y="47" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="339" y="47" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="260" y="59" width="82" height="33" fill="#4b5560"/>
+<rect x="260" y="63" width="82" height="29" fill="url(#tut-fins)"/>
+<rect x="259" y="91" width="84" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="257" y="89" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="339" y="89" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="260" y="101" width="82" height="33" fill="#4b5560"/>
+<rect x="260" y="105" width="82" height="29" fill="url(#tut-fins)"/>
+<rect x="259" y="133" width="84" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="257" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="339" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="260" y="143" width="82" height="33" fill="#4b5560"/>
+<rect x="260" y="147" width="82" height="29" fill="url(#tut-fins)"/>
+<rect x="259" y="175" width="84" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="257" y="173" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="339" y="173" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<g opacity="1"><path d="M22 53H332" stroke="#2e9d4a" stroke-width="5" stroke-linecap="round"/><path d="M322 45L334 53L322 61" fill="none" stroke="#2e9d4a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="53" r="8" fill="#2e9d4a" stroke="#2b1d12" stroke-width="2"/><text x="8" y="57.5" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text></g>
+<path d="M334 59C320 83 40 67 22 89" fill="none" stroke="#2e9d4a" stroke-width="2.5" stroke-dasharray="5 5" opacity="1"/>
+<g opacity="1"><path d="M22 95H332" stroke="#2e9d4a" stroke-width="5" stroke-linecap="round"/><path d="M322 87L334 95L322 103" fill="none" stroke="#2e9d4a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="95" r="8" fill="#2e9d4a" stroke="#2b1d12" stroke-width="2"/><text x="8" y="99.5" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text></g>
+<path d="M334 101C320 125 40 109 22 131" fill="none" stroke="#2e9d4a" stroke-width="2.5" stroke-dasharray="5 5" opacity="1"/>
+<g opacity=".35"><path d="M22 137H332" stroke="#2e9d4a" stroke-width="5" stroke-linecap="round"/><path d="M322 129L334 137L322 145" fill="none" stroke="#2e9d4a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="137" r="8" fill="#2e9d4a" stroke="#2b1d12" stroke-width="2"/><text x="8" y="141.5" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">3</text></g>
+<path d="M334 143C320 167 40 151 22 173" fill="none" stroke="#2e9d4a" stroke-width="2.5" stroke-dasharray="5 5" opacity=".35"/>
+<g opacity=".35"><path d="M22 179H332" stroke="#2e9d4a" stroke-width="5" stroke-linecap="round"/><path d="M322 171L334 179L322 187" fill="none" stroke="#2e9d4a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="179" r="8" fill="#2e9d4a" stroke="#2b1d12" stroke-width="2"/><text x="8" y="183.5" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">4</text></g>
+<text x="132" y="200" font-size="12" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">casello</text>
+<text x="301" y="200" font-size="12" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">ala</text>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">7 · Fila dopo fila</b>Dall'inizio alla fine del casello: la <b>fila 1 da sinistra a destra</b>, casello e ala, poi la fila 2, e così via fino all'ultima.</p></div>
+    </section>
+    <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 238" role="img" aria-label="Finita la 9A, la stessa cosa per la 9B">
+<rect width="360" height="238" fill="#fdf6e3"/>
+<rect x="0" y="50" width="360" height="16" fill="#b5d99c"/>
+<g opacity=".45">
+<rect x="30" y="6" width="64" height="46" rx="4" fill="#fffdf2" stroke="#2b1d12" stroke-width="3"/>
+<rect x="34" y="10" width="56" height="38" rx="2" fill="none" stroke="#f2c230" stroke-width="3"/>
+<path d="M39 20h19M39 27h16M39 34h19" stroke="#9a8f80" stroke-width="2" stroke-linecap="round"/>
+<text x="75" y="36" font-size="23" font-weight="900" text-anchor="middle" fill="#f7c948" stroke="#2b1d12" stroke-width="1.3" paint-order="stroke" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9A</text>
+<rect x="100" y="8" width="30" height="42" rx="2" fill="#fff" stroke="#2b1d12" stroke-width="2.5"/>
+<rect x="102" y="10" width="26" height="7" fill="#ffe37a"/>
+<text x="115" y="13" font-size="4.2" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9A</text>
+<path d="M104 19h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 24h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 29h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 34h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 39h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M104 43h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<rect x="12" y="72" width="120" height="142" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="16" y="75" width="112" height="25" fill="#4b5560"/>
+<rect x="16" y="79" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="15" y="99" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="13" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="125" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="16" y="109" width="112" height="25" fill="#4b5560"/>
+<rect x="16" y="113" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="15" y="133" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="13" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="125" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="16" y="143" width="112" height="25" fill="#4b5560"/>
+<rect x="16" y="147" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="15" y="167" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="13" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="125" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="16" y="177" width="112" height="25" fill="#4b5560"/>
+<rect x="16" y="181" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="15" y="201" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="13" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="125" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="136" y="72" width="42" height="142" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="140" y="75" width="34" height="25" fill="#4b5560"/>
+<rect x="140" y="79" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="139" y="99" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="137" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="171" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="140" y="109" width="34" height="25" fill="#4b5560"/>
+<rect x="140" y="113" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="139" y="133" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="137" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="171" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="140" y="143" width="34" height="25" fill="#4b5560"/>
+<rect x="140" y="147" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="139" y="167" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="137" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="171" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="140" y="177" width="34" height="25" fill="#4b5560"/>
+<rect x="140" y="181" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="139" y="201" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="137" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="171" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+</g>
+<g transform="rotate(-12 95 140)"><rect x="40" y="118" width="110" height="40" rx="8" fill="#fff" stroke="#2e9d4a" stroke-width="4"/><text x="95" y="145" font-size="20" font-weight="900" text-anchor="middle" fill="#2e9d4a" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">FATTO ✓</text></g>
+<rect x="222" y="8" width="30" height="42" rx="2" fill="#fff" stroke="#2b1d12" stroke-width="2.5"/>
+<rect x="224" y="10" width="26" height="7" fill="#ffe37a"/>
+<text x="237" y="13" font-size="4.2" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9B</text>
+<path d="M226 19h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 24h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 29h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 34h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 39h26" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M226 43h21" stroke="#9a8f80" stroke-width="1.6" stroke-linecap="round"/>
+<rect x="258" y="6" width="64" height="46" rx="4" fill="#fffdf2" stroke="#2b1d12" stroke-width="3"/>
+<rect x="262" y="10" width="56" height="38" rx="2" fill="none" stroke="#f2c230" stroke-width="3"/>
+<path d="M267 20h19M267 27h16M267 34h19" stroke="#9a8f80" stroke-width="2" stroke-linecap="round"/>
+<text x="303" y="36" font-size="23" font-weight="900" text-anchor="middle" fill="#f7c948" stroke="#2b1d12" stroke-width="1.3" paint-order="stroke" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9B</text>
+<rect x="186" y="72" width="120" height="142" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="190" y="75" width="112" height="25" fill="#4b5560"/>
+<rect x="190" y="79" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="189" y="99" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="187" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="299" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="190" y="109" width="112" height="25" fill="#4b5560"/>
+<rect x="190" y="113" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="189" y="133" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="187" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="299" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="190" y="143" width="112" height="25" fill="#4b5560"/>
+<rect x="190" y="147" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="189" y="167" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="187" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="299" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="190" y="177" width="112" height="25" fill="#4b5560"/>
+<rect x="190" y="181" width="112" height="21" fill="url(#tut-fins)"/>
+<rect x="189" y="201" width="114" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="187" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="299" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="310" y="72" width="42" height="142" rx="5" fill="#dfe3e6" stroke="#2b1d12" stroke-width="3"/>
+<rect x="314" y="75" width="34" height="25" fill="#4b5560"/>
+<rect x="314" y="79" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="313" y="99" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="311" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="345" y="97" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="314" y="109" width="34" height="25" fill="#4b5560"/>
+<rect x="314" y="113" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="313" y="133" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="311" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="345" y="131" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="314" y="143" width="34" height="25" fill="#4b5560"/>
+<rect x="314" y="147" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="313" y="167" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="311" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="345" y="165" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="314" y="177" width="34" height="25" fill="#4b5560"/>
+<rect x="314" y="181" width="34" height="21" fill="url(#tut-fins)"/>
+<rect x="313" y="201" width="36" height="8" fill="url(#tut-strip)" stroke="#2b1d12" stroke-width="1.6"/>
+<rect x="311" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<rect x="345" y="199" width="6" height="11" rx="2" fill="#3d7be0" stroke="#2b1d12" stroke-width="1.2"/>
+<g><rect x="254" y="2" width="72" height="54" rx="9" fill="none" stroke="#e0442f" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="266" cy="14" r="11" fill="#e0442f" stroke="#2b1d12" stroke-width="2"/>
+<text x="266" y="18.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text></g>
+<g><rect x="218" y="4" width="38" height="50" rx="9" fill="none" stroke="#2f7de0" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="230" cy="16" r="11" fill="#2f7de0" stroke="#2b1d12" stroke-width="2"/>
+<text x="230" y="20.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text></g>
+<g><rect x="182" y="66" width="174" height="152" rx="9" fill="none" stroke="#2e9d4a" stroke-width="4" stroke-dasharray="10 6"/>
+<circle cx="194" cy="78" r="11" fill="#2e9d4a" stroke="#2b1d12" stroke-width="2"/>
+<text x="194" y="82.5" font-size="13" font-weight="900" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">3</text></g>
+<text x="250" y="232" font-size="12" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">cartello, itinerario, strisce</text>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">8 · L'altra sottozona</b>Finita la 9A? <b>La stessa cosa per la 9B</b>: il suo cartello, il suo itinerario, poi le sue strisce in ordine.</p></div>
+    </section>
+    <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 226" role="img" aria-label="In Casellino: scegli le foto, conferma il cartello, controlla e aggiungi al giro">
+<rect width="360" height="226" fill="#fdf6e3"/>
+<rect x="14" y="6" width="156" height="214" rx="18" fill="#2b1d12"/>
+<rect x="22" y="20" width="140" height="186" rx="6" fill="#fffdf2"/>
+<rect x="22" y="20" width="140" height="20" rx="6" fill="#2c6db3"/>
+<text x="92.0" y="34" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Casellino</text>
+<rect x="28" y="50" width="128" height="30" rx="8" fill="#2c6db3" stroke="#2b1d12" stroke-width="1.5"/>
+<text x="92" y="69" font-size="10.5" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Carica e leggi le foto</text>
+<rect x="26" y="92" width="38" height="34" rx="3" fill="#dfe3e6" stroke="#2b1d12" stroke-width="1.5"/><rect x="30" y="100" width="30" height="20" fill="#4b5560"/><rect x="30" y="105" width="30" height="3" fill="url(#tut-strip)"/><rect x="30" y="114" width="30" height="3" fill="url(#tut-strip)"/><circle cx="62" cy="94" r="7" fill="#e0442f" stroke="#2b1d12" stroke-width="1.5"/><text x="62" y="97.5" font-size="9" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text><rect x="70" y="92" width="38" height="34" rx="3" fill="#dfe3e6" stroke="#2b1d12" stroke-width="1.5"/><rect x="75" y="98" width="28" height="22" fill="#fffdf2" stroke="#f2c230" stroke-width="2"/><text x="89" y="115" font-size="11" font-weight="900" text-anchor="middle" fill="#c99a10" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">9A</text><circle cx="106" cy="94" r="7" fill="#e0442f" stroke="#2b1d12" stroke-width="1.5"/><text x="106" y="97.5" font-size="9" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">2</text><rect x="114" y="92" width="38" height="34" rx="3" fill="#dfe3e6" stroke="#2b1d12" stroke-width="1.5"/><rect x="124" y="95" width="18" height="28" fill="#fff" stroke="#2b1d12" stroke-width="1"/><path d="M127 104h12M127 109h10M127 114h12" stroke="#9a8f80" stroke-width="1.5"/><circle cx="150" cy="94" r="7" fill="#e0442f" stroke="#2b1d12" stroke-width="1.5"/><text x="150" y="97.5" font-size="9" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">3</text><rect x="26" y="136" width="38" height="34" rx="3" fill="#dfe3e6" stroke="#2b1d12" stroke-width="1.5"/><rect x="29" y="148" width="32" height="12" fill="#bfe6ff" stroke="#2b1d12" stroke-width="1"/><circle cx="62" cy="138" r="7" fill="#e0442f" stroke="#2b1d12" stroke-width="1.5"/><text x="62" y="141.5" font-size="9" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">4</text><rect x="70" y="136" width="38" height="34" rx="3" fill="#dfe3e6" stroke="#2b1d12" stroke-width="1.5"/><rect x="73" y="148" width="32" height="12" fill="#bfe6ff" stroke="#2b1d12" stroke-width="1"/><circle cx="106" cy="138" r="7" fill="#e0442f" stroke="#2b1d12" stroke-width="1.5"/><text x="106" y="141.5" font-size="9" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">5</text><rect x="114" y="136" width="38" height="34" rx="3" fill="#dfe3e6" stroke="#2b1d12" stroke-width="1.5"/><rect x="117" y="148" width="32" height="12" fill="#bfe6ff" stroke="#2b1d12" stroke-width="1"/><circle cx="150" cy="138" r="7" fill="#e0442f" stroke="#2b1d12" stroke-width="1.5"/><text x="150" y="141.5" font-size="9" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">6</text>
+<text x="92" y="196" font-size="10.5" font-weight="700" text-anchor="middle" fill="#e0442f" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">in ordine di scatto</text>
+<rect x="190" y="6" width="156" height="214" rx="18" fill="#2b1d12"/>
+<rect x="198" y="20" width="140" height="186" rx="6" fill="#fffdf2"/>
+<rect x="198" y="20" width="140" height="20" rx="6" fill="#2c6db3"/>
+<text x="268.0" y="34" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Casellino</text>
+<rect x="202" y="48" width="132" height="58" rx="6" fill="#e6eef8" stroke="#2c6db3" stroke-width="2"/>
+<text x="268" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Il cartello: 9A</text>
+<rect x="236" y="74" width="64" height="24" rx="12" fill="#2e9d4a" stroke="#2b1d12" stroke-width="1.5"/><text x="268" y="90" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Va bene</text>
+<text x="206" y="126" font-size="10.5" font-weight="700" text-anchor="start" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DEI TIGLI:</text>
+<rect x="236" y="132" width="20" height="16" rx="3" fill="#ffe066"/>
+<text x="206" y="144" font-size="10.5" font-weight="400" text-anchor="start" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1, 3,</text><text x="246" y="144" font-size="10.5" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">5?</text><text x="258" y="144" font-size="10.5" font-weight="400" text-anchor="start" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">, 7, 9</text>
+<rect x="204" y="164" width="128" height="30" rx="15" fill="#2e9d4a" stroke="#2b1d12" stroke-width="1.5"/><text x="268" y="184" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Aggiungi al giro</text>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">9 · In Casellino</b>Tocca <b>«📷 Carica e leggi le foto delle strisce»</b> e scegli le foto <b>nell'ordine in cui le hai scattate</b>. Conferma il cartello (spunta «tutto il mobile» e l'itinerario), poi <b>«📚 Leggi tutte le foto»</b>. Controlla i «?» e premi <b>«Aggiungi al giro»</b>.</p></div>
+    </section>
+    <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 176" role="img" aria-label="Il postino saluta: senza foto si scrive a mano, con «Come si scrive»">
+<rect width="360" height="176" fill="#fdf6e3"/>
+<use href="#tut-postino" x="26" y="14" width="120" height="156"/>
+<rect x="170" y="26" width="164" height="128" rx="6" fill="#fffef6" stroke="#2b1d12" stroke-width="3" transform="rotate(4 252 90)"/>
+<g transform="rotate(4 252 90)"><text x="182" y="54" font-size="12" font-weight="700" text-anchor="start" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DEI TIGLI: 1..15</text><text x="182" y="78" font-size="12" font-weight="700" text-anchor="start" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA DELLE ROSE: 2..12</text><text x="182" y="102" font-size="12" font-weight="700" text-anchor="start" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">CASCINA ALTA</text><path d="M180 116h120M180 136h90" stroke="#c9b27e" stroke-width="2"/></g>
+<path d="M300 150 L340 108 L350 118 L310 160 L296 164 Z" fill="#ffd23f" stroke="#2b1d12" stroke-width="2.5" stroke-linejoin="round"/>
+<circle cx="160" cy="20" r="4" fill="#ff8a8a"/><circle cx="20" cy="40" r="5" fill="#8fd3ff"/><circle cx="150" cy="160" r="4" fill="#a6e28a"/><circle cx="345" cy="30" r="5" fill="#ffe37a"/>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">10 · Fatto!</b>Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: ti spiega come scrivere il giro a mano.</p></div>
+      <p class="tut-more"><button type="button" id="tut-help">📝 Come si scrive</button></p>
+    </section>
+    </div>
+    <div class="tut-foot">
+      <button type="button" class="tut-skip" id="tut-skip">Salta</button>
+      <button type="button" class="tut-back" id="tut-back" aria-label="Pagina prima">◀</button>
+      <span class="tut-gap"></span>
+      <button type="button" class="tut-next" id="tut-next">Continua ▶</button>
+    </div>
+  </div>
 </dialog>
+<!-- tutorial:end -->
 
 <dialog id="dlg-foto">
   <form method="dialog" class="dlg">

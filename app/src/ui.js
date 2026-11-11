@@ -1720,7 +1720,7 @@
    * the piece two photos one after the other have in common.
    */
   const photo = { files: [], index: 0, image: null, rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], view: null, worker: null, busy: false, stop: false,
-    first: '', signAt: 0, signWait: null };
+    first: '', zone: '', signAt: 0, signWait: null };
   let tesseractReady = null;
 
   function loadTesseract() {
@@ -1902,8 +1902,9 @@
     // few numbers, or almost all uncertain: maybe the photo of the sign of a sub-zone ("2A", written big)
     const seen = await wordsOf(i);
     const zone = await signName(i, seen);
-    if (zone) keepSheet(seen.words);   // the itinerary may be next to the sign
-    return zone ? { cells: [], phrases: [], zone: zone } : res;
+    if (!zone || zone === photo.zone) return res;   // the same sign again, above a strip: not a new sub-zone
+    keepSheet(seen.words);   // the itinerary may be next to the sign
+    return { cells: [], phrases: [], zone: zone };
   }
 
   // What photo i read goes at the end of the text: without the piece the photo before showed too.
@@ -1949,16 +1950,18 @@
       const r = boxes[b];
       const x0 = Math.round(r.x0 * big.width), y0 = Math.round(r.y0 * big.height);
       const cw = Math.max(1, Math.round((r.x1 - r.x0) * big.width)), ch = Math.max(1, Math.round((r.y1 - r.y0) * big.height));
-      const k = Math.min(1, 140 / ch);
-      const cut = imageToCanvas(Math.max(1, Math.round(cw * k)), Math.max(1, Math.round(ch * k)));
-      const g = cut.getContext('2d');
-      g.drawImage(big, x0, y0, cw, ch, 0, 0, cut.width, cut.height);
-      const ink = F.signInk(g.getImageData(0, 0, cut.width, cut.height));
-      g.putImageData(new ImageData(ink.data, ink.width, ink.height), 0, 0);
-      for (const mode of ['11', '7', '8']) {
-        await w.setParameters({ tessedit_pageseg_mode: mode, tessedit_char_whitelist: '0123456789ABCDEFGHILMNOPQRSTUVZ' });
-        const found = F.signText((await w.recognize(cut)).data.text);
-        if (found) return found;
+      for (const tall of [140, 80]) {
+        const k = Math.min(1, tall / ch);
+        const cut = imageToCanvas(Math.max(1, Math.round(cw * k)), Math.max(1, Math.round(ch * k)));
+        const g = cut.getContext('2d');
+        g.drawImage(big, x0, y0, cw, ch, 0, 0, cut.width, cut.height);
+        const ink = F.signInk(g.getImageData(0, 0, cut.width, cut.height));
+        g.putImageData(new ImageData(ink.data, ink.width, ink.height), 0, 0);
+        for (const mode of ['11', '7', '8']) {
+          await w.setParameters({ tessedit_pageseg_mode: mode, tessedit_char_whitelist: '0123456789ABCDEFGHILMNOPQRSTUVZ' });
+          const found = F.signText((await w.recognize(cut)).data.text);
+          if (found) return found;
+        }
       }
     }
     return '';
@@ -2080,6 +2083,7 @@
     if (whole) { photo.done[0] = true; photo.kind[0] = 'mobile'; }
     if (sheet) { photo.done[i + 1] = true; photo.kind[i + 1] = 'itinerario'; }
     photo.items = [];   // a new sub-zone: nothing in common with the photos before
+    photo.zone = name;
     if (first) photo.first = name;
     setTarget(name);
     $('foto-first').hidden = true;
@@ -2187,12 +2191,55 @@
     $('foto-sort').hidden = !sorted.some(function (f, k) { return f !== photo.files[k]; });
   }
 
-  function openPhotoGuide() { $('dlg-guida-foto').showModal(); }
+  // ------------------------------------------------------------ the tutorial: a comic, one page at a time
+  let tutPage = 0;
+  let tutorialAfterAccount = false;   // a new account: the tutorial opens when the account window is closed
+  const tutPages = function () { return Array.prototype.slice.call(document.querySelectorAll('#dlg-tutorial .tut-page')); };
+  function showTutPage(k) {
+    const pages = tutPages();
+    tutPage = Math.max(0, Math.min(pages.length - 1, k));
+    pages.forEach(function (p, i) { p.hidden = i !== tutPage; });
+    const last = tutPage === pages.length - 1;
+    $('tut-count').textContent = (tutPage + 1) + ' di ' + pages.length;
+    $('tut-back').hidden = tutPage === 0;
+    $('tut-skip').style.visibility = last ? 'hidden' : '';
+    $('tut-next').textContent = last ? 'Ho capito ✓' : 'Continua ▶';
+  }
+  function openTutorial() {
+    try { localStorage.setItem('casellino.tutorial', '1'); } catch (e) { /* only a convenience */ }
+    showTutPage(0);
+    if (!$('dlg-tutorial').open) $('dlg-tutorial').showModal();
+    $('tut-next').focus();
+  }
+  function wireTutorial() {
+    const dlg = $('dlg-tutorial');
+    $('tut-next').addEventListener('click', function () { if (tutPage >= tutPages().length - 1) dlg.close(); else showTutPage(tutPage + 1); });
+    $('tut-back').addEventListener('click', function () { showTutPage(tutPage - 1); });
+    $('tut-skip').addEventListener('click', function () { dlg.close(); });
+    $('tut-help').addEventListener('click', function () { dlg.close(); $('dlg-help').showModal(); });
+    $('btn-tutorial').addEventListener('click', openTutorial);
+    // a swipe turns the page too
+    let from = null;
+    $('tut-pages').addEventListener('pointerdown', function (e) { from = e.clientX; });
+    $('tut-pages').addEventListener('pointerup', function (e) {
+      if (from === null) return;
+      const dx = e.clientX - from;
+      from = null;
+      if (Math.abs(dx) > 60) showTutPage(tutPage + (dx < 0 ? 1 : -1));
+    });
+    dlg.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') showTutPage(tutPage + 1);
+      if (e.key === 'ArrowLeft') showTutPage(tutPage - 1);
+    });
+    $('dlg-account').addEventListener('close', function () {
+      if (tutorialAfterAccount) { tutorialAfterAccount = false; openTutorial(); }
+    });
+  }
 
   function openPhotos() {
     $('foto-result').value = '';
     $('foto-status').textContent = '';
-    Object.assign(photo, { files: [], rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], image: null });
+    Object.assign(photo, { files: [], rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], zone: '', image: null });
     const sel = $('foto-target');
     sel.textContent = '';
     state.project.subzones.forEach(function (s, k) {
@@ -2203,13 +2250,13 @@
     showPhoto(0);
     $('dlg-foto').showModal();
     let seen = true;
-    try { seen = localStorage.getItem('casellino.guidaFoto') === '1'; localStorage.setItem('casellino.guidaFoto', '1'); } catch (e) { /* shown every time */ }
-    if (!seen) openPhotoGuide();
+    try { seen = localStorage.getItem('casellino.tutorial') === '1'; } catch (e) { /* not shown by itself */ }
+    if (!seen) openTutorial();
   }
 
   function wirePhotos() {
     $('foto-files').addEventListener('change', function (e) {
-      Object.assign(photo, { files: Array.prototype.slice.call(e.target.files || []), rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], first: '' });
+      Object.assign(photo, { files: Array.prototype.slice.call(e.target.files || []), rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], zone: '', first: '' });
       $('foto-first-whole').checked = false;
       if (photo.files.length) { showPhoto(0); checkFirst(true); }
       offerTimeOrder();
@@ -2263,7 +2310,7 @@
     $('foto-first-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); confirmFirst(); } });
     $('foto-first-redo').addEventListener('click', function () {
       $('foto-files').value = '';
-      Object.assign(photo, { files: [], rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], first: '', image: null });
+      Object.assign(photo, { files: [], rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], zone: '', first: '', image: null });
       $('foto-first').hidden = true;
       showPhoto(0);
       $('foto-status').textContent = 'Rifai la prima foto: il cartello intero, vicino e dritto (e l\'itinerario, anche in una foto a parte). Poi scegli di nuovo le foto.';
@@ -2272,13 +2319,13 @@
     $('foto-first-whole').addEventListener('change', function () { showPhoto($('foto-first-whole').checked ? 1 : 0); checkFirst(false); });
     $('foto-sort').addEventListener('click', function () {
       if (photo.busy || photo.done.some(Boolean)) { $('foto-status').textContent = 'Le foto sono già in lettura: scegli di nuovo le foto per metterle in ordine.'; return; }
-      Object.assign(photo, { files: byTime(), rects: [], angles: [], done: [], kind: {}, items: [], sheet: [] });
+      Object.assign(photo, { files: byTime(), rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], zone: '' });
       $('foto-sort').hidden = true;
       $('foto-first-whole').checked = false;
       showPhoto(0); checkFirst(true);
       $('foto-status').textContent = 'Foto messe in ordine di scatto.';
     });
-    $('foto-guide').addEventListener('click', openPhotoGuide);
+    $('foto-guide').addEventListener('click', openTutorial);
     $('foto-first-skip').addEventListener('click', function () {
       $('foto-first').hidden = true;
       if (answerSign(false)) return;   // not a sign: the reading goes on
@@ -2845,6 +2892,7 @@
 
   // After signing in: the code to keep (new account or new password), then the works.
   async function afterSignIn(recovery, mode) {
+    if (mode === 'registrati') tutorialAfterAccount = true;
     if (!state.project.cloud && !isEmptyProject()) {
       await cloudSave(false);
       if (state.project.cloud) toast('Il lavoro aperto ora è salvato anche nel tuo account.');
@@ -3122,7 +3170,6 @@
     $('btn-example').addEventListener('click', function () { closeMenu(); loadExample(); });
     $('btn-help').addEventListener('click', function () { closeMenu(); $('dlg-help').showModal(); });
     $('btn-photos').addEventListener('click', function () { closeMenu(); openPhotos(); });
-    $('btn-photo-guide').addEventListener('click', function () { closeMenu(); openPhotoGuide(); });
     $('btn-bug').addEventListener('click', openReport);
     $('bug-send').addEventListener('click', sendReport);
     $('btn-open-excel').addEventListener('click', function () { closeMenu(); $('file-input').click(); });
@@ -3159,6 +3206,7 @@
     $('btn-route').addEventListener('click', calcRound);
     $('btn-optimize').addEventListener('click', optimizeRound);
     wirePhotos();
+    wireTutorial();
     wireViewer();
     $('btn-account').addEventListener('click', openAccount);
     window.addEventListener('online', function () { if (account.token) cloudSave(false); });

@@ -375,7 +375,11 @@
       const charW = last ? (last.x1 - last.x0) / Math.max(1, last.text.length) : 0;
       if (last && gap < charW * 2.5) { last.text += ' ' + w.text; last.x1 = w.x1; } else out.push({ text: w.text, x0: w.x0, x1: w.x1 });
     });
-    return out.filter(function (ph) { return ph.text.replace(/[^A-Z]/g, '').length >= 3; });
+    return out.filter(function (ph) {
+      const words = ph.text.split(/\s+/);
+      const letters = words.map(function (w) { return w.replace(/[^A-ZÀ-Ü]/g, ''); });
+      return letters.some(function (w) { return w.length >= 4; }) || (STREET_TYPE.test(words[0]) && letters.length >= 2 && letters[1].length >= 2);
+    });
   }
 
   /*

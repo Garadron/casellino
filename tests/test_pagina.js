@@ -187,9 +187,26 @@ function caretAt(ta, needle, offset) {
   doc.getElementById('depot-prov').dispatchEvent(new win.Event('input'));
   assert.strictEqual(doc.getElementById('depot-prov').value, 'CR');
 
-  // the photo reader opens from the big button and from the menu
+  // the photo reader opens from the big button and from the menu; the first time the tutorial opens too
   doc.querySelector('.photo-btn').dispatchEvent(new win.Event('click'));
   assert.ok(doc.getElementById('dlg-foto').open, 'finestra delle foto dal pulsante');
+  const tut = doc.getElementById('dlg-tutorial');
+  assert.ok(tut.open, 'il tutorial si apre da solo la prima volta');
+  assert.strictEqual(text('#tut-count'), '1 di 10');
+  assert.ok(doc.getElementById('tut-back').hidden, 'sulla prima pagina niente «indietro»');
+  doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
+  assert.strictEqual(text('#tut-count'), '2 di 10', 'Continua va avanti');
+  assert.strictEqual(doc.querySelectorAll('#dlg-tutorial .tut-page:not([hidden])').length, 1, 'una pagina alla volta');
+  doc.getElementById('tut-skip').dispatchEvent(new win.Event('click'));
+  assert.ok(!tut.open, 'Salta lo chiude');
+  doc.getElementById('btn-tutorial').dispatchEvent(new win.Event('click'));
+  assert.ok(tut.open && text('#tut-count') === '1 di 10', 'il tasto in alto lo riapre dall\'inizio');
+  for (let k = 0; k < 9; k++) doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
+  assert.strictEqual(text('#tut-next'), 'Ho capito ✓', 'sull\'ultima pagina');
+  assert.ok(/Come si scrive/.test(text('#dlg-tutorial .tut-page:not([hidden])')), 'alla fine il rimando a «Come si scrive»');
+  doc.getElementById('tut-help').dispatchEvent(new win.Event('click'));
+  assert.ok(!tut.open && doc.getElementById('dlg-help').open, 'apre «Come si scrive»');
+  doc.getElementById('dlg-help').open = false;
   doc.getElementById('dlg-foto').open = false;
   doc.getElementById('btn-photos').dispatchEvent(new win.Event('click'));
   assert.ok(doc.getElementById('dlg-foto').open, 'finestra delle foto dal menu');
@@ -232,7 +249,8 @@ function caretAt(ta, needle, offset) {
 
   // photos read: the lines go to the chosen sub-zone; after "# sottozona 9C" (a sign in the photos) to a new 9C
   doc.getElementById('btn-photos').dispatchEvent(new win.Event('click'));
-  doc.getElementById('foto-result').value = 'VIA DA FOTO: 1, 3\n# sottozona 9C (cartello nella foto 3)\nVIA DELLA C: 2, 4';
+  doc.getElementById('foto-result').value = 'VIA DA FOTO: 1, 3\n# sottozona 9C (cartello nella foto 3)\nVIA DELLA C: 2, 4\n' +
+    '# sottozona 9D (cartello nella foto 5)\n# foto 6: itinerario della 9D (non è una striscia: non si legge)';
   const dlgFoto = doc.getElementById('dlg-foto');
   dlgFoto.open = false;
   dlgFoto.returnValue = 'ok';
@@ -243,6 +261,7 @@ function caretAt(ta, needle, offset) {
   const c9 = afterPhotos.subzones.find(function (s) { return s.name === '9C'; });
   assert.ok(c9 && /^VIA DELLA C: 2, 4\n$/.test(c9.route), 'una 9C nuova con le sue vie');
   assert.ok([...doc.querySelectorAll('#tabs button')].some(function (b) { return /9C/.test(b.textContent); }), 'la linguetta della 9C');
+  assert.ok(!afterPhotos.subzones.some(function (s) { return s.name === '9D'; }), 'un cartello seguito solo da note non crea una sottozona vuota');
 
   assert.ok(/Versione \d+\.\d+\.\d+/.test(text('#version')), 'versione nel menu');
   console.log('Pagina: tutte le prove superate');

@@ -18,7 +18,7 @@ telefono, e i tuoi dati restano sul tuo dispositivo.
    modulo, poi la fila 2, e così via. Sotto vedi «Sei qui» e tutte le strisce. Le regole sono in «Altro → Come si
    scrive».
    Se hai le foto delle strisce di oggi, **Leggi le strisce dalle foto** scrive una bozza del giro (gratis, dentro il
-   dispositivo). La guida **📖 Come fare le foto** dice come farle e in che ordine: tutto il mobile, il cartello e
+   dispositivo). Il **📖 Tutorial** a fumetto (in alto) dice come farle e in che ordine: tutto il mobile, il cartello e
    l'itinerario della sottozona, poi le strisce da vicino, dall'inizio alla fine; le caselle che si vedono in due foto
    si scrivono una volta sola e i nomi delle vie si correggono con l'itinerario. Nel **disegno di tutto il mobile** metti i moduli nell'ordine giusto e, con la matita, segni dove una
    sottozona entra nell'altra. Un nome sbagliato si corregge dall'elenco **Vie** (tocchi il nome): cambia in tutto

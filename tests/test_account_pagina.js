@@ -63,6 +63,11 @@ async function until(fn, ms, label) {
   assert.strictEqual(d1.getElementById('btn-account').textContent, '👤 ' + user);
   await until(function () { return /Zona 9/.test(d1.querySelector('.works').textContent); });
   await until(function () { return /m\*\*\*@esempio\.it/.test(d1.querySelector('.account-details').textContent); }, 8000, 'email nascosta');
+  // a new account: closing its window, the tutorial opens
+  d1.getElementById('dlg-account').open = false;
+  d1.getElementById('dlg-account').dispatchEvent(new w1.Event('close'));
+  assert.ok(d1.getElementById('dlg-tutorial').open, 'il tutorial dopo l\'iscrizione');
+  d1.getElementById('dlg-tutorial').open = false;
 
   // a change is saved by itself
   ta.value = 'VIA DEI TIGLI: 1..9\nVIA DELLE ROSE: 2, 4';

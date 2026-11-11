@@ -384,10 +384,42 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .foto-brief { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; }
 .foto-brief button { flex: none; }
 /* the guide to taking the photos */
-dialog.guide { max-width: 640px; }
-.guide-steps { margin: 0; padding-left: 22px; }
-.guide-steps li { margin: 0 0 10px; line-height: 1.45; }
-.guide-pic { display: block; width: 100%; max-width: 420px; height: auto; margin: 8px 0 4px; color: var(--text); }
+/* the tutorial: a comic on parchment, the same in light and dark */
+/* always the same height, so «Continua» stays in the same place from page to page */
+dialog.tutorial { width: min(540px, calc(100vw - 16px)); height: min(600px, calc(100vh - 16px)); max-height: none; overflow: hidden;
+  border: 3px solid #2b1d12; border-radius: 16px; background: #f1e2bb; color: #2b1d12; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+dialog.tutorial::backdrop { background: rgba(20,14,8,.6); }
+.tut { display: flex; flex-direction: column; gap: 10px; height: 100%; box-sizing: border-box; padding: 12px 12px 10px;
+  background: radial-gradient(ellipse at 50% 30%, #fbf2da 0%, #f3e5c1 60%, #e8d3a2 100%); }
+.tut-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.tut-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0; font-weight: 800;
+  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Segoe Print', sans-serif; color: #6b4a22; }
+.tut-pages { flex: 1; min-height: 0; overflow-y: auto; touch-action: pan-y; }
+.tut-page { display: flex; flex-direction: column; gap: 10px; }
+.tut-page[hidden] { display: none; }
+.tut-pic { display: block; width: 100%; height: auto; max-height: 46vh; border: 3px solid #2b1d12; border-radius: 12px; background: #fdf6e3; }
+.tut-say { display: flex; gap: 6px; align-items: flex-start; }
+.tut-say svg { flex: none; width: 50px; height: 65px; }
+.tut-bubble { position: relative; flex: 1; margin: 4px 0 0 8px; background: #fffaf0; border: 2.5px solid #2b1d12; border-radius: 16px;
+  padding: 8px 12px; font-size: 15.5px; line-height: 1.42; box-shadow: 3px 3px 0 rgba(43,29,18,.25); }
+.tut-bubble::before { content: ''; position: absolute; left: -15px; top: 14px; border-style: solid; border-width: 8px 15px 8px 0;
+  border-color: transparent #2b1d12 transparent transparent; }
+.tut-bubble::after { content: ''; position: absolute; left: -10px; top: 16px; border-style: solid; border-width: 6px 11px 6px 0;
+  border-color: transparent #fffaf0 transparent transparent; }
+.tut-title { display: block; font-size: 17px; font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', 'Segoe Print', sans-serif; color: #2c6db3; }
+.tut-more { margin: 0; text-align: center; }
+dialog.tutorial button { font-family: inherit; }
+dialog.tutorial .tut-more button { background: #fffaf0; color: #2b1d12; border: 2.5px solid #2b1d12; border-radius: 999px; padding: 8px 16px; font-weight: 700; }
+.tut-foot { display: flex; align-items: center; gap: 6px; }
+dialog.tutorial .tut-skip { background: none; border: none; color: #6b4a22; text-decoration: underline; font-size: 15px; padding: 10px 6px; }
+dialog.tutorial .tut-back { background: #fffaf0; color: #2b1d12; border: 2px solid #2b1d12; border-radius: 999px; width: 40px; height: 40px; padding: 0; }
+.tut-back[hidden] { display: none; }
+.tut-gap { flex: 1; }
+dialog.tutorial .tut-next { background: #2e9d4a; color: #fff; border: 2.5px solid #1d6b31; border-radius: 999px; font-weight: 800;
+  font-size: 16px; padding: 10px 18px; box-shadow: 0 3px 0 #1d6b31; }
+dialog.tutorial .tut-next:active { transform: translateY(2px); box-shadow: 0 1px 0 #1d6b31; }
+.brand { flex: 1 1 auto; }
+.brand .tut-open { margin-left: auto; font-weight: 600; }
 .foto-rot input { flex: 1; max-width: 320px; }
 
 /* the photo button in the route box */
