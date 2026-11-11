@@ -5,8 +5,8 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
-1. **Email per la password dimenticata** (v0.29.0, tutto pronto nel programma): Garadron crea il Gmail nuovo per
-   Casellino, incolla `dati/posta-google.gs` in script.google.com, lo pubblica come «App web» e scrive l'indirizzo
+1. **Email per la password dimenticata** (v0.29.0, tutto pronto nel programma): il Gmail nuovo per Casellino c'è
+   (creato da Garadron l'11 novembre 2026); con quel Gmail Garadron incolla `dati/posta-google.gs` in script.google.com, lo pubblica come «App web» e scrive l'indirizzo
    che riceve in `dati/posta-indirizzo.txt`. Poi dice «sì, pubblica il server»: si caricano la tabella nuova, la
    chiave e l'indirizzo su Cloudflare, e si prova con un'email vera.
 2. **Prova di stampa** del PDF (A4 orizzontale, «dimensioni reali / 100%») appoggiata alle caselle del mobile vero:
