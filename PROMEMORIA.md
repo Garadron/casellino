@@ -5,10 +5,11 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
-1. **Email per la password dimenticata** (v0.29.0, tutto pronto nel programma): il Gmail nuovo per Casellino c'è
-   (creato da Garadron l'11 novembre 2026); con quel Gmail Garadron incolla `dati/posta-google.gs` in script.google.com, lo pubblica come «App web» e scrive l'indirizzo
-   che riceve in `dati/posta-indirizzo.txt`. Poi dice «sì, pubblica il server»: si caricano la tabella nuova, la
-   chiave e l'indirizzo su Cloudflare, e si prova con un'email vera.
+1. **Email per la password dimenticata** (v0.29.0): il server è pubblicato (11 novembre 2026: tabella 0004, chiave e
+   indirizzo su Cloudflare) e il programmino di Google è pubblicato dal Gmail nuovo. **Manca una cosa**: Google
+   risponde «Accesso negato», quindi l'app web va aperta a tutti (script.google.com → «Esegui il deployment» →
+   «Gestisci deployment» → matita → «Chi può accedere: **Chiunque**» → «Esegui il deployment»; l'indirizzo resta
+   lo stesso). Poi si prova con un'email vera.
 2. **Prova di stampa** del PDF (A4 orizzontale, «dimensioni reali / 100%») appoggiata alle caselle del mobile vero:
    larghezza delle caselle, caselle oblique, colori scuri. Se non combacia, si aggiunge una regolazione della larghezza
    nel PDF (proposta, non fatta).
