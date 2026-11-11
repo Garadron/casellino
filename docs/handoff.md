@@ -2,6 +2,25 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 11 novembre 2026 · Tappa 19 chiusa: tutorial a fumetto, cartello, mai civici doppi (v0.30.0)
+
+**Fatto.** Tutorial `#dlg-tutorial` (10 pagine, scritte da `tools/tutorial.py` tra i segni `tutorial:start/end` di
+`app/index.src.html`: dopo una modifica `python tools/tutorial.py` e poi `build.py`); altezza fissa così «Continua» non
+si sposta; si apre dopo l'iscrizione (alla chiusura della finestra dell'account), la prima volta delle foto
+(`casellino.tutorial`) e da `#btn-tutorial`. Foto: `F.withoutOverlap` è un allineamento a punteggio (uguale nella
+stessa via +3, quasi uguale +0,5/1,5, diverso -2, buco -1,5; vale con almeno 2 uguali e punteggio 4) più il taglio dei
+civici già visti all'inizio della foto nuova; `F.repeatedItems` per la riga «# attenzione». Cartello: `F.signBoxes`
+(lettere scure su fondo chiaro, 2-4 vicine), `F.signInk` (scuro o colorato = inchiostro), `F.signText` (8→B, 4→A,
+0→D), letti a 140 e 80 punti con psm 11/7/8. Prima foto: caselle «tutto il mobile» e «itinerario a parte»
+(`photo.kind`); un cartello in mezzo ferma la lettura (`askSign`), lo stesso cartello di nuovo no (`photo.zone`).
+Vie: `F.sheetStreets` (dalle parole dell'itinerario) e `F.snapStreet` (al massimo un quarto delle lettere diverse,
+nessun altro nome vicino). `streetPhrases`: una via ha una parola di 4 lettere o tipo e nome. Ordine di scatto con
+un tasto (non da solo). Una sottozona nuova si crea solo con righe sue. PDF privato con le foto vere:
+`dati/fai_guida_foto.py` → `dati/Guida foto - zona 2 (privata).pdf`.
+**Verifiche.** core 42, pagina (tutorial, sottozona solo con righe), account (tutorial dopo l'iscrizione), server,
+Edge vero (foto finte: cartello 2A/2B, itinerario a parte, sovrapposizione; 27 foto vere della zona 2), misura 59%.
+**Limiti.** Le foto da lontano di una fila intera: lente (~90 s l'una) e poco leggibili.
+
 ## 11 novembre 2026 · Tappa 18 chiusa: password dimenticata per email (v0.29.0)
 
 **Fatto.** Server: `/api/codice-email` (nome utente + email; confronta l'impronta `email:<email>`, codice di 6 cifre in

@@ -15,6 +15,9 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 3. Completare le prove con data: ogni tanto `python tools/prova_con_data.py --aggiorna prove/impronte-v<versione>.txt`
    (la conferma arriva da sola, gratis) e salvare.
 
+4. **Guida privata con le foto vere** pronta: `dati/Guida foto - zona 2 (privata).pdf`, da mandare ai colleghi (non
+   pubblicarla: logo, indirizzo del centro, targa). Garadron dice se la guida pubblica resta con i disegni.
+
 ## Più avanti (solo cose gratuite)
 
 1. Lettura delle foto (v0.28.0 al 59% sulle 6 strisce di prova): trovare la striscia anche senza rettangolo o con
