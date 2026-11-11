@@ -5,20 +5,15 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
-1. **Email per la password dimenticata**: online dal 12 novembre 2026 (server, Gmail di Casellino e programmino di
-   Google provati: l'email di prova è partita). Resta da provarla dall'app: «Accedi» → «Password dimenticata» →
-   «Codice per email», con un account che ha l'email.
-2. **Prova di stampa** del PDF (A4 orizzontale, «dimensioni reali / 100%») appoggiata alle caselle del mobile vero:
+1. **Prova di stampa** del PDF (A4 orizzontale, «dimensioni reali / 100%») appoggiata alle caselle del mobile vero:
    larghezza delle caselle, caselle oblique, colori scuri. Se non combacia, si aggiunge una regolazione della larghezza
    nel PDF (proposta, non fatta).
-3. Completare le prove con data: ogni tanto `python tools/prova_con_data.py --aggiorna prove/impronte-v<versione>.txt`
+2. Completare le prove con data: ogni tanto `python tools/prova_con_data.py --aggiorna prove/impronte-v<versione>.txt`
    (la conferma arriva da sola, gratis) e salvare.
-
-4. **Guida privata con le foto vere** pronta: `dati/Guida foto - zona 2 (privata).pdf`, da mandare ai colleghi (non
+3. **Guida privata con le foto vere** pronta: `dati/Guida foto - zona 2 (privata).pdf`, da mandare ai colleghi (non
    pubblicarla: logo, indirizzo del centro, targa). Garadron dice se la guida pubblica resta con i disegni.
-
-5. **Anteprima giallo e blu** pronta: `dati/anteprima/Casellino anteprima.html` (privata). Garadron la prova sul
-   computer e sul telefono e decide se i colori passano al programma.
+4. **Anteprima per l'azienda** (Garadron, 12 novembre 2026: la propone alla sezione dedicata): colori ufficiali,
+   logo e termini ufficiali, solo nel file privato in `dati/anteprima/`.
 
 ## Più avanti (solo cose gratuite)
 
