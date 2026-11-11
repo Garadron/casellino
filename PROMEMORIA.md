@@ -5,11 +5,9 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
-1. **Email per la password dimenticata** (v0.29.0): il server è pubblicato (11 novembre 2026: tabella 0004, chiave e
-   indirizzo su Cloudflare) e il programmino di Google è pubblicato dal Gmail nuovo. **Manca una cosa**: Google
-   risponde «Accesso negato», quindi l'app web va aperta a tutti (script.google.com → «Esegui il deployment» →
-   «Gestisci deployment» → matita → «Chi può accedere: **Chiunque**» → «Esegui il deployment»; l'indirizzo resta
-   lo stesso). Poi si prova con un'email vera.
+1. **Email per la password dimenticata**: online dal 12 novembre 2026 (server, Gmail di Casellino e programmino di
+   Google provati: l'email di prova è partita). Resta da provarla dall'app: «Accedi» → «Password dimenticata» →
+   «Codice per email», con un account che ha l'email.
 2. **Prova di stampa** del PDF (A4 orizzontale, «dimensioni reali / 100%») appoggiata alle caselle del mobile vero:
    larghezza delle caselle, caselle oblique, colori scuri. Se non combacia, si aggiunge una regolazione della larghezza
    nel PDF (proposta, non fatta).
