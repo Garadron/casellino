@@ -1,5 +1,14 @@
 # Registro delle versioni
 
+## v0.32.1 · 2026-11-12 · Nell'anteprima anche il nome ufficiale, con l'articolo giusto
+
+- Decisione di Garadron (12 novembre 2026): nella versione per l'azienda il programma prende un nome ufficiale. Il
+  nome scelto sta solo in `dati/anteprima/termini.txt` (privato); il programma pubblico resta Casellino.
+- In `termini.txt` ora si possono cambiare anche **frasi di poche parole**, non solo parole sole: così il nome nuovo
+  prende l'articolo dove la frase lo chiede («come il …», «nel …»). Le frasi si scrivono prima della parola sola.
+- File: `app/src/ui.js` (`previewWords`), `tools/build.py`, `tests/test_anteprima.js`, `CLAUDE.md`,
+  `Casellino.html`, `sito/`.
+
 ## v0.32.0 · 2026-11-12 · Anteprima con i colori, il logo e le parole dell'azienda
 
 - Decisione di Garadron (12 novembre 2026): Casellino si propone all'azienda, con un'anteprima che ne usa i

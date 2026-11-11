@@ -17,7 +17,7 @@ const dom = new JSDOM(html, {
     win.CASELLINO_ANTEPRIMA = {
       testo: 'Anteprima di prova',
       logo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 4"><rect width="10" height="4" fill="#eedc00"/></svg>',
-      termini: [['casello', 'modulone'], ['caselli', 'moduloni']],
+      termini: [['casello', 'modulone'], ['caselli', 'moduloni'], ['come casellino', 'come il Programma Prova'], ['casellino', 'Programma Prova']],
     };
     win.matchMedia = function () { return { matches: false, addEventListener() {} }; };
     win.TextEncoder = require('util').TextEncoder;
@@ -50,6 +50,8 @@ const shown = function () {
   doc.getElementById('btn-tutorial').click();  // something drawn later
   await wait(50);
   assert.ok(/moduloni/.test(doc.getElementById('dlg-tutorial').textContent) && !/\bcasell[oi]\b/i.test(shown()), 'anche il tutorial, aperto dopo');
+  assert.ok(/come il Programma Prova scrive/.test(shown()) && /Programma Prova · /.test(shown()) && !/\bCasellino\b/.test(shown()),
+    'il nome nuovo, con l\'articolo dove la frase lo chiede');
   const slot = doc.querySelector('#strips .strip-head b');
   assert.strictEqual(slot.textContent, 'Modulone', 'anche le strisce, disegnate dal programma');
   console.log('Anteprima: tutte le prove superate');

@@ -47,6 +47,10 @@ tutti i postini, non solo alla zona di Garadron.
 - **La password dimenticata si cambia con un codice per email** (Garadron, 11 novembre 2026): le email partono
   gratis da un Gmail nuovo solo per Casellino, con il programmino `tools/posta-google.gs` (copia con la chiave in
   `dati/posta-google.gs`; chiave e indirizzo su Cloudflare come `POSTA_SEGRETO` e `POSTA_INDIRIZZO`).
+- **La proposta all'azienda** (Garadron, 12 novembre 2026): un'anteprima privata con i colori, il logo, le parole e
+  il nome ufficiale del programma scelti per l'azienda (`python tools/build.py --anteprima`, tutto in
+  `dati/anteprima/`, mai su GitHub). Il programma pubblico resta Casellino, senza nome né logo dell'azienda, finché
+  l'azienda non dà il suo sì per iscritto.
 - La mappa per ora mostra un indirizzo alla volta su Google Maps; il percorso intero verrà dopo (gratis, OpenStreetMap).
 
 ## Come si lavora

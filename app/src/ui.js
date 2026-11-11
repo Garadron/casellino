@@ -2270,12 +2270,13 @@
   }
 
   /*
-   * The words of the company the preview is for (pairs [word, its word], from dati/anteprima/termini.txt): they
-   * replace ours in everything the page shows, now and later, with the same capital letters. What the person
-   * writes (the route text) stays as it is: the program reads both words.
+   * The words of the company the preview is for (pairs [words, theirs], from dati/anteprima/termini.txt, in that
+   * order: a few words first, e.g. to add an article, then the single word): they replace ours in everything the
+   * page shows, now and later, with the same capital letters. What the person writes (the route text) stays as it
+   * is: the program reads both words.
    */
   function previewWords(pairs) {
-    const rules = pairs.map(function (p) { return [new RegExp('\\b' + p[0] + '\\b', 'gi'), p[1]]; });
+    const rules = pairs.map(function (p) { return [new RegExp('\\b' + p[0].replace(/ /g, '\\s+') + '\\b', 'gi'), p[1]]; });
     const sameCase = function (found, word) {
       if (found === found.toUpperCase()) return word.toUpperCase();
       return found[0] === found[0].toUpperCase() ? word[0].toUpperCase() + word.slice(1) : word;

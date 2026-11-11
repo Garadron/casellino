@@ -2,6 +2,12 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 12 novembre 2026 · v0.32.1: il nome ufficiale nell'anteprima
+
+`termini.txt` accetta frasi (`come casellino = come il …`): in `previewWords()` gli spazi diventano `\s+`, e le
+regole valgono nell'ordine del file (prima le frasi, poi la parola sola). Verificato: nessun «Casellino» resta in vista
+nell'anteprima, il tutorial (pagina 9 compresa) e la barra sul telefono reggono il nome più lungo.
+
 ## 12 novembre 2026 · Tappa 21 chiusa: anteprima per l'azienda (v0.32.0)
 
 **Fatto.** I colori della tavolozza `gialloblu` sono quelli del sito dell'azienda (presi dal suo foglio di stile:

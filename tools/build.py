@@ -95,7 +95,7 @@ def preview():
     words = [[w.strip() for w in line.split("=", 1)] for line in read("termini.txt").splitlines()
              if "=" in line and not line.lstrip().startswith("#")]
     data = {"testo": read("testo.txt") or "Anteprima: Casellino in giallo e blu.", "logo": read("logo-azienda.svg"),
-            "termini": [w for w in words if re.fullmatch(r"[a-zà-ù]+", w[0]) and w[1]]}
+            "termini": [w for w in words if re.fullmatch(r"[a-zà-ù]+( [a-zà-ù]+)*", w[0]) and w[1]]}
     head = ("<head>\n<script>window.CASELLINO_ANTEPRIMA = " + json.dumps(data, ensure_ascii=False).replace("</", "<\\/") + ";\n"
             "(function () { var t = ''; try { t = localStorage.getItem('casellino.tema') || ''; } catch (e) {}\n"
             "  if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(pointer: coarse)').matches ? '' : 'light';\n"
