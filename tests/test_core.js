@@ -396,6 +396,50 @@ test('photo of a strip: printed lines removed, one group of ink per pigeonhole',
   assert.deepStrictEqual(lines, ['VIA DEI TIGLI: 1, 3?', 'VIA DELLE ROSE: 2']);
 });
 
+test('photos one after the other: the pigeonholes they have in common are written once', function () {
+  const F = require('../app/src/foto.js');
+  const items = function (street, toks) { return toks.map(function (t) { return { street: street, tok: String(t) }; }); };
+  const toks = function (list) { return list.map(function (it) { return it.tok; }); };
+  const before = items('VIA DEI TIGLI', [1, 3, 5, 7, 9, 11]);
+  // the same three pigeonholes
+  assert.deepStrictEqual(toks(F.withoutOverlap(before, items('VIA DEI TIGLI', [7, 9, 11, 13, 15]))), ['13', '15']);
+  // one read differently in the new photo (9 read as 8), the street a little differently
+  assert.deepStrictEqual(toks(F.withoutOverlap(before, items('VIA DEI TIGU', [7, 8, 11, 13, 15]))), ['13', '15']);
+  // one missed in the new photo
+  assert.deepStrictEqual(toks(F.withoutOverlap(before, items('VIA DEI TIGLI', [7, 11, 13]))), ['13']);
+  // the first pigeonhole of the new photo cut at the edge and not read
+  assert.deepStrictEqual(toks(F.withoutOverlap(before, items('VIA DEI TIGLI', ['?', 9, 11, 13]))), ['13']);
+  // the last pigeonhole of the old photo cut and read wrong
+  assert.deepStrictEqual(toks(F.withoutOverlap(items('VIA DEI TIGLI', [1, 3, 5, 7, 9, '1?']), items('VIA DEI TIGLI', [7, 9, 11, 13]))), ['13']);
+  // only one in common: still not written twice
+  assert.deepStrictEqual(toks(F.withoutOverlap(before, items('VIA DEI TIGLI', [11, 13, 15]))), ['13', '15']);
+  // two numbers in a pigeonhole, and a pigeonhole two wide
+  assert.deepStrictEqual(toks(F.withoutOverlap(items('VIA ALTA', ['2/4', '6 (2)', 8]), items('VIA ALTA', ['2/4?', '6 (2)', 8, 10]))), ['10']);
+  // a new row: nothing in common
+  assert.deepStrictEqual(toks(F.withoutOverlap(before, items('VIA DELLE ROSE', [2, 4, 6]))), ['2', '4', '6']);
+  // the same numbers in another street are other pigeonholes
+  assert.deepStrictEqual(toks(F.withoutOverlap(before, items('VIA DELLE ROSE', [7, 9, 11]))), ['7', '9', '11']);
+  // empty pigeonholes alone do not say it is the same piece
+  assert.deepStrictEqual(toks(F.withoutOverlap(items('VIA DEI TIGLI', [1, 'vuota', 'vuota']), items('VIA DEI TIGLI', ['vuota', 'vuota', 40]))),
+    ['vuota', 'vuota', '40']);
+  // the first photo: everything
+  assert.deepStrictEqual(toks(F.withoutOverlap([], items('VIA DEI TIGLI', [1, 3]))), ['1', '3']);
+  // the streets of the itinerary, from the words read on its photo (type and name in two columns, two streets a line)
+  const word = function (t, x0, y, conf) { return { text: t, confidence: conf || 90, bbox: { x0: x0, x1: x0 + t.length * 10, y0: y, y1: y + 14 } }; };
+  const sheet = [word('Itinerario', 100, 0), word('VIA', 10, 30), word('DEI', 60, 30), word('TIGLI', 100, 31), word('CASCINA', 300, 29), word('ALTA', 380, 30),
+    word('VIA', 10, 60), word('DELLE', 60, 61), word('ROSE', 120, 60), word('x', 300, 60), word('VIA', 300, 60, 20)];
+  assert.deepStrictEqual(F.sheetStreets(sheet).sort(), ['CASCINA ALTA', 'VIA DEI TIGLI', 'VIA DELLE ROSE']);
+  // a street read a little wrong is put right with the known ones; a different one stays as read
+  const known = ['VIA DEI TIGLI', 'VIA DELLE ROSE', 'CASCINA ALTA', 'VIA ROMA'];
+  assert.strictEqual(F.snapStreet('VIA DEI TIGU', known), 'VIA DEI TIGLI');
+  assert.strictEqual(F.snapStreet('VIA DELLE R0SE', known), 'VIA DELLE ROSE');
+  assert.strictEqual(F.snapStreet('VIA DEL MULINO', known), 'VIA DEL MULINO');
+  assert.strictEqual(F.snapStreet('VIA ROMA', known), 'VIA ROMA');
+  assert.strictEqual(F.snapStreet('?', known), '?');
+  // a number read again further on is pointed out, not removed
+  assert.deepStrictEqual(toks(F.repeatedItems(before, items('VIA DEI TIGLI', [21, 23, 5]).concat(items('VIA DELLE ROSE', [3])))), ['5']);
+});
+
 test('printing: pieces of 22 slots packed on full A4 sheets, one shelf row per line', function () {
   const p = Core.textToProject(EXAMPLE);
   const pieces = Core.printPieces(p);

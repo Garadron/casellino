@@ -1,5 +1,33 @@
 # Registro delle versioni
 
+## v0.30.0 · 2026-11-11 · Guida alle foto, cartello e itinerario, mai civici doppi
+
+- **📖 Come fare le foto**: una guida con i disegni (si apre da sola la prima volta che si leggono le foto, poi dal
+  tasto nella finestra delle foto e da «Altro»). L'ordine deciso da Garadron (11 novembre 2026): prima una foto di
+  **tutto il mobile**, poi **una sottozona alla volta**; di ogni sottozona prima il **cartello** con il nome e
+  l'**itinerario** (anche in due foto, se insieme non vengono bene), poi le **strisce dall'inizio alla fine del
+  casello**, fila dopo fila, da vicino; ogni foto riparte un po' prima di dove è finita quella di prima. Le foto devono
+  leggersi bene anche ingrandite.
+- **Tutto il mobile e itinerario a parte**: nel riquadro della prima foto due caselle, «la foto 1 è tutto il mobile»
+  (spuntata da sola se il cartello si legge nella foto 2 e non nella 1) e «l'itinerario è nella foto dopo»; quelle foto
+  non si leggono come strisce (prima l'itinerario a parte diventava civici inventati).
+- **Il cartello di un'altra sottozona** in mezzo alle foto: la lettura si ferma e chiede conferma, con le stesse
+  caselle. Una sottozona nuova si crea solo se dopo il suo cartello c'è davvero qualcosa da scrivere.
+- **Il nome sul cartello si legge**: il programma cerca le lettere grandi su fondo chiaro, le ritaglia e le legge da
+  sole (sulla foto intera il lettore non le vedeva); le lettere gialle contornate diventano piene; un «28» letto è
+  «2B». Sulle foto vere della zona di Garadron ora legge «2A» e «2B».
+- **Mai gli stessi civici due volte**: le caselle in comune tra due foto si trovano anche se una è letta diversa,
+  saltata o tagliata sul bordo (confronto come tra due elenchi, sempre nella stessa via); un civico che la foto prima
+  aveva già, all'inizio della foto nuova, si toglie; uno ripetuto più avanti si segnala con una riga «# attenzione».
+- **Nomi delle vie corretti con l'itinerario**: le vie lette sulla foto dell'itinerario, quelle già nel lavoro e gli
+  elenchi ufficiali correggono i nomi letti male sulle strisce («VIA DEI TIGU» → «VIA DEI TIGLI»), solo quando è
+  chiaramente lo stesso nome; così l'elenco delle vie non si riempie di doppioni storpiati.
+- **Ordine delle foto**: se il telefono le dà in un ordine diverso da quello di scatto, «⇅ Mettile in ordine di
+  scatto» (non da solo: una foto rifatta dopo può essere scelta al suo posto).
+- Misura sulle 6 strisce di prova invariata (59%); prove nuove per i doppi, il cartello e le vie.
+- File: `app/src/foto.js`, `app/src/ui.js`, `app/index.src.html`, `app/src/style.css`, `tests/test_core.js`,
+  `README.md`, `Casellino.html`, `sito/`.
+
 ## v0.29.0 · 2026-11-11 · Password dimenticata: un codice per email
 
 - **Password dimenticata**: si scrivono il nome utente e l'email dell'account, e arriva un **codice di 6 cifre** (vale

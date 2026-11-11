@@ -49,7 +49,7 @@
    * shadow over half the strip or a coloured street line do not hide the writing, as one grey
    * level for the whole photo did.
    */
-  function darkMask(img) {
+  function darkMask(img, window) {
     const W = img.width, H = img.height;
     const gray = toGray(img);
     const sum = new Float64Array((W + 1) * (H + 1));   // integral image
@@ -60,7 +60,7 @@
         sum[y * (W + 1) + x] = sum[(y - 1) * (W + 1) + x] + row;
       }
     }
-    const r = Math.max(7, Math.round(Math.min(W, H) / 8));
+    const r = Math.max(7, Math.round(Math.min(W, H) / (window || 8)));
     const mask = new Uint8Array(gray.length);
     for (let y = 0; y < H; y++) {
       const y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1);
@@ -421,18 +421,237 @@
 
   /*
    * Two photos taken one after the other show some of the same pigeonholes: the end of the first is
-   * the start of the second. That piece is not written twice: the new items come back without it.
-   * At least 2 pigeonholes must be the same in a row; from 4 on, one in four may be read a little
-   * differently in the two photos.
+   * the start of the second (the person starts each photo a little before where the last one ended).
+   * That piece is never written twice: the new items come back without it.
+   * The two pieces are compared like two lists, so a pigeonhole read differently, missed or cut at the
+   * edge of a photo does not hide the overlap: the start of the new photo is lined up with the end of
+   * the old one, and the best line-up counts if at least 2 house numbers are the same (same street).
+   * After it, a house number of the same street that the last photos already had, right at the start
+   * of the new photo, is left out too.
    */
+  const OVERLAP_MAX = 40;
+  function overlapKey(it) { return String(it.tok).toUpperCase().replace(/[?\s]|\(\d+\)/g, '').replace(/\\/g, '/'); }
+  function streetKey(it) { return String(it.street || '').toUpperCase().replace(/[^A-Z]/g, ''); }
+  // two street names read in two photos: the same street (a letter or two may differ), or unknown
+  function sameStreet(a, b) {
+    const x = streetKey(a), y = streetKey(b);
+    if (!x || !y || x === y) return true;
+    if (x.indexOf(y) >= 0 || y.indexOf(x) >= 0) return true;
+    const n = Math.max(x.length, y.length);
+    let same = 0;
+    for (let i = 0; i < Math.min(x.length, y.length); i++) if (x[i] === y[i]) same++;
+    return same >= n * 0.7;
+  }
+  const hasNumber = function (k) { return /\d/.test(k); };
+  // how much two pigeonholes look like the same one: { score, exact }
+  function likeness(a, b) {
+    const x = overlapKey(a), y = overlapKey(b);
+    if (!hasNumber(x) || !hasNumber(y)) return { score: x === y && x ? 0.5 : (x && y ? -0.5 : 0), exact: false };
+    const street = sameStreet(a, b);
+    if (x === y) return { score: street ? 3 : 0, exact: street };
+    // read a little differently: the same digits, or one character changed, added or missing
+    const digits = function (s) { return s.replace(/\D/g, ''); };
+    if (digits(x) === digits(y)) return { score: street ? 1.5 : 0, exact: false };
+    const short = x.length <= y.length ? x : y, long = x.length <= y.length ? y : x;
+    let i = 0;
+    while (i < short.length && short[i] === long[i]) i++;
+    const close = long.length - short.length <= 1 && (short.slice(i) === long.slice(i + 1) || short.slice(i + 1) === long.slice(i + 1));
+    return { score: close && street ? 0.5 : -2, exact: false };
+  }
   function withoutOverlap(before, after) {
-    const key = function (it) { return String(it.tok).toUpperCase().replace(/[?\s]/g, '').replace(/\\/g, '/'); };
-    for (let k = Math.min(before.length, after.length); k >= 2; k--) {
-      let wrong = 0;
-      for (let i = 0; i < k; i++) if (key(before[before.length - k + i]) !== key(after[i])) wrong++;
-      if (wrong === 0 || (k >= 4 && wrong <= Math.floor(k / 4))) return after.slice(k);
+    const old = before.slice(-OVERLAP_MAX), neu = after.slice(0, OVERLAP_MAX);
+    const n = old.length, m = neu.length, GAP = -1.5;
+    // best[i][j]: the best line-up of a piece of old ending at i with the first j of the new ones
+    const best = [], exact = [];
+    for (let i = 0; i <= n; i++) {
+      best.push(new Float64Array(m + 1)); exact.push(new Int16Array(m + 1));
+      for (let j = 1; j <= m; j++) {
+        if (i === 0) { best[i][j] = GAP * j; continue; }
+        const l = likeness(old[i - 1], neu[j - 1]);
+        let s = best[i - 1][j - 1] + l.score, e = exact[i - 1][j - 1] + (l.exact ? 1 : 0);
+        if (best[i - 1][j] + GAP > s) { s = best[i - 1][j] + GAP; e = exact[i - 1][j]; }
+        if (best[i][j - 1] + GAP > s) { s = best[i][j - 1] + GAP; e = exact[i][j - 1]; }
+        best[i][j] = s; exact[i][j] = e;
+      }
     }
-    return after;
+    // the line-up must reach the end of the old photo
+    let cut = 0, top = 0;
+    for (let j = 1; j <= m; j++) if (exact[n][j] >= 2 && best[n][j] >= 4 && best[n][j] > top) { top = best[n][j]; cut = j; }
+    let fresh = after.slice(cut);
+    // a number the last photos already had, right at the start of the new photo: the same pigeonhole
+    const seen = {};
+    old.forEach(function (it) { const k = overlapKey(it); if (hasNumber(k)) (seen[k] = seen[k] || []).push(it); });
+    let lead = 0;
+    for (let k = 0; k < Math.min(fresh.length, 6); k++) {
+      const key = overlapKey(fresh[k]);
+      if (!hasNumber(key)) continue;   // an empty or unread pigeonhole goes with the numbers around it
+      if (!(seen[key] || []).some(function (it) { return sameStreet(it, fresh[k]); })) break;
+      lead = k + 1;
+    }
+    return fresh.slice(lead);
+  }
+
+  /*
+   * The streets written on the itinerary (the sheet with the list of the streets of the sub-zone), from
+   * the words read on its photo: lines of words, and a street type (VIA, CASCINA...) starts a name.
+   */
+  const STREET_TYPE = /^(VIA|VIALE|V\.LE|PIAZZA|P\.ZA|PIAZZALE|CASCINA|C\.NA|VICOLO|STRADA|CORSO|LARGO|LOCALITA|LOC\.|FRAZIONE|FRAZ\.|CONTRADA|BORGO|PASSAGGIO|TRAVERSA|ALZAIA|RIPA)$/;
+  function sheetStreets(words) {
+    const ws = (words || []).filter(function (w) { return w.confidence > 50 && w.bbox; }).map(function (w) {
+      return { t: String(w.text || '').toUpperCase().replace(/[^A-ZÀ-Ü'.]/g, ''), x0: w.bbox.x0, x1: w.bbox.x1, y: (w.bbox.y0 + w.bbox.y1) / 2, h: w.bbox.y1 - w.bbox.y0 };
+    }).filter(function (w) { return w.t.replace(/[^A-Z]/g, '').length >= 2 || STREET_TYPE.test(w.t); });
+    ws.sort(function (a, b) { return a.y - b.y; });
+    const lines = [];
+    ws.forEach(function (w) {
+      const line = lines.find(function (l) { return Math.abs(l.y - w.y) < Math.max(l.h, w.h) * 0.5; });
+      if (line) line.words.push(w); else lines.push({ y: w.y, h: w.h, words: [w] });
+    });
+    const names = {};
+    lines.forEach(function (l) {
+      let name = null, end = 0;
+      const close = function () { if (name && name.length >= 2 && name.slice(1).join('').length >= 3) names[name.join(' ')] = true; name = null; };
+      l.words.sort(function (a, b) { return a.x0 - b.x0; }).forEach(function (w) {
+        if (STREET_TYPE.test(w.t)) { close(); name = [w.t]; end = w.x1; return; }
+        if (name && w.x0 - end < l.h * 6) { name.push(w.t); end = w.x1; return; }
+        close();
+      });
+      close();
+    });
+    return Object.keys(names);
+  }
+
+  // How many letters must change to turn a into b.
+  function editDistance(a, b) {
+    let prev = [];
+    for (let j = 0; j <= b.length; j++) prev.push(j);
+    for (let i = 1; i <= a.length; i++) {
+      const row = [i];
+      for (let j = 1; j <= b.length; j++) row.push(Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)));
+      prev = row;
+    }
+    return prev[b.length];
+  }
+
+  /*
+   * A street name read on a strip, put right with the streets already known (the itinerary, the work):
+   * "VIA DEI TIGU" is "VIA DEI TIGLI". Only when it is clearly the same name (at most a quarter of
+   * the letters different, and no other known name as close); otherwise it stays as read.
+   */
+  function snapStreet(read, known) {
+    const key = function (x) { return String(x || '').toUpperCase().replace(/[^A-Z]+/g, ' ').trim(); };
+    const r = key(read);
+    if (r.replace(/ /g, '').length < 4) return read;
+    let best = '', score = 0, second = 0;
+    (known || []).forEach(function (k) {
+      const kk = key(k);
+      if (!kk) return;
+      const sc = 1 - editDistance(r, kk) / Math.max(r.length, kk.length);
+      if (sc > score) { second = score; score = sc; best = k; } else if (sc > second && key(best) !== kk) second = sc;
+    });
+    return best && score >= 0.75 && score - second >= 0.08 ? best : read;
+  }
+
+  // The items of `items` whose house number (same street) is already in `before`: to point them out.
+  function repeatedItems(before, items) {
+    return items.filter(function (it) {
+      const k = overlapKey(it);
+      return hasNumber(k) && before.some(function (b) { return overlapKey(b) === k && sameStreet(b, it); });
+    });
+  }
+
+  /*
+   * Where the big writing of a sign ("2A") may be, on a small copy of the photo (about 1000 points):
+   * groups of 2-4 dark letters side by side, of the same height, between 4% and 45% of the photo, on a
+   * light ground (the sign is white or yellow: the gaps between the dividers of the pigeonholes are not).
+   * The reader finds the name only on the piece cut around it, not on the whole photo.
+   * Returns up to 3 boxes (parts of the photo, 0..1), the biggest first.
+   */
+  function signBoxes(img) {
+    const W = img.width, H = img.height;
+    const mask = darkMask(img, 3);
+    const gray = toGray(img);
+    const sum = new Float64Array((W + 1) * (H + 1));   // integral image of the grey, for the ground around a letter
+    for (let y = 1; y <= H; y++) {
+      let row = 0;
+      for (let x = 1; x <= W; x++) { row += gray[(y - 1) * W + x - 1]; sum[y * (W + 1) + x] = sum[(y - 1) * (W + 1) + x] + row; }
+    }
+    const area = function (x0, y0, x1, y1) { return sum[y1 * (W + 1) + x1] - sum[y0 * (W + 1) + x1] - sum[y1 * (W + 1) + x0] + sum[y0 * (W + 1) + x0]; };
+    const label = new Int32Array(W * H);
+    const parts = [];
+    const stack = [];
+    for (let start = 0; start < mask.length; start++) {
+      if (!mask[start] || label[start]) continue;
+      const id = parts.length + 1;
+      let x0 = W, y0 = H, x1 = 0, y1 = 0, n = 0, ink = 0;
+      label[start] = id; stack.push(start);
+      while (stack.length) {
+        const p = stack.pop(), x = p % W, y = (p - x) / W;
+        n++; ink += gray[p];
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        const next = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1];
+        for (let k = 0; k < 4; k++) { const q = next[k]; if (q >= 0 && mask[q] && !label[q]) { label[q] = id; stack.push(q); } }
+      }
+      parts.push({ x0: x0, y0: y0, x1: x1 + 1, y1: y1 + 1, n: n, ink: ink / n });
+    }
+    // the ground around a letter: the box a little bigger, without the letter
+    const ground = function (c) {
+      const pad = Math.round((c.y1 - c.y0) * 0.15);
+      const X0 = Math.max(0, c.x0 - pad), Y0 = Math.max(0, c.y0 - pad), X1 = Math.min(W, c.x1 + pad), Y1 = Math.min(H, c.y1 + pad);
+      const all = (X1 - X0) * (Y1 - Y0) - c.n;
+      return all > 0 ? (area(X0, Y0, X1, Y1) - c.ink * c.n) / all : 0;
+    };
+    const letters = parts.filter(function (c) {
+      const w = c.x1 - c.x0, h = c.y1 - c.y0, fill = c.n / (w * h);
+      if (h < H * 0.04 || h > H * 0.45 || w < h * 0.2 || w > h * 1.3 || fill < 0.07 || fill > 0.8) return false;   // 0.07: outlined letters
+      const light = ground(c);
+      return light >= 150 && light - c.ink >= 70;
+    }).sort(function (a, b) { return a.x0 - b.x0; });
+    const found = [];
+    letters.forEach(function (c, i) {
+      const h = c.y1 - c.y0;
+      const group = [c];
+      for (let j = i + 1; j < letters.length && group.length < 4; j++) {
+        const d = letters[j], last = group[group.length - 1], dh = d.y1 - d.y0;
+        if (d.x0 - last.x1 > h * 0.6) break;
+        if (dh < h * 0.7 || dh > h * 1.4 || Math.abs((d.y0 + d.y1) - (c.y0 + c.y1)) > h * 0.5) continue;
+        group.push(d);
+      }
+      if (group.length < 2) return;
+      const box = { x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1, h: h };
+      group.forEach(function (g) { box.x0 = Math.min(box.x0, g.x0); box.y0 = Math.min(box.y0, g.y0); box.x1 = Math.max(box.x1, g.x1); box.y1 = Math.max(box.y1, g.y1); });
+      found.push(box);
+    });
+    found.sort(function (a, b) { return b.h - a.h; });
+    const out = [];
+    found.forEach(function (b) {
+      if (out.length >= 3 || out.some(function (o) { return b.x0 < o.x1 * W && b.x1 > o.x0 * W && b.y0 < o.y1 * H && b.y1 > o.y0 * H; })) return;
+      const pad = b.h * 0.2;
+      out.push({ x0: Math.max(0, b.x0 - pad) / W, y0: Math.max(0, b.y0 - pad) / H, x1: Math.min(W, b.x1 + pad) / W, y1: Math.min(H, b.y1 + pad) / H });
+    });
+    return out;
+  }
+
+  /*
+   * The piece cut around the name of a sign, black on white for the reader: ink is what is dark or
+   * coloured (yellow letters with a dark border would otherwise be only their border); white and grey not.
+   */
+  function signInk(img) {
+    const gray = toGray(img), t = threshold(gray);
+    const out = new Uint8ClampedArray(img.width * img.height * 4);
+    for (let i = 0, j = 0; i < gray.length; i++, j += 4) {
+      const r = img.data[j], g = img.data[j + 1], b = img.data[j + 2];
+      const ink = gray[i] < t || Math.max(r, g, b) - Math.min(r, g, b) > 60;
+      out[j] = out[j + 1] = out[j + 2] = ink ? 0 : 255; out[j + 3] = 255;
+    }
+    return { width: img.width, height: img.height, data: out };
+  }
+
+  // A name read on a sign: a number and a letter ("2B"); a last 8, 4 or 0 is the letter B, A or D read as a digit.
+  function signText(text) {
+    const t = String(text || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+    if (/^\d{1,3}[A-Z]$/.test(t)) return t;
+    const m = /^(\d{1,3})([840])$/.exec(t);
+    return m ? m[1] + { 8: 'B', 4: 'A', 0: 'D' }[m[2]] : '';
   }
 
   // The photo of the sign of a sub-zone ("2A"): which of the names given is written big in it, or ''.
@@ -636,6 +855,6 @@
   }
 
   return { toGray: toGray, threshold: threshold, segmentStrip: segmentStrip, cleanBand: cleanBand, inkClusters: inkClusters, cropBand: cropBand, cleanNumber: cleanNumber,
-    streetPhrases: streetPhrases, routeLines: routeLines, routeItems: routeItems, itemLines: itemLines, withoutOverlap: withoutOverlap,
+    streetPhrases: streetPhrases, routeLines: routeLines, routeItems: routeItems, itemLines: itemLines, withoutOverlap: withoutOverlap, sheetStreets: sheetStreets, snapStreet: snapStreet, signBoxes: signBoxes, signInk: signInk, signText: signText, repeatedItems: repeatedItems,
     zoneSign: zoneSign, readStrip: readStrip, findStrip: findStrip };
 });

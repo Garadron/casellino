@@ -1719,7 +1719,8 @@
    * itself, changed by hand), its angle and whether it was read; what was read so far, to leave out
    * the piece two photos one after the other have in common.
    */
-  const photo = { files: [], index: 0, image: null, rects: [], angles: [], done: [], items: [], view: null, worker: null, busy: false, stop: false, first: '' };
+  const photo = { files: [], index: 0, image: null, rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], view: null, worker: null, busy: false, stop: false,
+    first: '', signAt: 0, signWait: null };
   let tesseractReady = null;
 
   function loadTesseract() {
@@ -1834,7 +1835,9 @@
       g.fillText('Trascina un rettangolo intorno a una sola striscia', fs * 0.6, fs * 1.1, stage.width - fs * 1.2);
     }
     $('foto-count').textContent = 'Foto ' + (photo.index + 1) + ' di ' + photo.files.length;
-    $('foto-state').textContent = photo.done[photo.index] ? '✓ letta' : (photo.rects[photo.index] ? 'striscia trovata: controlla il riquadro' : '');
+    const kind = { itinerario: '📋 itinerario', mobile: '🖼 tutto il mobile' }[photo.kind[photo.index]];
+    $('foto-state').textContent = kind ||
+      (photo.done[photo.index] ? '✓ letta' : (photo.rects[photo.index] ? 'striscia trovata: controlla il riquadro' : ''));
   }
 
   // Shows photo i (waits for it), with its rectangle found by itself the first time.
@@ -1897,10 +1900,9 @@
     const unsure = res.cells.filter(function (c) { return c.unsure; }).length;
     if (res.cells.length >= 5 && unsure < res.cells.length * 0.6) return res;
     // few numbers, or almost all uncertain: maybe the photo of the sign of a sub-zone ("2A", written big)
-    const small = turned(img, photo.angles[i], Math.min(1, 2600 / img.naturalWidth));
-    await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
-    const words = (await w.recognize(small)).data.words;
-    const zone = F.zoneSign(words, state.project.subzones.map(function (s) { return s.name; }), small.height * 0.06);
+    const seen = await wordsOf(i);
+    const zone = await signName(i, seen);
+    if (zone) keepSheet(seen.words);   // the itinerary may be next to the sign
     return zone ? { cells: [], phrases: [], zone: zone } : res;
   }
 
@@ -1908,46 +1910,149 @@
   function addReading(i, res) {
     const out = $('foto-result');
     const add = function (text) { out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + text + '\n'; out.scrollTop = out.scrollHeight; };
-    if (res.zone) {
-      add('# sottozona ' + res.zone + ' (cartello nella foto ' + (i + 1) + ')');
-      photo.items = [];   // a new sub-zone: nothing in common with the photos before
-      setTarget(res.zone);
-      return;
-    }
-    const items = F.routeItems(res.cells, res.phrases);
+    const known = knownStreets();
+    const items = F.routeItems(res.cells, res.phrases).map(function (it) { return { street: F.snapStreet(it.street, known), tok: it.tok }; });
     const fresh = F.withoutOverlap(photo.items, items);
+    const again = F.repeatedItems(photo.items, fresh);
     photo.items = photo.items.concat(fresh);
     const same = items.length - fresh.length;
     add('# foto ' + (i + 1) + ' (letta in automatico: da controllare)' + (same ? ' · ' + same + (same === 1 ? ' casella uguale' : ' caselle uguali') + ' alla foto prima, non ripetute' : ''));
     // two numbers in one pigeonhole follow the way of the street (read "7/5" between 4 and 6: it is 5/7)
     if (fresh.length) add(C.fixPairOrder(F.itemLines(fresh).join('\n'), sz().town).text);
+    // the same number further on: maybe the same pigeonhole seen twice, maybe a number read wrong
+    if (again.length) {
+      add('# attenzione: ' + again.map(function (it) { return it.street + ' ' + it.tok; }).join(', ') + (again.length === 1 ? ' c\'era' : ' c\'erano') +
+        ' già in una foto prima: se è la stessa casella, cancellalo qui sopra');
+    }
   }
 
+  // The words of photo i, at most `wide` points wide (2600: the writing on the sheet is small).
+  async function wordsOf(i, wide) {
+    const w = await ocrWorker();
+    const img = i === photo.index && photo.image ? photo.image : await loadImage(i);
+    const small = turned(img, photo.angles[i] || 0, Math.min(1, (wide || 2600) / img.naturalWidth));
+    await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
+    return { words: (await w.recognize(small)).data.words, height: small.height };
+  }
+  // The name on the sign ("2A"); letters very big are read better on a smaller copy of the photo.
+  async function signName(i, seen) {
+    const name = F.zoneSign(seen.words, state.project.subzones.map(function (s) { return s.name; }), seen.height * 0.06);
+    if (name) return name;
+    // on the whole photo the reader misses big letters: they are found, cut out and read by themselves
+    const img = i === photo.index && photo.image ? photo.image : await loadImage(i);
+    const small = turned(img, photo.angles[i] || 0, Math.min(1, 1000 / img.naturalWidth));
+    const boxes = F.signBoxes(small.getContext('2d').getImageData(0, 0, small.width, small.height));
+    if (!boxes.length) return '';
+    const big = turned(img, photo.angles[i] || 0, Math.min(1, 2600 / img.naturalWidth));
+    const w = await ocrWorker();
+    for (let b = 0; b < boxes.length; b++) {
+      const r = boxes[b];
+      const x0 = Math.round(r.x0 * big.width), y0 = Math.round(r.y0 * big.height);
+      const cw = Math.max(1, Math.round((r.x1 - r.x0) * big.width)), ch = Math.max(1, Math.round((r.y1 - r.y0) * big.height));
+      const k = Math.min(1, 140 / ch);
+      const cut = imageToCanvas(Math.max(1, Math.round(cw * k)), Math.max(1, Math.round(ch * k)));
+      const g = cut.getContext('2d');
+      g.drawImage(big, x0, y0, cw, ch, 0, 0, cut.width, cut.height);
+      const ink = F.signInk(g.getImageData(0, 0, cut.width, cut.height));
+      g.putImageData(new ImageData(ink.data, ink.width, ink.height), 0, 0);
+      for (const mode of ['11', '7', '8']) {
+        await w.setParameters({ tessedit_pageseg_mode: mode, tessedit_char_whitelist: '0123456789ABCDEFGHILMNOPQRSTUVZ' });
+        const found = F.signText((await w.recognize(cut)).data.text);
+        if (found) return found;
+      }
+    }
+    return '';
+  }
+  function keepSheet(words) {
+    F.sheetStreets(words).forEach(function (n) { if (photo.sheet.indexOf(n) < 0) photo.sheet.push(n); });
+  }
+  // The streets already known: of the itineraries photographed, of the work, of the official lists.
+  function knownStreets() {
+    const names = {};
+    photo.sheet.forEach(function (n) { names[n] = true; });
+    state.project.subzones.forEach(function (s) {
+      C.parseRoute(s.route, s.town).items.forEach(function (it) { if (it.street) names[String(it.street).toUpperCase()] = true; });
+    });
+    Object.keys(state.project.streetLists || {}).forEach(function (t) { (state.project.streetLists[t] || []).forEach(function (n) { names[String(n).toUpperCase()] = true; }); });
+    return Object.keys(names);
+  }
+  const clearWords = function (words) { return words.filter(function (x) { return x.confidence > 70 && /[A-Za-zÀ-ù]{3}/.test(x.text); }).length; };
+  const SHEET_OK = 'L\'itinerario si legge bene. ';
+  const SHEET_POOR = 'L\'itinerario si legge poco: se puoi, rifai la foto più vicina e dritta, con tutto il foglio. ';
+
   /*
-   * The first photo is the sign of the zone ("2A") with the sheet of its streets: the program reads the
-   * name and says whether the sheet can be read; the person looks at the photo and confirms it (or takes
-   * it again). It gives its name to the sub-zone of the strips that follow.
+   * The photo of the sign of a sub-zone ("2A"): the first one, or one in the middle (another sub-zone).
+   * The person looks at it and confirms the name. The itinerary (the sheet with the list of the streets)
+   * is in the same photo or, ticked, in the one after it, which then is not read as a strip.
    */
-  async function checkFirst() {
-    const box = $('foto-first'), msg = $('foto-first-msg');
-    box.hidden = false;
+  function showSignPanel(i, first) {
+    photo.signAt = i;
+    $('foto-first-title').textContent = 'Foto ' + (i + 1) + (first ? ': il cartello della sottozona.' : ': il cartello di un\'altra sottozona.');
+    $('foto-whole-row').hidden = !first;
+    $('foto-first-whole').disabled = photo.files.length < 2;
     $('foto-first-name').value = '';
+    $('foto-first-msg').textContent = '';
+    $('foto-sheet-msg').textContent = '';
+    $('foto-first-sheet').checked = false;
+    $('foto-first-sheet').disabled = i + 1 >= photo.files.length;
+    $('foto-first-next').textContent = 'la foto ' + (i + 2);
+    $('foto-first-redo').hidden = !first;
+    $('foto-first-skip').textContent = first ? 'non ho questa foto' : 'non è un cartello';
+    $('foto-first').hidden = false;
+  }
+
+  // The first photos: the whole mobile (ticked, or found: no name on photo 1 but on photo 2), then the sign.
+  async function checkFirst(guess) {
+    let at = $('foto-first-whole').checked && photo.files.length > 1 ? 1 : 0;
+    showSignPanel(at, true);
+    const msg = $('foto-first-msg');
     msg.textContent = 'La controllo…';
     try {
-      const w = await ocrWorker();
-      const img = await loadImage(0);
-      const small = turned(img, 0, Math.min(1, 2600 / img.naturalWidth));   // at full size: the name on the sheet is small
-      await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
-      const words = (await w.recognize(small)).data.words;
-      const name = F.zoneSign(words, state.project.subzones.map(function (s) { return s.name; }), small.height * 0.06);
-      const clear = words.filter(function (x) { return x.confidence > 70 && /[A-Za-zÀ-ù]{3}/.test(x.text); }).length;
+      let seen = await wordsOf(at);
+      keepSheet(seen.words);
+      let name = await signName(at, seen);
+      if (!name && !at && guess && photo.files.length > 2) {
+        const next = await wordsOf(1);
+        const there = await signName(1, next);
+        if (there) { $('foto-first-whole').checked = true; at = 1; seen = next; name = there; keepSheet(next.words); showSignPanel(1, true); await showPhoto(1); }
+      }
+      if (at !== photo.signAt) return;   // changed meanwhile
       $('foto-first-name').value = name;
-      msg.textContent = (name ? 'Sul cartello leggo «' + name + '». ' : 'Non leggo il numero della zona sul cartello: scrivilo tu (per esempio 2A). ') +
-        (clear >= 15 ? 'Il foglio delle vie si legge bene. ' : 'Il foglio delle vie si legge poco: se puoi, rifai la foto più vicina e dritta, con tutto il cartello e tutto il foglio. ') +
-        'Guarda la foto qui sotto e conferma.';
+      const sheet = clearWords(seen.words) >= 15 ? SHEET_OK
+        : (photo.files.length > at + 1 ? 'Qui l\'itinerario non si legge: se l\'hai fotografato a parte, spunta la casella qui sotto. ' : SHEET_POOR);
+      msg.textContent = (at ? 'La foto 1 è tutto il mobile. ' : '') + (name ? 'Sul cartello leggo «' + name + '». ' : 'Non leggo il nome sul cartello: scrivilo tu (per esempio 2A). ') + sheet + 'Guarda la foto e conferma.';
     } catch (e) {
       msg.textContent = 'Non riesco a controllarla (' + e.message + '): scrivi tu la sottozona e conferma.';
     }
+  }
+
+  // A sign found in the middle of the photos: the reading waits until the person confirms it.
+  function askSign(i, name) {
+    showSignPanel(i, false);
+    $('foto-first-name').value = name;
+    $('foto-first-msg').textContent = 'Sul cartello leggo «' + name + '». Guarda la foto e conferma; se l\'itinerario è nella foto dopo, spunta la casella.';
+    $('foto-status').textContent = 'Aspetto la conferma del cartello (foto ' + (i + 1) + ').';
+    return new Promise(function (resolve) { photo.signWait = resolve; });
+  }
+  function answerSign(ok) {
+    const go = photo.signWait;
+    photo.signWait = null;
+    if (go) go(ok);
+    return !!go;
+  }
+
+  // Ticked: the photo after the sign is shown, and checked whether the itinerary in it can be read.
+  async function checkSheet() {
+    const i = photo.signAt, box = $('foto-sheet-msg');
+    if (!$('foto-first-sheet').checked) { box.textContent = ''; await showPhoto(i); return; }
+    await showPhoto(i + 1);
+    $('foto-state').textContent = '📋 itinerario?';
+    box.textContent = 'La controllo…';
+    try {
+      const seen = await wordsOf(i + 1);
+      keepSheet(seen.words);
+      box.textContent = clearWords(seen.words) >= 15 ? SHEET_OK : SHEET_POOR;
+    } catch (e) { box.textContent = ''; }
   }
 
   // The sub-zone chosen in the list at the bottom: one of the work, or a new one with that name.
@@ -1958,18 +2063,29 @@
     sel.value = opt.value;
   }
 
+  // The sign confirmed: its line in the text and the sub-zone chosen; the itinerary photo is not read.
   function confirmFirst() {
     const name = $('foto-first-name').value.toUpperCase().replace(/\s+/g, '');
     if (!name) { $('foto-first-msg').textContent = 'Scrivi la sottozona (per esempio 2A), poi «Va bene».'; return; }
-    photo.first = name;
-    photo.done[0] = true;
-    photo.items = [];
+    const i = photo.signAt;
+    const first = !$('foto-whole-row').hidden;
+    const whole = first && i === 1;
+    const sheet = $('foto-first-sheet').checked && i + 1 < photo.files.length;
+    const lines = (whole ? '# foto 1: tutto il mobile (non si legge)\n' : '') + '# sottozona ' + name + ' (cartello nella foto ' + (i + 1) + ')\n' +
+      (sheet ? '# foto ' + (i + 2) + ': itinerario della ' + name + ' (non è una striscia: non si legge)\n' : '');
     const out = $('foto-result');
-    out.value = '# sottozona ' + name + ' (cartello nella foto 1)\n' + out.value.replace(/^# sottozona .*\(cartello nella foto 1\)\n/, '');
+    if (first) out.value = lines + out.value.replace(/^(# foto 1: tutto il mobile.*\n)?# sottozona .*\(cartello nella foto [12]\)\n(# foto [23]: itinerario.*\n)?/, '');
+    else out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + lines;
+    photo.done[i] = true;
+    if (whole) { photo.done[0] = true; photo.kind[0] = 'mobile'; }
+    if (sheet) { photo.done[i + 1] = true; photo.kind[i + 1] = 'itinerario'; }
+    photo.items = [];   // a new sub-zone: nothing in common with the photos before
+    if (first) photo.first = name;
     setTarget(name);
     $('foto-first').hidden = true;
-    $('foto-status').textContent = 'Prima foto confermata: sottozona ' + name + '. Ora «📚 Leggi tutte le foto».';
-    showPhoto(1);
+    if (answerSign(true)) return;   // the reading goes on by itself
+    $('foto-status').textContent = 'Cartello confermato: sottozona ' + name + (sheet ? ', itinerario nella foto ' + (i + 2) : '') + '. Ora «📚 Leggi tutte le foto».';
+    showPhoto(i + (sheet ? 2 : 1));
   }
 
   function setBusy(on) {
@@ -1985,10 +2101,17 @@
     const i = photo.index;
     try {
       const res = await readOne(i, function (k, n) { status.textContent = 'Leggo i civici: ' + (k + 1) + ' di ' + n + '…'; });
-      if (!res.cells.length && !res.zone) { status.textContent = NOTHING; return; }
+      if (res.zone) {
+        photo.busy = false; setBusy(false);
+        if (!(await askSign(i, res.zone))) { status.textContent = NOTHING; return; }
+        status.textContent = 'Foto ' + (i + 1) + ': cartello della ' + $('foto-first-name').value.toUpperCase().trim() + '.';
+        await showPhoto(i + (photo.kind[i + 1] === 'itinerario' ? 2 : 1));
+        return;
+      }
+      if (!res.cells.length) { status.textContent = NOTHING; return; }
       addReading(i, res);
       photo.done[i] = true;
-      status.textContent = res.zone ? 'Foto ' + (i + 1) + ': cartello della ' + res.zone + '.' : res.cells.length + ' civici letti nella foto ' + (i + 1) + '.';
+      status.textContent = res.cells.length + ' civici letti nella foto ' + (i + 1) + '.';
       photo.busy = false; setBusy(false);
       await showPhoto(i + 1);
     } catch (e) {
@@ -2013,7 +2136,12 @@
         if (photo.done[i]) continue;
         await showPhoto(i);
         const res = await readOne(i, function (k, n) { status.textContent = 'Foto ' + (i + 1) + ' di ' + photo.files.length + ': civici ' + (k + 1) + ' di ' + n + '…'; });
-        if (!res.cells.length && !res.zone) { empty.push(i + 1); note('foto ' + (i + 1) + ' di ' + photo.files.length + ': nessun civico letto'); continue; }
+        if (res.zone) {
+          drawPhoto();
+          if (await askSign(i, res.zone)) read++; else empty.push(i + 1);
+          continue;
+        }
+        if (!res.cells.length) { empty.push(i + 1); note('foto ' + (i + 1) + ' di ' + photo.files.length + ': nessun civico letto'); continue; }
         addReading(i, res);
         photo.done[i] = true;
         read++;
@@ -2047,10 +2175,24 @@
     return k;
   }
 
+  /*
+   * The phone gives the photos in the order they were chosen. If that is not the order they were taken
+   * in, a button puts them in that order (not by itself: a photo taken again later may be chosen in its place).
+   */
+  function byTime() {
+    return photo.files.slice().sort(function (a, b) { return (a.lastModified || 0) - (b.lastModified || 0); });
+  }
+  function offerTimeOrder() {
+    const sorted = byTime();
+    $('foto-sort').hidden = !sorted.some(function (f, k) { return f !== photo.files[k]; });
+  }
+
+  function openPhotoGuide() { $('dlg-guida-foto').showModal(); }
+
   function openPhotos() {
     $('foto-result').value = '';
     $('foto-status').textContent = '';
-    Object.assign(photo, { files: [], rects: [], angles: [], done: [], items: [], image: null });
+    Object.assign(photo, { files: [], rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], image: null });
     const sel = $('foto-target');
     sel.textContent = '';
     state.project.subzones.forEach(function (s, k) {
@@ -2060,12 +2202,17 @@
     photo.first = '';
     showPhoto(0);
     $('dlg-foto').showModal();
+    let seen = true;
+    try { seen = localStorage.getItem('casellino.guidaFoto') === '1'; localStorage.setItem('casellino.guidaFoto', '1'); } catch (e) { /* shown every time */ }
+    if (!seen) openPhotoGuide();
   }
 
   function wirePhotos() {
     $('foto-files').addEventListener('change', function (e) {
-      Object.assign(photo, { files: Array.prototype.slice.call(e.target.files || []), rects: [], angles: [], done: [], items: [], first: '' });
-      if (photo.files.length) { showPhoto(0); checkFirst(); }
+      Object.assign(photo, { files: Array.prototype.slice.call(e.target.files || []), rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], first: '' });
+      $('foto-first-whole').checked = false;
+      if (photo.files.length) { showPhoto(0); checkFirst(true); }
+      offerTimeOrder();
       if (photo.files.length && window.indexedDB) keepPhotos(photo.files).then(renderPhotoButton).catch(function () { /* only a convenience */ });
     });
     $('foto-rot').addEventListener('input', function (e) { photo.angles[photo.index] = +e.target.value; drawPhoto(); });
@@ -2116,13 +2263,25 @@
     $('foto-first-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); confirmFirst(); } });
     $('foto-first-redo').addEventListener('click', function () {
       $('foto-files').value = '';
-      Object.assign(photo, { files: [], rects: [], angles: [], done: [], items: [], first: '', image: null });
+      Object.assign(photo, { files: [], rects: [], angles: [], done: [], kind: {}, items: [], sheet: [], first: '', image: null });
       $('foto-first').hidden = true;
       showPhoto(0);
-      $('foto-status').textContent = 'Rifai la prima foto: il cartello e il foglio delle vie interi, vicini e dritti. Poi scegli di nuovo le foto.';
+      $('foto-status').textContent = 'Rifai la prima foto: il cartello intero, vicino e dritto (e l\'itinerario, anche in una foto a parte). Poi scegli di nuovo le foto.';
     });
+    $('foto-first-sheet').addEventListener('change', checkSheet);
+    $('foto-first-whole').addEventListener('change', function () { showPhoto($('foto-first-whole').checked ? 1 : 0); checkFirst(false); });
+    $('foto-sort').addEventListener('click', function () {
+      if (photo.busy || photo.done.some(Boolean)) { $('foto-status').textContent = 'Le foto sono già in lettura: scegli di nuovo le foto per metterle in ordine.'; return; }
+      Object.assign(photo, { files: byTime(), rects: [], angles: [], done: [], kind: {}, items: [], sheet: [] });
+      $('foto-sort').hidden = true;
+      $('foto-first-whole').checked = false;
+      showPhoto(0); checkFirst(true);
+      $('foto-status').textContent = 'Foto messe in ordine di scatto.';
+    });
+    $('foto-guide').addEventListener('click', openPhotoGuide);
     $('foto-first-skip').addEventListener('click', function () {
       $('foto-first').hidden = true;
+      if (answerSign(false)) return;   // not a sign: the reading goes on
       $('foto-status').textContent = 'Senza la foto del cartello: scegli qui sotto in quale sottozona vanno le vie lette.';
     });
     $('foto-read').addEventListener('click', readCurrent);
@@ -2131,6 +2290,7 @@
     $('foto-next').addEventListener('click', function () { if (photo.index < photo.files.length - 1) showPhoto(photo.index + 1); });
     $('dlg-foto').addEventListener('close', function () {
       photo.stop = true;   // a reading going on stops after its photo
+      answerSign(false);
       if ($('dlg-foto').returnValue !== 'ok') return;
       const text = $('foto-result').value.trim();
       if (!text) return;
@@ -2139,10 +2299,15 @@
       const before = state.project.subzones.length;
       const target = String($('foto-target').value);
       let to = target.indexOf('nuova:') === 0 ? subzoneNamed(target.slice(6)) : +target || 0;
+      let named = '', waiting = [];   // a sign: its sub-zone is made when a line of its own follows (not for notes only)
       text.split('\n').forEach(function (line) {
         const m = /^#\s*sottozona\s+(\S+)/i.exec(line.trim());
-        if (m) { to = subzoneNamed(m[1]); return; }
-        (parts[to] = parts[to] || []).push(line);
+        if (m) { named = m[1]; waiting = []; return; }
+        if (named && (!line.trim() || line.trim()[0] === '#')) { waiting.push(line); return; }
+        if (named) { to = subzoneNamed(named); named = ''; }
+        if (!parts[to]) parts[to] = [];
+        parts[to].push.apply(parts[to], waiting.concat([line]));
+        waiting = [];
       });
       if (state.project.subzones.length !== before) renderTabs();
       const added = [], locked = [];
@@ -2957,6 +3122,7 @@
     $('btn-example').addEventListener('click', function () { closeMenu(); loadExample(); });
     $('btn-help').addEventListener('click', function () { closeMenu(); $('dlg-help').showModal(); });
     $('btn-photos').addEventListener('click', function () { closeMenu(); openPhotos(); });
+    $('btn-photo-guide').addEventListener('click', function () { closeMenu(); openPhotoGuide(); });
     $('btn-bug').addEventListener('click', openReport);
     $('bug-send').addEventListener('click', sendReport);
     $('btn-open-excel').addEventListener('click', function () { closeMenu(); $('file-input').click(); });

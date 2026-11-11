@@ -374,13 +374,20 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .foto-stage { max-height: 50vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #222; }
 .foto-stage canvas { display: block; max-width: 100%; height: auto; touch-action: none; cursor: crosshair; }
 .foto-rot { display: flex; align-items: center; gap: 8px; }
-.foto-steps { margin: 0 0 6px; padding-left: 22px; }
 .bug-field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; margin: 6px 0; flex: 1 1 200px; }
 .bug-field textarea, .bug-field input[type="text"], .bug-field input:not([type]) { width: 100%; font-size: 16px; }
-.foto-steps li { margin: 2px 0; }
 .foto-first { border: 2px solid var(--accent); border-radius: 8px; padding: 6px 10px; margin: 6px 0; background: var(--accent-soft); }
 .foto-first p { margin: 4px 0; }
-.foto-first input { width: 6em; text-transform: uppercase; }
+#foto-first-name { width: 6em; text-transform: uppercase; }
+.foto-sheet { display: inline-flex; align-items: flex-start; gap: 6px; }
+.foto-sheet input { margin-top: 3px; flex: none; }
+.foto-brief { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; }
+.foto-brief button { flex: none; }
+/* the guide to taking the photos */
+dialog.guide { max-width: 640px; }
+.guide-steps { margin: 0; padding-left: 22px; }
+.guide-steps li { margin: 0 0 10px; line-height: 1.45; }
+.guide-pic { display: block; width: 100%; max-width: 420px; height: auto; margin: 8px 0 4px; color: var(--text); }
 .foto-rot input { flex: 1; max-width: 320px; }
 
 /* the photo button in the route box */
