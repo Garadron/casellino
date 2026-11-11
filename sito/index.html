@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.28.0';</script>
+<script>window.CASELLINO_VERSION = '0.29.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -6620,6 +6620,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
 
   // The account window: sign in / register / forgotten password, or the list of saved works.
   let accountMode = 'accedi';
+  let recoverWay = 'email';   // forgotten password: 'email' (a 6-digit code by e-mail) or 'codice' (the recovery code)
+  let mailSent = null;        // { utente, email, prova } once the code has gone
+  let accountNote = '';       // a message for the next form (e.g. e-mails not active yet)
+  let typedUser = '';         // the user name stays when the form changes (tab, e-mail or recovery code)
   function accountForm(box) {
     const modes = { accedi: 'Accedi', registrati: 'Registrati', recupera: 'Password dimenticata' };
     const tabs = h('div', { class: 'tabs' });
@@ -6627,33 +6631,64 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       tabs.append(h('button', { type: 'button', role: 'tab', 'aria-selected': m === accountMode ? 'true' : 'false',
         onclick: function () { accountMode = m; renderAccountDialog(); } }, modes[m]));
     });
-    const user = h('input', { autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', placeholder: 'es. mario.rossi' });
+    const user = h('input', { autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', placeholder: 'es. mario.rossi',
+      oninput: function () { typedUser = user.value; } });
+    user.value = typedUser;
     const pass = h('input', { type: 'password', autocomplete: accountMode === 'accedi' ? 'current-password' : 'new-password' });
     const code = h('input', { autocapitalize: 'characters', spellcheck: 'false', placeholder: 'XXXX-XXXX-XXXX' });
     const email = h('input', { type: 'email', autocomplete: 'email', autocapitalize: 'none', spellcheck: 'false', placeholder: 'es. nome@gmail.com' });
-    const msg = h('p', { class: 'small bad' });
-    const go = h('button', { type: 'submit', class: 'primary' },
-      accountMode === 'accedi' ? 'Accedi' : (accountMode === 'registrati' ? 'Crea l\'account' : 'Cambia la password'));
+    const mailCode = h('input', { inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '7', placeholder: '123456' });
+    const msg = h('p', { class: 'small bad' }, accountNote);
+    accountNote = '';
     const fresh = accountMode === 'registrati';
+    const recovering = accountMode === 'recupera';
+    const byMail = recovering && recoverWay === 'email';
+    const asking = byMail && !mailSent;   // first step: user name and e-mail, then the code goes
+    if (byMail && mailSent) { user.value = mailSent.utente; mailCode.value = mailSent.prova || ''; }
+    const go = h('button', { type: 'submit', class: 'primary' },
+      accountMode === 'accedi' ? 'Accedi' : (fresh ? 'Crea l\'account' : (asking ? 'Mandami il codice' : 'Cambia la password')));
+    const switchTo = function (label, onclick) { return h('button', { type: 'button', class: 'link-btn', onclick: onclick }, label); };
     const form = h('form', { class: 'account-form' },
       h('label', null, 'Nome utente' + (fresh ? '' : ' (maiuscole o minuscole, è uguale)'), user),
       fresh ? h('p', { class: 'small hint' }, USER_TIP) : null,
-      fresh ? h('label', null, 'La tua email', email) : null,
-      accountMode === 'recupera' ? h('label', null, 'Codice di recupero (te l\'ho dato quando hai creato l\'account)', code) : null,
-      h('label', null, accountMode === 'recupera' ? 'Password nuova (almeno 8 caratteri)' : 'Password' + (fresh ? ' (almeno 8 caratteri)' : ''), pass),
-      msg, h('p', { class: 'actions-inline' }, go));
+      fresh || asking ? h('label', null, fresh ? 'La tua email' : 'L\'email del tuo account', email) : null,
+      byMail && mailSent ? h('p', { class: 'small hint' }, 'Ti ho mandato un codice di 6 cifre a ' + mailSent.email +
+        '. Se non lo vedi, guarda nella posta indesiderata.') : null,
+      byMail && mailSent ? h('label', null, 'Codice dall\'email (6 cifre)', mailCode) : null,
+      recovering && !byMail ? h('label', null, 'Codice di recupero (te l\'ho dato quando hai creato l\'account)', code) : null,
+      asking ? null : h('label', null, recovering ? 'Password nuova (almeno 8 caratteri)' : 'Password' + (fresh ? ' (almeno 8 caratteri)' : ''), pass),
+      msg, h('p', { class: 'actions-inline' }, go),
+      recovering ? h('p', { class: 'small' },
+        byMail && mailSent ? switchTo('Mandami un altro codice', function () { mailSent = null; renderAccountDialog(); }) : null,
+        byMail ? switchTo('Non ho più quell\'email: uso il codice di recupero', function () { recoverWay = 'codice'; renderAccountDialog(); })
+          : switchTo('Uso l\'email del mio account', function () { recoverWay = 'email'; renderAccountDialog(); })) : null);
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       msg.textContent = '';
       go.disabled = true;
       try {
+        if (asking) {
+          const sent = await api('POST', '/api/codice-email', { utente: user.value, email: email.value });
+          mailSent = { utente: user.value.trim(), email: sent.email, prova: sent.prova };
+          renderAccountDialog();
+          return;
+        }
         const path = accountMode === 'accedi' ? '/api/accedi' : (fresh ? '/api/registrati' : '/api/recupera');
-        const r = await api('POST', path, { utente: user.value, password: pass.value, recupero: code.value, email: email.value });
+        const data = { utente: user.value, password: pass.value, email: email.value };
+        if (byMail) data.codice = mailCode.value; else data.recupero = code.value;
+        const r = await api('POST', path, data);
+        mailSent = null; typedUser = '';
         account.token = r.token; account.utente = r.utente;
         accountStore();
         renderAccountButton();
         afterSignIn(r.recupero, accountMode);
       } catch (err) {
+        if (asking && (err.data && err.data.motivo === 'posta_spenta' || err.status === 401 || err.status === 404)) {
+          recoverWay = 'codice';   // e-mails not active yet, or a server older than v0.29.0
+          accountNote = 'Le email non sono ancora attive: usa il codice di recupero.';
+          renderAccountDialog();
+          return;
+        }
         msg.textContent = err.message;
       } finally {
         go.disabled = false;
@@ -6662,9 +6697,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     box.append(
       h('p', null, 'Con un account i tuoi lavori si salvano da soli mentre scrivi e li ritrovi da qualsiasi telefono o computer. È gratis.'),
       tabs, form,
-      h('p', { class: 'small muted' }, 'Quando crei l\'account ti do un codice di recupero: scrivilo da qualche parte, serve se dimentichi la password. ' +
+      h('p', { class: 'small muted' }, 'Se dimentichi la password ti mando un codice all\'email dell\'account. Quando crei l\'account ti do anche un ' +
+        'codice di recupero: scrivilo da qualche parte, serve se l\'email non arriva. ' +
         'L\'email nel server resta nascosta: nessuno la può leggere, nemmeno da lì. Nell\'account si salvano solo i tuoi lavori.'));
-    setTimeout(function () { user.focus(); }, 30);
+    setTimeout(function () { (byMail && mailSent ? mailCode : user).focus(); }, 30);
   }
   const USER_TIP = 'Usa pure il tuo stesso nome utente che usi nel palmare se ti viene più facile da ricordare. Ma non la stessa password!';
 

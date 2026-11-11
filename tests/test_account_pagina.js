@@ -127,6 +127,23 @@ async function until(fn, ms, label) {
   await until(function () { return !d1.getElementById('dlg-bug').open; }, 8000, 'segnalazione inviata');
   assert.ok(/Segnalazione inviata/.test(d1.querySelector('.toast').textContent));
 
+  // forgotten password on the office computer: a code by e-mail (on the PC the server gives it back and the page writes it)
+  d2.getElementById('btn-account').dispatchEvent(new w2.Event('click'));
+  [...d2.querySelectorAll('#account-body .tabs button')].find(function (b) { return b.textContent === 'Password dimenticata'; }).dispatchEvent(new w2.Event('click'));
+  let form2 = d2.querySelector('#account-body form');
+  assert.strictEqual(form2.querySelector('button[type=submit]').textContent, 'Mandami il codice');
+  fields = form2.querySelectorAll('input');
+  fields[0].value = renamed; fields[1].value = 'mario.rossi@esempio.it';
+  form2.dispatchEvent(new w2.Event('submit', { cancelable: true }));
+  await until(function () { return /Ti ho mandato un codice di 6 cifre a m\*\*\*@esempio\.it/.test(d2.getElementById('account-body').textContent); }, 8000, 'codice mandato');
+  form2 = d2.querySelector('#account-body form');
+  assert.ok(/^\d{6}$/.test(form2.querySelector('input[autocomplete=one-time-code]').value), 'il codice di prova è scritto');
+  form2.querySelector('input[type=password]').value = pass;
+  form2.dispatchEvent(new w2.Event('submit', { cancelable: true }));
+  await until(function () { return d2.querySelector('.recovery .code'); }, 8000, 'password cambiata');
+  assert.ok(/Password cambiata/.test(d2.querySelector('.recovery').textContent));
+  assert.strictEqual(d2.getElementById('btn-account').textContent, '👤 ' + renamed);
+
   // clean up: delete the test account
   await fetch(API + '/api/accedi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ utente: renamed, password: pass }) })
     .then(function (r) { return r.json(); })

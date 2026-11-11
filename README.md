@@ -31,8 +31,8 @@ telefono, e i tuoi dati restano sul tuo dispositivo.
    0,7 cm). Si stampa a dimensioni reali (100%). C'è anche l'«Excel come il modello», un modulo per foglio come prima.
 5. **Con un account** (pulsante «Accedi» in alto, gratis: nome utente, email e password) i lavori si salvano da soli e
    li ritrovi da qualsiasi telefono o computer. Il nome utente si scrive con maiuscole o minuscole, è uguale, e si può
-   cambiare una volta a settimana; l'email nel server resta nascosta. Alla registrazione ricevi un codice di recupero:
-   scrivilo, serve se dimentichi la password. Sui computer non tuoi, quando esci, scegli di togliere il lavoro da lì.
+   cambiare una volta a settimana; l'email nel server resta nascosta. Se dimentichi la password ti arriva un codice
+   all'email dell'account; alla registrazione ricevi anche un codice di recupero, da scrivere, se l'email non arriva. Sui computer non tuoi, quando esci, scegli di togliere il lavoro da lì.
 6. Senza account il lavoro resta salvato nel browser di quel dispositivo. Per portarlo su un altro, e come copia sicura: **Salva
    file**, poi **Apri** dall'altro. Su iPhone Safari può cancellare i dati dei siti non usati da qualche settimana: con
    l'app sulla schermata Home e un «Salva file» ogni tanto non si perde niente.

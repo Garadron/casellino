@@ -1,5 +1,23 @@
 # Registro delle versioni
 
+## v0.29.0 · 2026-11-11 · Password dimenticata: un codice per email
+
+- **Password dimenticata**: si scrivono il nome utente e l'email dell'account, e arriva un **codice di 6 cifre** (vale
+  mezz'ora, 5 tentativi; al massimo 3 codici al giorno per account). Con il codice si sceglie la password nuova; gli
+  altri dispositivi escono dall'account. Il codice di recupero di prima resta come seconda strada («Non ho più
+  quell'email»).
+- L'email nel server resta un'impronta: il codice parte all'email che la persona scrive, solo se è quella dell'account.
+- Le email partono gratis da un **Gmail nuovo solo per Casellino** (decisione di Garadron, 11 novembre 2026: «è da
+  creare la mail»), con un piccolo programma di Google (`tools/posta-google.gs`, 100 email al giorno; il server si
+  ferma a 90). Finché il Gmail non c'è, la pagina dice «Le email non sono ancora attive» e passa da sola al codice di
+  recupero, con il nome utente già scritto.
+- Server: tabella `email_inviate` e campi del codice nell'account (`server/migrations/0004_codice_email.sql`),
+  indirizzo `/api/codice-email`; `/api/recupera` accetta anche il codice dell'email. Sul PC (`MODO_PROVA=si`) le email
+  non partono e il codice torna nella risposta, per le prove.
+- File: `server/src/worker.js`, `server/migrations/0004_codice_email.sql`, `tools/posta-google.gs`, `app/src/ui.js`,
+  `tests/test_server.js`, `tests/test_account_pagina.js`, `Casellino.html`, `sito/`, `README.md`, `CLAUDE.md`,
+  `PROMEMORIA.md`, `docs/handoff.md`.
+
 ## v0.28.0 · 2026-11-10 · Lettura delle foto: caselle trovate meglio
 
 - **Le caselle si trovano meglio**: le caselle vicine sono larghe uguali, quindi una «riga» troppo vicina a quella prima

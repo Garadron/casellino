@@ -2,6 +2,24 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 11 novembre 2026 · Tappa 18 chiusa: password dimenticata per email (v0.29.0)
+
+**Fatto.** Server: `/api/codice-email` (nome utente + email; confronta l'impronta `email:<email>`, codice di 6 cifre in
+`codice_impronta` = HMAC di `codice:<id>:<cifre>`, `codice_scade` 30 minuti, `codice_errori` max 5; `email_inviate` per i
+limiti: 3 per account, 10 per indirizzo internet, 90 in tutto nelle 24 ore). `/api/recupera` con `codice` invece di
+`recupero`; a buon fine cancella il codice, fa uscire gli altri dispositivi e dà un codice di recupero nuovo. Errori con
+`motivo` (`posta_spenta` 503, `posta_ferma` 502). Le email: `fetch` al programmino di Google (`POSTA_INDIRIZZO`,
+`POSTA_SEGRETO`), come nel Ricettario. `MODO_PROVA=si` in `server/.dev.vars`: niente email, il codice nella risposta.
+Pagina: «Password dimenticata» prima chiede nome ed email («Mandami il codice»), poi codice e password nuova; link
+«Mandami un altro codice» e «Non ho più quell'email: uso il codice di recupero»; con le email spente (o un server
+vecchio: 401/404) passa da sola al codice di recupero, il nome utente resta scritto.
+**Verifiche.** core 41, pagina, account nella pagina (codice per email dal secondo dispositivo), server (email sbagliata,
+codice sbagliato, codice con lo spazio, codice usato una volta sola, quarto codice del giorno fermato), schermate da
+telefono con le email accese e spente, Edge vero con le foto.
+**Da fare con Garadron.** Il Gmail nuovo, il programmino pubblicato, poi «sì, pubblica il server» (migrazione 0004,
+`wrangler secret put POSTA_SEGRETO` da `dati/posta-segreto.txt` e `POSTA_INDIRIZZO` da `dati/posta-indirizzo.txt`,
+deploy) e un'email vera di prova.
+
 ## 10 novembre 2026 · Tappa 17 chiusa: caselle trovate meglio (v0.28.0)
 
 **Fatto.** In `segmentStrip` le righe trovate passano da un filtro: una riga più vicina di 0,8 caselle a quella prima

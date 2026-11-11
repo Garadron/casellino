@@ -44,6 +44,9 @@ tutti i postini, non solo alla zona di Garadron.
   `casellino` (Europa), piano gratuito, separato dal Ricettario. La pagina resta su GitHub Pages e parla con il server
   con un gettone (`Authorization: Bearer`), senza cookie. La chiave `SEGRETO` sta solo su Cloudflare e, per non
   perderla, in `dati/segreto-server.txt`: se si perde, nessuno può più entrare con la sua password.
+- **La password dimenticata si cambia con un codice per email** (Garadron, 11 novembre 2026): le email partono
+  gratis da un Gmail nuovo solo per Casellino, con il programmino `tools/posta-google.gs` (copia con la chiave in
+  `dati/posta-google.gs`; chiave e indirizzo su Cloudflare come `POSTA_SEGRETO` e `POSTA_INDIRIZZO`).
 - La mappa per ora mostra un indirizzo alla volta su Google Maps; il percorso intero verrà dopo (gratis, OpenStreetMap).
 
 ## Come si lavora

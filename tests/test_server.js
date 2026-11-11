@@ -92,6 +92,30 @@ async function call(method, path, body, token) {
   token = r.data.token;
   assert.ok(token);
 
+  // forgotten password with the e-mail (on the PC, MODO_PROVA=si: nothing is sent, the code is in the answer)
+  r = await call('POST', '/api/codice-email', { utente: user, email: 'altra@esempio.it' });
+  assert.strictEqual(r.status, 403, "non è l'email dell'account");
+  r = await call('POST', '/api/codice-email', { utente: user.toUpperCase(), email: ' MARIO.ROSSI@esempio.it' });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(r.data.email, 'm***@esempio.it', "l'email si dice solo nascosta");
+  assert.ok(/^\d{6}$/.test(r.data.prova), 'codice di 6 cifre');
+  r = await call('POST', '/api/codice-email', { utente: user, email: 'mario.rossi@esempio.it' });
+  const mailed = r.data.prova;
+  r = await call('POST', '/api/recupera', { utente: user, codice: String((+mailed + 1) % 1000000).padStart(6, '0'), password: 'nuova password 1' });
+  assert.strictEqual(r.status, 401, 'codice sbagliato');
+  r = await call('POST', '/api/recupera', { utente: user, codice: mailed.slice(0, 3) + ' ' + mailed.slice(3), password: 'nuova password 1' });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.ok(r.data.recupero && r.data.token, 'dentro, con un codice di recupero nuovo');
+  r = await call('GET', '/api/io', undefined, token);
+  assert.strictEqual(r.status, 401, 'gli altri dispositivi sono usciti');
+  token = (await call('POST', '/api/accedi', { utente: user, password: 'nuova password 1' })).data.token;
+  r = await call('POST', '/api/recupera', { utente: user, codice: mailed, password: 'nuova password 1' });
+  assert.strictEqual(r.status, 401, 'il codice vale una volta sola');
+  r = await call('POST', '/api/codice-email', { utente: user, email: 'mario.rossi@esempio.it' });
+  assert.strictEqual(r.status, 200, 'il terzo codice del giorno');
+  r = await call('POST', '/api/codice-email', { utente: user, email: 'mario.rossi@esempio.it' });
+  assert.strictEqual(r.status, 429, 'non più di tre al giorno');
+
   // a new user name, then no other change for a week
   const renamed = user + 'n';
   r = await call('POST', '/api/cambia-nome', { utente: renamed, password: 'sbagliata!!' }, token);
