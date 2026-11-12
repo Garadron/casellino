@@ -1,5 +1,26 @@
 # Registro delle versioni
 
+## v0.34.0 · 2026-11-12 · Pulsanti per il dito, centro di partenza in una riga, vie sempre in vista
+
+Garadron (12 novembre 2026): «pulsanti 44 punti, il resto va tutto bene», poi un altro controllo. Colori e nomi
+restano com'erano.
+
+- **Sul telefono i pulsanti sono alti 44 punti** (la misura consigliata per il dito; prima 36): anche i ◀ ▶ ✕ del
+  disegno del mobile, le vie dell'elenco e la loro matita; i bottoncini della mappa 36.
+- **«Centro di partenza» chiuso in una riga**: dice che cosa è scelto (o «Non ancora scelto: serve per la cartina del
+  giro») e si apre con un tocco. Se «Ottimizzazione gita» ne ha bisogno, si apre da solo.
+- **Il nome della via resta in vista** quando la striscia scorre di lato (sul telefono e sul computer): prima si
+  vedeva tagliato.
+- **I pulsanti che ora non si possono usare si vedono spenti** (per esempio «Togli questa foto» senza foto): prima
+  sembravano uguali agli altri. Le frecce delle foto si spengono alla prima e all'ultima.
+- **«Scegli i file»** delle foto è un pulsante vero, grande, invece di quello piccolo e grigio del browser.
+- **Sul telefono** «Tutorial» non va più a capo e le foto dicono «Doppio tocco per ingrandire» (sul computer «doppio
+  clic»).
+- **Aperto dal file sul PC**, il programma non dà più l'errore del «manifest» (serve solo al sito).
+- Controllo fatto: nessun errore del programma usandolo, niente esce dallo schermo del telefono, tutte le finestre
+  si aprono dall'inizio.
+- File: `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `tools/build.py`, `Casellino.html`, `sito/`.
+
 ## v0.33.0 · 2026-11-12 · Più comodo sul telefono e sul computer
 
 Garadron (12 novembre 2026): l'uso va migliorato, senza toccare colori e nomi. Trovato guardando il programma

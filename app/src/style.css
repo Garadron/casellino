@@ -180,6 +180,8 @@ button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 button.link { border: 0; background: none; color: var(--accent); padding: 0; min-height: 0; text-decoration: underline; }
 button.danger { color: var(--bad); }
+/* a button that cannot be used now looks it */
+button:disabled, button:disabled:hover { opacity: .45; cursor: default; border-color: var(--line); }
 input[type="text"], input:not([type]), input[type="password"], input[type="email"], textarea, select {
   border: 1px solid var(--line);
   background: var(--panel);
@@ -328,7 +330,9 @@ a.btn, label.btn {
 .cell.top.diag .d1, .cell.top.diag .d2 { position: absolute; line-height: 1; }
 .cell.top.diag .d1 { top: 2px; left: 2px; }
 .cell.top.diag .d2 { bottom: 2px; right: 2px; }
-.cell.run { grid-row: 2; letter-spacing: .02em; }
+.cell.run { grid-row: 2; letter-spacing: .02em; overflow: hidden; overflow: clip; }
+/* the street name stays in sight while the strip scrolls sideways (the strip is wider than the screen) */
+.cell.run .run-name { position: sticky; left: 4px; right: 4px; }
 .cell.run.two { line-height: 1.05; white-space: nowrap; text-align: center; }
 .cell.foreign { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.0) 0 6px, rgba(255,255,255,.18) 6px 8px); }
 .cell.top.diag.foreign { background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px)); }
@@ -436,9 +440,18 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
 .zone-key { display: inline-flex; align-items: center; gap: 6px; }
 .zone-key i { display: inline-block; width: 18px; height: 6px; border-radius: 2px; }
-.depot-box { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
-  margin: 0; padding: 4px 10px 10px; min-width: 0; }
-.depot-box legend { font-size: 13px; padding: 0 4px; }
+/* the starting point: one line when closed (what is chosen, or "non ancora scelto"), the fields when open */
+.depot-fold { flex: 1 1 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; }
+.depot-fold > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+  min-height: 40px; font-size: 14px; }
+.depot-fold > summary::-webkit-details-marker { display: none; }
+.depot-fold > summary::before { content: '▸'; color: var(--muted); }
+.depot-fold[open] > summary::before { content: '▾'; }
+.depot-fold[open] { padding-bottom: 10px; }
+#depot-summary { flex-basis: 100%; padding: 0 0 8px 18px; margin-top: -6px; }
+.depot-fold[open] #depot-summary { display: none; }
+.depot-box { display: flex; flex-wrap: wrap; gap: 8px 12px; border: 0; margin: 0; padding: 0; min-width: 0; }
+.depot-box legend { padding: 0; margin-bottom: 4px; }
 .project .depot-box input { width: 100%; }
 .depot-box label { min-width: 0; }
 .project .depot-name { flex: 1 1 140px; }
@@ -523,7 +536,7 @@ dialog.tutorial .tut-next { background: #2e9d4a; color: #fff; border: 2.5px soli
   font-size: 16px; padding: 10px 18px; box-shadow: 0 3px 0 #1d6b31; }
 dialog.tutorial .tut-next:active { transform: translateY(2px); box-shadow: 0 1px 0 #1d6b31; }
 .brand { flex: 1 1 auto; }
-.brand .tut-open { margin-left: auto; font-weight: 600; }
+.brand .tut-open { margin-left: auto; font-weight: 600; white-space: nowrap; flex: none; }
 .foto-rot input { flex: 1; max-width: 320px; }
 
 /* the photo button in the route box */
@@ -570,3 +583,17 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
 .detail-row { margin: 6px 0; }
 .account-form .hint { margin: -4px 0 0; color: var(--muted); }
 .link-btn { border: 0; background: none; padding: 2px 6px; min-height: 0; color: var(--accent); text-decoration: underline; cursor: pointer; }
+
+/* the phone: buttons for a finger, 44 points high (the small chips 36); at the end, so it wins */
+@media (max-width: 560px) {
+  button, .menu > summary, a.btn, label.btn, details.fold > summary, .depot-fold > summary { min-height: 44px; }
+  .chip-buttons button { min-height: 44px; min-width: 44px; }
+  .streets .nm, .streets .pen { min-height: 44px; }
+  .pin-btn, .suggest button { min-height: 36px; }
+  button.link, .link-btn, .preview-note button { min-height: 0; }
+}
+/* the box to choose the photos: a real button, not the small grey one of the browser */
+input[type="file"]::file-selector-button {
+  font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--accent); border-radius: 8px;
+  padding: 8px 14px; margin-right: 10px; min-height: 44px; cursor: pointer;
+}

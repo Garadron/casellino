@@ -2,6 +2,17 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 12 novembre 2026 · Tappa 23 chiusa: pulsanti per il dito e secondo controllo (v0.34.0)
+
+**Fatto.** In fondo a `style.css` un blocco per il telefono (sotto 560 px) con `min-height: 44px` (ultimo, così vince
+sulle regole scritte dopo nel file); `button:disabled` spento; `#depot-fold` (`details`) con la riga
+`#depot-summary` scritta da `renderDepotSummary()`; nelle strisce il nome in `span.run-name` con `position: sticky`
+(la `.cell.run` ha `overflow: clip`, che non ferma lo sticky); `::file-selector-button`; frecce delle foto spente agli
+estremi; `inline_icons()` toglie il `manifest` dal file unico.
+**Verifiche.** Giro con Edge sul telefono (errori della console, cose fuori dallo schermo, pulsanti sotto 44 punti,
+ogni finestra), `tests/test_pagina.js`, `tests/test_anteprima.js`, `tests/test_core.js` (42),
+`tests/test_account_pagina.js` e `tests/test_server.js` con il server sul PC (poi spento).
+
 ## 12 novembre 2026 · Tappa 22 chiusa: uso più comodo (v0.33.0)
 
 **Fatto.** Giro di schermate in Edge (telefono 390×844 e computer): menu `.menu-list` tenuti nello schermo
@@ -11,8 +22,7 @@ in cima quando si apre (`MutationObserver` sull'attributo `open`: il browser sco
 chiude i menu, Ctrl+S clicca «Salva file».
 **Verifiche.** `tests/test_pagina.js` (Esc, Ctrl+S), `tests/test_anteprima.js`, `tests/test_core.js` (42),
 `tests/test_account_pagina.js` con il server sul PC, schermate prima e dopo.
-**Da proporre.** Il «Centro di partenza» chiuso in una riga quando è vuoto; il nome della via sempre visibile nelle
-strisce che scorrono di lato sul telefono; pulsanti un po' più alti sul telefono (44 punti).
+**Proposte.** Fatte in v0.34.0 (Garadron: sì).
 
 ## 12 novembre 2026 · v0.32.1: il nome ufficiale nell'anteprima
 

@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.33.0';</script>
+<script>window.CASELLINO_VERSION = '0.34.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -198,6 +198,8 @@ button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 button.link { border: 0; background: none; color: var(--accent); padding: 0; min-height: 0; text-decoration: underline; }
 button.danger { color: var(--bad); }
+/* a button that cannot be used now looks it */
+button:disabled, button:disabled:hover { opacity: .45; cursor: default; border-color: var(--line); }
 input[type="text"], input:not([type]), input[type="password"], input[type="email"], textarea, select {
   border: 1px solid var(--line);
   background: var(--panel);
@@ -346,7 +348,9 @@ a.btn, label.btn {
 .cell.top.diag .d1, .cell.top.diag .d2 { position: absolute; line-height: 1; }
 .cell.top.diag .d1 { top: 2px; left: 2px; }
 .cell.top.diag .d2 { bottom: 2px; right: 2px; }
-.cell.run { grid-row: 2; letter-spacing: .02em; }
+.cell.run { grid-row: 2; letter-spacing: .02em; overflow: hidden; overflow: clip; }
+/* the street name stays in sight while the strip scrolls sideways (the strip is wider than the screen) */
+.cell.run .run-name { position: sticky; left: 4px; right: 4px; }
 .cell.run.two { line-height: 1.05; white-space: nowrap; text-align: center; }
 .cell.foreign { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.0) 0 6px, rgba(255,255,255,.18) 6px 8px); }
 .cell.top.diag.foreign { background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px)); }
@@ -454,9 +458,18 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
 .zone-key { display: inline-flex; align-items: center; gap: 6px; }
 .zone-key i { display: inline-block; width: 18px; height: 6px; border-radius: 2px; }
-.depot-box { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
-  margin: 0; padding: 4px 10px 10px; min-width: 0; }
-.depot-box legend { font-size: 13px; padding: 0 4px; }
+/* the starting point: one line when closed (what is chosen, or "non ancora scelto"), the fields when open */
+.depot-fold { flex: 1 1 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; }
+.depot-fold > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+  min-height: 40px; font-size: 14px; }
+.depot-fold > summary::-webkit-details-marker { display: none; }
+.depot-fold > summary::before { content: '▸'; color: var(--muted); }
+.depot-fold[open] > summary::before { content: '▾'; }
+.depot-fold[open] { padding-bottom: 10px; }
+#depot-summary { flex-basis: 100%; padding: 0 0 8px 18px; margin-top: -6px; }
+.depot-fold[open] #depot-summary { display: none; }
+.depot-box { display: flex; flex-wrap: wrap; gap: 8px 12px; border: 0; margin: 0; padding: 0; min-width: 0; }
+.depot-box legend { padding: 0; margin-bottom: 4px; }
 .project .depot-box input { width: 100%; }
 .depot-box label { min-width: 0; }
 .project .depot-name { flex: 1 1 140px; }
@@ -541,7 +554,7 @@ dialog.tutorial .tut-next { background: #2e9d4a; color: #fff; border: 2.5px soli
   font-size: 16px; padding: 10px 18px; box-shadow: 0 3px 0 #1d6b31; }
 dialog.tutorial .tut-next:active { transform: translateY(2px); box-shadow: 0 1px 0 #1d6b31; }
 .brand { flex: 1 1 auto; }
-.brand .tut-open { margin-left: auto; font-weight: 600; }
+.brand .tut-open { margin-left: auto; font-weight: 600; white-space: nowrap; flex: none; }
 .foto-rot input { flex: 1; max-width: 320px; }
 
 /* the photo button in the route box */
@@ -588,6 +601,20 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
 .detail-row { margin: 6px 0; }
 .account-form .hint { margin: -4px 0 0; color: var(--muted); }
 .link-btn { border: 0; background: none; padding: 2px 6px; min-height: 0; color: var(--accent); text-decoration: underline; cursor: pointer; }
+
+/* the phone: buttons for a finger, 44 points high (the small chips 36); at the end, so it wins */
+@media (max-width: 560px) {
+  button, .menu > summary, a.btn, label.btn, details.fold > summary, .depot-fold > summary { min-height: 44px; }
+  .chip-buttons button { min-height: 44px; min-width: 44px; }
+  .streets .nm, .streets .pen { min-height: 44px; }
+  .pin-btn, .suggest button { min-height: 36px; }
+  button.link, .link-btn, .preview-note button { min-height: 0; }
+}
+/* the box to choose the photos: a real button, not the small grey one of the browser */
+input[type="file"]::file-selector-button {
+  font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--accent); border-radius: 8px;
+  padding: 8px 14px; margin-right: 10px; min-height: 44px; cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -642,8 +669,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     <div class="card project">
       <label>Zona <input id="zone" autocomplete="off" placeholder="es. 9"></label>
       <label>Titolare <input id="owner" autocomplete="off" placeholder="il tuo nome"></label>
+      <details class="depot-fold" id="depot-fold">
+      <summary>Centro di partenza <span class="small muted" id="depot-summary"></span></summary>
       <fieldset class="depot-box">
-        <legend>Centro di partenza <span class="small muted">(il giro parte e torna lì)</span></legend>
+        <legend class="small muted">Il giro parte e torna lì: serve per la cartina del giro</legend>
         <label class="depot-name">Nome
           <input id="depot-name" autocomplete="off" placeholder="es. Centro di Borgo Esempio"></label>
         <label class="depot-town">Comune
@@ -663,6 +692,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       <p class="depot-coords small" id="depot-coords" hidden>Oppure: <a id="depot-gmaps" target="_blank" rel="noopener">🔗 cercalo su Google Maps</a>,
         fai clic destro sul punto (sul telefono: tienilo premuto), copia i due numeri e incollali qui:
         <input id="depot-coords-in" autocomplete="off" inputmode="decimal" placeholder="es. 45.4321, 9.5678"></p>
+      </details>
     </div>
 
     <div class="tabs" id="tabs" role="tablist"></div>
@@ -1505,7 +1535,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   <div class="pv-foot small">
     <label class="btn">＋ Aggiungi foto<input type="file" id="pv-add" accept="image/*" multiple hidden></label>
     <button type="button" id="pv-del">🗑 Togli questa foto</button>
-    <span class="muted">Solo su questo dispositivo, non nell'account. Doppio clic per ingrandire.</span>
+    <span class="muted">Solo su questo dispositivo, non nell'account. <span id="pv-zoom-tip">Doppio clic per ingrandire.</span></span>
   </div>
 </dialog>
 
@@ -5577,7 +5607,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
           ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' +
           (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
         onclick: function () { select(p, idx); },
-      }, r.street, two ? h('br') : null, two ? r.street2 : null));
+      }, h('span', { class: 'run-name' }, r.street, two ? h('br') : null, two ? r.street2 : null)));
     });
     for (let k = C.SLOTS_PER_PAGE; k < s.capacity; k += C.SLOTS_PER_PAGE) {
       el.append(h('div', { class: 'cut', style: 'left:calc(' + k + ' * var(--slot) - 1px)', title: 'Qui finisce un foglio A4' }));
@@ -6502,11 +6532,23 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
       ': metti il punto con «Scegli sulla mappa» o «Usa la mia posizione». Basta una volta, poi resta salvato.';
     else el.textContent = notFound ? 'Questo indirizzo non c\'è sulla mappa gratuita: metti il punto con «Scegli sulla mappa» o «Usa la mia posizione». Basta una volta, poi resta salvato.' : 'Non ancora sulla mappa.';
     $('btn-depot-find').textContent = state.project.depotPoint ? '🔎 Cerca dall\'indirizzo' : '🔎 Cerca sulla mappa';
+    renderDepotSummary(p);
     // not on the free map: the other ways stand out, and Google Maps can give the coordinates
     const lost = !p && (notFound || missing);
     $('btn-depot-map').classList.toggle('on', lost);
     $('depot-coords').hidden = !lost;
     if (lost) $('depot-gmaps').href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(C.addressText(state.project.depotAddr));
+  }
+
+  // The line of the closed "Centro di partenza": what is chosen, or that nothing is.
+  function renderDepotSummary(point) {
+    const da = state.project.depotAddr || {};
+    const t = function (v) { return String(v || '').trim(); };
+    const name = t(state.project.depotName);
+    const addr = [t(da.via) + (t(da.via) && t(da.civico) ? ' ' + t(da.civico) : ''), t(da.comune)].filter(Boolean).join(', ');
+    $('depot-summary').textContent = name || addr
+      ? (name || addr) + (point === undefined ? '' : point ? ' · 📍 sulla mappa' : ' · non ancora sulla mappa')
+      : 'Non ancora scelto: serve per la cartina del giro.';
   }
 
   // The office from its address (a point put by hand is replaced only when asked with the button).
@@ -6770,7 +6812,11 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     const k = state.current;
     box.textContent = '';
     try {
-      if (!depotQueries().length && !state.project.depotPoint) { status.textContent = 'Scrivi prima in alto il centro di partenza, o mettilo sulla mappa: il giro parte e torna lì.'; return; }
+      if (!depotQueries().length && !state.project.depotPoint) {
+        status.textContent = 'Scrivi prima in alto il centro di partenza (l\'ho aperto), o mettilo sulla mappa: il giro parte e torna lì.';
+        $('depot-fold').open = true;
+        return;
+      }
       if (!C.routeStops(state.project, k).length) { status.textContent = 'Scrivi prima il giro.'; return; }
       await ensureMap();
       if (!(await locateAll(k))) return;
@@ -6982,6 +7028,10 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
   // Shows photo i (waits for it), with its rectangle found by itself the first time.
   async function showPhoto(i) {
     photo.index = Math.max(0, i);
+    if (!photo.busy) {   // the arrows only where there is a photo to go to
+      $('foto-prev').disabled = photo.index <= 0;
+      $('foto-next').disabled = photo.index >= photo.files.length - 1;
+    }
     if (photo.index >= photo.files.length) {
       photo.image = null;
       drawPhoto();
@@ -7239,7 +7289,9 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
 
   function setBusy(on) {
     $('foto-all').textContent = on ? '⏹ Ferma' : '📚 Leggi tutte le foto';
-    ['foto-read', 'foto-prev', 'foto-next', 'foto-files'].forEach(function (id) { $(id).disabled = on; });
+    ['foto-read', 'foto-files'].forEach(function (id) { $(id).disabled = on; });
+    $('foto-prev').disabled = on || photo.index <= 0;
+    $('foto-next').disabled = on || photo.index >= photo.files.length - 1;
   }
   const NOTHING = 'Non ho trovato civici in questa foto. Allarga o stringi il riquadro rosso sulla sola striscia (dal bordo sopra i numeri al bordo sotto le vie), raddrizzala se è storta, e premi «Leggi solo questa».';
 
@@ -7672,6 +7724,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     $('pv-empty').hidden = n > 0;
     img.hidden = !n;
     ['pv-prev', 'pv-next', 'pv-del', 'pv-zoom-in', 'pv-zoom-out'].forEach(function (id) { $(id).disabled = !n; });
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) $('pv-zoom-tip').textContent = 'Doppio tocco per ingrandire.';
     if (!n) return;
     $('pv-prev').disabled = viewer.index === 0;
     $('pv-next').disabled = viewer.index === n - 1;
@@ -8484,6 +8537,7 @@ textarea.route-text[readonly] { background: var(--bg); color: var(--muted); }
     });
     $('depot-street').addEventListener('focus', loadDepotStreets);
     $('depot-name').addEventListener('input', function (e) { state.project.depotName = e.target.value; changed(); });
+    $('depot-fold').addEventListener('input', function () { renderDepotSummary(); });
     $('btn-depot-find').addEventListener('click', function () { findDepot(true); });
     $('btn-depot-map').addEventListener('click', pickDepotOnMap);
     $('btn-depot-gps').addEventListener('click', useMyPosition);

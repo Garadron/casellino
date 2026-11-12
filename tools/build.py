@@ -57,6 +57,7 @@ def inline_icons(html):
     def data(name):
         return "data:image/png;base64," + base64.b64encode((APP / "icons" / name).read_bytes()).decode()
 
+    html = html.replace('<link rel="manifest" href="manifest.webmanifest">\n', '')  # it would only give an error from a file
     html = html.replace('href="favicon-64.png"', 'href="' + data("favicon-64.png") + '"')
     return html.replace('href="apple-touch-icon.png"', 'href="' + data("apple-touch-icon.png") + '"')
 

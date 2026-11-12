@@ -451,7 +451,7 @@
           ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' +
           (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
         onclick: function () { select(p, idx); },
-      }, r.street, two ? h('br') : null, two ? r.street2 : null));
+      }, h('span', { class: 'run-name' }, r.street, two ? h('br') : null, two ? r.street2 : null)));
     });
     for (let k = C.SLOTS_PER_PAGE; k < s.capacity; k += C.SLOTS_PER_PAGE) {
       el.append(h('div', { class: 'cut', style: 'left:calc(' + k + ' * var(--slot) - 1px)', title: 'Qui finisce un foglio A4' }));
@@ -1376,11 +1376,23 @@
       ': metti il punto con «Scegli sulla mappa» o «Usa la mia posizione». Basta una volta, poi resta salvato.';
     else el.textContent = notFound ? 'Questo indirizzo non c\'è sulla mappa gratuita: metti il punto con «Scegli sulla mappa» o «Usa la mia posizione». Basta una volta, poi resta salvato.' : 'Non ancora sulla mappa.';
     $('btn-depot-find').textContent = state.project.depotPoint ? '🔎 Cerca dall\'indirizzo' : '🔎 Cerca sulla mappa';
+    renderDepotSummary(p);
     // not on the free map: the other ways stand out, and Google Maps can give the coordinates
     const lost = !p && (notFound || missing);
     $('btn-depot-map').classList.toggle('on', lost);
     $('depot-coords').hidden = !lost;
     if (lost) $('depot-gmaps').href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(C.addressText(state.project.depotAddr));
+  }
+
+  // The line of the closed "Centro di partenza": what is chosen, or that nothing is.
+  function renderDepotSummary(point) {
+    const da = state.project.depotAddr || {};
+    const t = function (v) { return String(v || '').trim(); };
+    const name = t(state.project.depotName);
+    const addr = [t(da.via) + (t(da.via) && t(da.civico) ? ' ' + t(da.civico) : ''), t(da.comune)].filter(Boolean).join(', ');
+    $('depot-summary').textContent = name || addr
+      ? (name || addr) + (point === undefined ? '' : point ? ' · 📍 sulla mappa' : ' · non ancora sulla mappa')
+      : 'Non ancora scelto: serve per la cartina del giro.';
   }
 
   // The office from its address (a point put by hand is replaced only when asked with the button).
@@ -1644,7 +1656,11 @@
     const k = state.current;
     box.textContent = '';
     try {
-      if (!depotQueries().length && !state.project.depotPoint) { status.textContent = 'Scrivi prima in alto il centro di partenza, o mettilo sulla mappa: il giro parte e torna lì.'; return; }
+      if (!depotQueries().length && !state.project.depotPoint) {
+        status.textContent = 'Scrivi prima in alto il centro di partenza (l\'ho aperto), o mettilo sulla mappa: il giro parte e torna lì.';
+        $('depot-fold').open = true;
+        return;
+      }
       if (!C.routeStops(state.project, k).length) { status.textContent = 'Scrivi prima il giro.'; return; }
       await ensureMap();
       if (!(await locateAll(k))) return;
@@ -1856,6 +1872,10 @@
   // Shows photo i (waits for it), with its rectangle found by itself the first time.
   async function showPhoto(i) {
     photo.index = Math.max(0, i);
+    if (!photo.busy) {   // the arrows only where there is a photo to go to
+      $('foto-prev').disabled = photo.index <= 0;
+      $('foto-next').disabled = photo.index >= photo.files.length - 1;
+    }
     if (photo.index >= photo.files.length) {
       photo.image = null;
       drawPhoto();
@@ -2113,7 +2133,9 @@
 
   function setBusy(on) {
     $('foto-all').textContent = on ? '⏹ Ferma' : '📚 Leggi tutte le foto';
-    ['foto-read', 'foto-prev', 'foto-next', 'foto-files'].forEach(function (id) { $(id).disabled = on; });
+    ['foto-read', 'foto-files'].forEach(function (id) { $(id).disabled = on; });
+    $('foto-prev').disabled = on || photo.index <= 0;
+    $('foto-next').disabled = on || photo.index >= photo.files.length - 1;
   }
   const NOTHING = 'Non ho trovato civici in questa foto. Allarga o stringi il riquadro rosso sulla sola striscia (dal bordo sopra i numeri al bordo sotto le vie), raddrizzala se è storta, e premi «Leggi solo questa».';
 
@@ -2546,6 +2568,7 @@
     $('pv-empty').hidden = n > 0;
     img.hidden = !n;
     ['pv-prev', 'pv-next', 'pv-del', 'pv-zoom-in', 'pv-zoom-out'].forEach(function (id) { $(id).disabled = !n; });
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) $('pv-zoom-tip').textContent = 'Doppio tocco per ingrandire.';
     if (!n) return;
     $('pv-prev').disabled = viewer.index === 0;
     $('pv-next').disabled = viewer.index === n - 1;
@@ -3358,6 +3381,7 @@
     });
     $('depot-street').addEventListener('focus', loadDepotStreets);
     $('depot-name').addEventListener('input', function (e) { state.project.depotName = e.target.value; changed(); });
+    $('depot-fold').addEventListener('input', function () { renderDepotSummary(); });
     $('btn-depot-find').addEventListener('click', function () { findDepot(true); });
     $('btn-depot-map').addEventListener('click', pickDepotOnMap);
     $('btn-depot-gps').addEventListener('click', useMyPosition);
