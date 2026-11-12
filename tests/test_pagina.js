@@ -264,6 +264,16 @@ function caretAt(ta, needle, offset) {
   assert.ok(!afterPhotos.subzones.some(function (s) { return s.name === '9D'; }), 'un cartello seguito solo da note non crea una sottozona vuota');
 
   assert.ok(!doc.querySelector('.theme-switch') && !doc.documentElement.dataset.palette, 'il programma resta con i suoi colori: il giallo e blu è solo nell\'anteprima');
+
+  // the keyboard: Esc closes a menu, Ctrl+S saves the work as a file (not the page)
+  const altro = doc.querySelector('.actions details:not(.print-menu)');
+  altro.open = true;
+  doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape' }));
+  assert.ok(!altro.open, 'Esc chiude il menu');
+  const blobsBefore = blobs.length;
+  const ctrlS = new win.KeyboardEvent('keydown', { key: 's', ctrlKey: true, cancelable: true });
+  doc.dispatchEvent(ctrlS);
+  assert.ok(ctrlS.defaultPrevented && blobs.length === blobsBefore + 1, 'Ctrl+S salva il file del lavoro');
   assert.ok(/Versione \d+\.\d+\.\d+/.test(text('#version')), 'versione nel menu');
   console.log('Pagina: tutte le prove superate');
   win.close();

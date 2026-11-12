@@ -2,6 +2,18 @@
 
 Dove siamo arrivati, per ripartire da una sessione pulita. Si aggiorna a fine di ogni tappa.
 
+## 12 novembre 2026 · Tappa 22 chiusa: uso più comodo (v0.33.0)
+
+**Fatto.** Giro di schermate in Edge (telefono 390×844 e computer): menu `.menu-list` tenuti nello schermo
+all'evento `toggle` (posizione `left` calcolata dal riquadro del menu); barra del telefono più stretta (sotto i 560 px:
+`gap` e `padding` dei pulsanti); `input[type=password|email]` con lo stile degli altri campi; ogni `dialog` torna
+in cima quando si apre (`MutationObserver` sull'attributo `open`: il browser scorreva fino al primo pulsante); Esc
+chiude i menu, Ctrl+S clicca «Salva file».
+**Verifiche.** `tests/test_pagina.js` (Esc, Ctrl+S), `tests/test_anteprima.js`, `tests/test_core.js` (42),
+`tests/test_account_pagina.js` con il server sul PC, schermate prima e dopo.
+**Da proporre.** Il «Centro di partenza» chiuso in una riga quando è vuoto; il nome della via sempre visibile nelle
+strisce che scorrono di lato sul telefono; pulsanti un po' più alti sul telefono (44 punti).
+
 ## 12 novembre 2026 · v0.32.1: il nome ufficiale nell'anteprima
 
 `termini.txt` accetta frasi (`come casellino = come il …`): in `previewWords()` gli spazi diventano `\s+`, e le

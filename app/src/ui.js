@@ -3292,6 +3292,32 @@
     document.addEventListener('click', function (e) {
       document.querySelectorAll('.menu').forEach(function (menu) { if (menu.open && !menu.contains(e.target)) menu.open = false; });
     });
+    // A menu opens all inside the screen: on a phone "Altro" can end up alone at the left of a row.
+    document.querySelectorAll('.menu').forEach(function (menu) {
+      menu.addEventListener('toggle', function () {
+        const list = menu.querySelector('.menu-list');
+        list.style.left = ''; list.style.right = '';
+        if (!menu.open || !list.getBoundingClientRect) return;
+        const box = menu.getBoundingClientRect();
+        const width = list.getBoundingClientRect().width;
+        const screen = document.documentElement.clientWidth;
+        const left = Math.max(8, Math.min(box.right - width, screen - 8 - width));
+        list.style.right = 'auto';
+        list.style.left = Math.round(left - box.left) + 'px';
+      });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMenu();
+      // Ctrl+S saves the work as a file (the browser would save the page instead)
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        $('btn-save').click();
+      }
+    });
+    // A dialog opens at its beginning: the browser scrolls to its first button, often the last thing in it.
+    document.querySelectorAll('dialog').forEach(function (dlg) {
+      new MutationObserver(function () { if (dlg.open) dlg.scrollTop = 0; }).observe(dlg, { attributes: true, attributeFilter: ['open'] });
+    });
     window.addEventListener('resize', debounce(function () { if (state.els.ta) fitTextarea(state.els.ta); }, 200));
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'hidden') saveBeforeLeaving();

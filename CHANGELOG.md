@@ -1,5 +1,22 @@
 # Registro delle versioni
 
+## v0.33.0 · 2026-11-12 · Più comodo sul telefono e sul computer
+
+Garadron (12 novembre 2026): l'uso va migliorato, senza toccare colori e nomi. Trovato guardando il programma
+schermata per schermata, sul telefono e sul computer.
+
+- **Il menu «Altro» sul telefono usciva dallo schermo** (si leggeva solo metà delle voci): ora i menu in alto si
+  aprono sempre tutti dentro lo schermo.
+- **Sul telefono i pulsanti in alto stanno in una riga sola** (prima tre righe, con «Altro» da solo): la barra passa da
+  151 a 106 punti, il lavoro si vede prima.
+- **«Come si scrive» si apre dall'inizio**: prima si apriva in fondo, sul pulsante «Ho capito». Vale per tutte le
+  finestre.
+- **Il campo della password e quello dell'email** hanno lo stesso aspetto degli altri campi (nel tema scuro erano
+  chiari).
+- **Tastiera sul computer**: **Esc** chiude i menu; **Ctrl+S** fa «Salva file» invece di salvare la pagina del browser
+  (scritto anche nel suggerimento del pulsante).
+- File: `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `tests/test_pagina.js`, `Casellino.html`, `sito/`.
+
 ## v0.32.1 · 2026-11-12 · Nell'anteprima anche il nome ufficiale, con l'articolo giusto
 
 - Decisione di Garadron (12 novembre 2026): nella versione per l'azienda il programma prende un nome ufficiale. Il
