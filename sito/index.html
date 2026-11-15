@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.34.0';</script>
+<script>window.CASELLINO_VERSION = '0.35.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -615,6 +615,10 @@ input[type="file"]::file-selector-button {
   font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--accent); border-radius: 8px;
   padding: 8px 14px; margin-right: 10px; min-height: 44px; cursor: pointer;
 }
+/* a new version is there: a note at the bottom with the button to reload */
+.update-note { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 70; display: flex; flex-wrap: wrap;
+  gap: 8px 12px; align-items: center; max-width: calc(100vw - 24px); padding: 10px 12px; border-radius: 12px;
+  background: var(--panel); border: 2px solid var(--accent); box-shadow: 0 8px 24px rgba(0,0,0,.3); font-size: 14px; }
 </style>
 </head>
 <body>
@@ -8546,7 +8550,35 @@ input[type="file"]::file-selector-button {
   // Offline use and "add to home screen" when the page is served from a web address.
   function registerOffline() {
     if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
-    navigator.serviceWorker.register('sw.js').catch(function () { /* works online anyway */ });
+    const hadOne = !!navigator.serviceWorker.controller;   // the first visit is not an update
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      // look for a new version now and then, and when the page comes back on screen
+      setInterval(function () { reg.update().catch(function () {}); }, 30 * 60 * 1000);
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') reg.update().catch(function () {}); });
+    }).catch(function () { /* works online anyway */ });
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadOne) return;
+      newVersion();
+    });
+  }
+
+  /*
+   * A new version arrived (Regola Mondiale of 15 November 2026): with nothing going on, the page reloads by itself
+   * (the work is saved first); while something is going on (reading photos, a window open, writing), a note with
+   * a button, and the person chooses when.
+   */
+  function newVersion() {
+    const busy = function () {
+      const a = document.activeElement;
+      return photo.busy || !!document.querySelector('dialog[open]') ||
+        (document.visibilityState === 'visible' && a && /^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName));
+    };
+    const reload = function () { saveBeforeLeaving(); location.reload(); };
+    if (!busy()) { reload(); return; }
+    if ($('update-note')) return;
+    document.body.append(h('div', { class: 'update-note', id: 'update-note', role: 'status' },
+      h('span', null, 'C\'è un aggiornamento di Casellino: ricarica per vedere le novità. Il lavoro resta salvato.'),
+      h('button', { type: 'button', class: 'primary', onclick: reload }, 'Ricarica ora')));
   }
 
   function start() {

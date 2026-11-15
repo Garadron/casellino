@@ -10,6 +10,7 @@ const { JSDOM } = require(process.env.JSDOM_PATH || 'jsdom');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'Casellino.html'), 'utf8');
 const blobs = [];
+const swChange = [];
 const dom = new JSDOM(html, {
   url: 'http://localhost/#esempio',
   runScripts: 'dangerously',
@@ -23,6 +24,9 @@ const dom = new JSDOM(html, {
     win.URL.revokeObjectURL = function () {};
     win.HTMLAnchorElement.prototype.click = function () {};
     win.HTMLElement.prototype.scrollIntoView = function () {};
+    // a service worker that is already there, to try an update of the program
+    Object.defineProperty(win.navigator, 'serviceWorker', { value: { controller: {}, register: function () { return Promise.resolve({ update: function () { return Promise.resolve(); } }); },
+      addEventListener: function (type, fn) { if (type === 'controllerchange') swChange.push(fn); } } });
     // the device position, as a phone at the office would give it
     Object.defineProperty(win.navigator, 'geolocation', { value: { getCurrentPosition: function (ok) { ok({ coords: { latitude: 45.25, longitude: 9.35 } }); } } });
   },
@@ -274,6 +278,12 @@ function caretAt(ta, needle, offset) {
   const ctrlS = new win.KeyboardEvent('keydown', { key: 's', ctrlKey: true, cancelable: true });
   doc.dispatchEvent(ctrlS);
   assert.ok(ctrlS.defaultPrevented && blobs.length === blobsBefore + 1, 'Ctrl+S salva il file del lavoro');
+
+  // a new version while a window is open: a note with the button, no reload by itself
+  doc.getElementById('dlg-help').showModal();
+  swChange.forEach(function (fn) { fn(); });
+  assert.ok(doc.getElementById('update-note') && /Ricarica ora/.test(doc.getElementById('update-note').textContent), 'avviso dell\'aggiornamento con il tasto');
+  doc.getElementById('dlg-help').close();
   assert.ok(/Versione \d+\.\d+\.\d+/.test(text('#version')), 'versione nel menu');
   console.log('Pagina: tutte le prove superate');
   win.close();

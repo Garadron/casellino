@@ -3390,7 +3390,35 @@
   // Offline use and "add to home screen" when the page is served from a web address.
   function registerOffline() {
     if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
-    navigator.serviceWorker.register('sw.js').catch(function () { /* works online anyway */ });
+    const hadOne = !!navigator.serviceWorker.controller;   // the first visit is not an update
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      // look for a new version now and then, and when the page comes back on screen
+      setInterval(function () { reg.update().catch(function () {}); }, 30 * 60 * 1000);
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') reg.update().catch(function () {}); });
+    }).catch(function () { /* works online anyway */ });
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadOne) return;
+      newVersion();
+    });
+  }
+
+  /*
+   * A new version arrived (Regola Mondiale of 15 November 2026): with nothing going on, the page reloads by itself
+   * (the work is saved first); while something is going on (reading photos, a window open, writing), a note with
+   * a button, and the person chooses when.
+   */
+  function newVersion() {
+    const busy = function () {
+      const a = document.activeElement;
+      return photo.busy || !!document.querySelector('dialog[open]') ||
+        (document.visibilityState === 'visible' && a && /^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName));
+    };
+    const reload = function () { saveBeforeLeaving(); location.reload(); };
+    if (!busy()) { reload(); return; }
+    if ($('update-note')) return;
+    document.body.append(h('div', { class: 'update-note', id: 'update-note', role: 'status' },
+      h('span', null, 'C\'è un aggiornamento di Casellino: ricarica per vedere le novità. Il lavoro resta salvato.'),
+      h('button', { type: 'button', class: 'primary', onclick: reload }, 'Ricarica ora')));
   }
 
   function start() {

@@ -1,5 +1,19 @@
 # Registro delle versioni
 
+## v0.35.0 · 2026-11-15 · Icona sul PC e aggiornamenti senza ricaricare a mano
+
+Controllo delle Regole Mondiali nuove (13-15 novembre 2026).
+
+- **L'icona di Casellino sul PC**: `python -I tools/collegamento.py` crea `Casellino.lnk` nella cartella del progetto,
+  nel menu Start e sul Desktop. Apre il programma online come app (una finestra senza le barre del browser), con
+  l'icona di Casellino nel titolo e nella barra delle applicazioni. Sul telefono l'icona c'era già.
+- **Gli aggiornamenti arrivano da soli**: il programma online controlla ogni mezz'ora, e quando torna sullo schermo,
+  se c'è una versione nuova. Se non stai facendo niente si ricarica da solo, dopo aver salvato il lavoro. Se stai
+  scrivendo, leggendo le foto o hai una finestra aperta, compare in basso «C'è un aggiornamento di Casellino» con il
+  tasto **«Ricarica ora»**, e scegli tu quando.
+- File: `tools/collegamento.py` (nuovo), `app/src/ui.js`, `app/src/style.css`, `tests/test_pagina.js`, `.gitignore`,
+  `Casellino.html`, `sito/`.
+
 ## v0.34.0 · 2026-11-12 · Pulsanti per il dito, centro di partenza in una riga, vie sempre in vista
 
 Garadron (12 novembre 2026): «pulsanti 44 punti, il resto va tutto bene», poi un altro controllo. Colori e nomi

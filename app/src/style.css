@@ -597,3 +597,7 @@ input[type="file"]::file-selector-button {
   font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--accent); border-radius: 8px;
   padding: 8px 14px; margin-right: 10px; min-height: 44px; cursor: pointer;
 }
+/* a new version is there: a note at the bottom with the button to reload */
+.update-note { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 70; display: flex; flex-wrap: wrap;
+  gap: 8px 12px; align-items: center; max-width: calc(100vw - 24px); padding: 10px 12px; border-radius: 12px;
+  background: var(--panel); border: 2px solid var(--accent); box-shadow: 0 8px 24px rgba(0,0,0,.3); font-size: 14px; }

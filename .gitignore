@@ -14,3 +14,5 @@ node_modules/
 # Cloudflare tool files and local secrets
 .wrangler/
 .dev.vars
+
+*.lnk
