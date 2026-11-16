@@ -24,8 +24,15 @@ async function call(method, path, body, token) {
   r = await call('POST', '/api/registrati', { utente: user, password: 'corta' });
   assert.strictEqual(r.status, 400, 'password corta');
 
-  r = await call('POST', '/api/registrati', { utente: user, password: pass });
-  assert.strictEqual(r.status, 400, "serve l'email");
+  for (const easy of ['12345678', 'Password1', 'aaaaaaaa', 'casellino']) {
+    r = await call('POST', '/api/registrati', { utente: user, password: easy });
+    assert.strictEqual(r.status, 400, 'password tra le più usate: ' + easy);
+  }
+  // the e-mail is optional: an account without it, which then uses only the recovery code
+  r = await call('POST', '/api/registrati', { utente: user + 'z', password: pass });
+  assert.strictEqual(r.status, 200, 'account senza email: ' + JSON.stringify(r.data));
+  r = await call('POST', '/api/codice-email', { utente: user + 'z', email: 'nessuna@esempio.it' });
+  assert.ok(r.status === 403 && /codice di recupero/.test(r.data.errore), 'senza email: si usa il codice di recupero');
   r = await call('POST', '/api/registrati', { utente: user, password: pass, email: 'senza-chiocciola.it' });
   assert.strictEqual(r.status, 400, 'email non valida');
   r = await call('POST', '/api/registrati', { utente: user.toUpperCase(), password: pass, email: ' Mario.Rossi@Esempio.IT ' });

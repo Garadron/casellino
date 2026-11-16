@@ -47,6 +47,9 @@ tutti i postini, non solo alla zona di Garadron.
 - **La password dimenticata si cambia con un codice per email** (Garadron, 11 novembre 2026): le email partono
   gratis da un Gmail nuovo solo per Casellino, con il programmino `tools/posta-google.gs` (copia con la chiave in
   `dati/posta-google.gs`; chiave e indirizzo su Cloudflare come `POSTA_SEGRETO` e `POSTA_INDIRIZZO`).
+- **Gli account come in tutte le app** (Regola Mondiale del 16 novembre 2026): email facoltativa, password più
+  usate rifiutate, informativa sulla privacy in `app/privacy.html` (si aggiorna, con la data, quando cambiano i dati
+  raccolti o i servizi usati).
 - **La proposta all'azienda** (Garadron, 12 novembre 2026): un'anteprima privata con i colori, il logo, le parole e
   il nome ufficiale del programma scelti per l'azienda (`python tools/build.py --anteprima`, tutto in
   `dati/anteprima/`, mai su GitHub). Il programma pubblico resta Casellino, senza nome né logo dell'azienda, finché

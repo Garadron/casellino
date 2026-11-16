@@ -54,6 +54,7 @@ async function until(fn, ms, label) {
   d1.getElementById('btn-account').dispatchEvent(new w1.Event('click'));
   [...d1.querySelectorAll('#account-body .tabs button')].find(function (b) { return b.textContent === 'Registrati'; }).dispatchEvent(new w1.Event('click'));
   assert.ok(/palmare/.test(d1.getElementById('account-body').textContent), 'il consiglio sul nome utente');
+  assert.ok(d1.querySelector('#account-body a[href*="privacy"]') && /14 anni/.test(d1.getElementById('account-body').textContent), 'informativa e età nella registrazione');
   const inputs = d1.querySelectorAll('#account-body input');
   inputs[0].value = user; inputs[1].value = 'Mario.Rossi@esempio.it'; inputs[2].value = pass;
   assert.strictEqual(inputs[1].type, 'email');

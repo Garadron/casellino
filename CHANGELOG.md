@@ -1,5 +1,22 @@
 # Registro delle versioni
 
+## v0.36.0 · 2026-11-16 · Account come in tutte le app: privacy, email facoltativa, password troppo facili
+
+Controllo della Regola Mondiale «Gli account sono uguali in tutte le app» (Garadron, 16 novembre 2026). Il resto
+c'era già (password di almeno 8 caratteri e diversa dal nome, codice per email con i suoi limiti, codice di recupero
+che cambia a ogni uso, blocco dopo troppi tentativi, «Esci» che chiede, «Elimina l'account» con la password).
+
+- **L'informativa sulla privacy**: una pagina che si apre anche senza l'app (`privacy.html` nel sito). Dice il
+  titolare, il contatto (il Gmail di Casellino), quali dati, chi li vede, per quanto tempo, i diritti e l'età minima,
+  14 anni. Si apre da «Altro → 🔒 Privacy» e dalla registrazione, dove è scritto che creando l'account la si accetta.
+- **L'email alla registrazione è facoltativa**: serve solo per la password dimenticata. Chi non la mette usa il
+  codice di recupero e la può aggiungere dopo.
+- **Le password più usate sono rifiutate** (per esempio «12345678», «password1», «casellino», un carattere solo
+  ripetuto, una fila di numeri); non servono simboli né maiuscole.
+- File: `app/privacy.html` (nuovo), `server/src/worker.js`, `app/src/ui.js`, `app/src/style.css`,
+  `app/index.src.html`, `tools/build.py`, `tests/test_server.js`, `tests/test_account_pagina.js`, `CLAUDE.md`,
+  `Casellino.html`, `sito/`.
+
 ## v0.35.0 · 2026-11-15 · Icona sul PC e aggiornamenti senza ricaricare a mano
 
 Controllo delle Regole Mondiali nuove (13-15 novembre 2026).

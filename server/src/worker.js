@@ -96,11 +96,24 @@ function userName(raw) {
   return u;
 }
 
+// The passwords everybody tries first (Regola Mondiale "Gli account sono uguali in tutte le app", 16 November 2026):
+// no symbols or capitals are required, but these are refused, like a password made of one character or a run of digits.
+const COMMON_PASSWORDS = new Set(('12345678 123456789 1234567890 0123456789 87654321 987654321 12341234 11223344 12121212 ' +
+  '123123123 147258369 159753456 password password1 password12 password123 passw0rd qwertyui qwertyuiop qwerty123 ' +
+  'qwerty12 1q2w3e4r 1q2w3e4r5t 1qaz2wsx 1234qwer qwer1234 asdfghjk asdfghjkl zxcvbnm1 abcd1234 abc12345 abcdefgh ' +
+  'iloveyou iloveyou1 sunshine princess football baseball superman starwars whatever trustno1 letmein1 welcome1 ' +
+  'ciaociao ciao1234 amoremio tiamotanto juventus forzajuve forzanapoli forzainter forzamilan forzaroma napoli1926 ' +
+  'casellino casellino1 password1234 benvenuto').split(' '));
+
 function checkPassword(raw, user) {
   const p = String(raw || '');
   if (p.length < 8) throw new UserError(400, 'La password deve avere almeno 8 caratteri.');
   if (p.length > 200) throw new UserError(400, 'La password è troppo lunga.');
   if (p.toLowerCase() === user) throw new UserError(400, 'La password non può essere uguale al nome utente.');
+  const low = p.toLowerCase();
+  if (COMMON_PASSWORDS.has(low) || /^(.)\1+$/.test(p) || '01234567890123456789'.indexOf(p) >= 0 || '98765432109876543210'.indexOf(p) >= 0) {
+    throw new UserError(400, 'Questa password è tra le più usate: chiunque la indovina. Scegline un\'altra, anche solo tre parole che ricordi.');
+  }
   return p;
 }
 
@@ -181,7 +194,7 @@ async function register(request, env) {
   const b = await body(request);
   const user = userName(b.utente);
   const password = checkPassword(b.password, user);
-  const email = emailOf(b.email);
+  const email = String(b.email || '').trim() ? emailOf(b.email) : '';   // the e-mail is optional: only for a forgotten password
   const exists = await env.DB.prepare('SELECT 1 FROM account WHERE utente = ?').bind(user).first();
   if (exists) throw new UserError(409, 'Questo nome utente è già preso: scegline un altro.');
   const id = randomId(12);
@@ -190,7 +203,7 @@ async function register(request, env) {
     `INSERT INTO account (id, utente, password_impronta, recupero_impronta, errori, bloccato_fino, creato_il, email_impronta, email_vista)
      VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?)`,
   ).bind(id, user, await fingerprint(env, passwordText(id, password)), await fingerprint(env, recoveryText(id, code)), Date.now(),
-    await fingerprint(env, emailText(email)), emailShown(email)).run();
+    email ? await fingerprint(env, emailText(email)) : '', email ? emailShown(email) : '').run();
   await countAttempt(env, ip, DAY);
   return json(request, { token: await newSession(env, id), utente: user, recupero: code });
 }

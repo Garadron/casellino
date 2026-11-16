@@ -227,6 +227,8 @@ a { color: var(--accent); }
   box-shadow: 0 8px 24px rgba(0,0,0,.15);
 }
 .menu-list button { border: 0; text-align: left; }
+.menu-list .menu-link { display: flex; align-items: center; min-height: 36px; padding: 7px 12px; border-radius: 8px; color: var(--text); text-decoration: none; }
+.menu-list .menu-link:hover { background: var(--accent-soft); }
 .menu-list button:hover { background: var(--accent-soft); }
 
 /* layout */
