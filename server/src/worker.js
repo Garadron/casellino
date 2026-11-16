@@ -6,15 +6,17 @@
  * not lost and can be opened from any device. The page stays on its own site and calls this server
  * with a session token (Authorization: Bearer ...): no cookies, so it works on every phone.
  *
- * Passwords, recovery codes, session tokens and e-mails are stored only as HMAC fingerprints made with
+ * Passwords, e-mail codes, session tokens and e-mails are stored only as HMAC fingerprints made with
  * the server secret SEGRETO: the database alone does not reveal them (of the e-mail it keeps only a
  * hidden form like m***@esempio.it, to show it to its owner). Fast fingerprints keep each request
  * inside the 10 ms of the free plan; guessing is stopped by the limit on attempts.
  *
- * A forgotten password: the person writes user name and e-mail, the fingerprints are compared and a
- * 6-digit code goes to that e-mail, through a small Google program on a Gmail account (tools/posta-google.gs:
- * free and without a domain, 100 e-mails a day). Without POSTA_INDIRIZZO and POSTA_SEGRETO the e-mails are off
- * and the recovery code stays; with MODO_PROVA=si (only on the PC) nothing is sent and the code is in the answer.
+ * Sign-up with user name, e-mail (one account per e-mail) and password; sign-in with the user name or the e-mail.
+ * A forgotten password: the person writes the e-mail of the account and a 6-digit code goes there, through a small
+ * Google program on a Gmail account (tools/posta-google.gs: free and without a domain, 100 e-mails a day). No
+ * recovery code to keep (Garadron, 16 November 2026; the old column only gets a random fingerprint). Without
+ * POSTA_INDIRIZZO and POSTA_SEGRETO the e-mails are off; with MODO_PROVA=si (only on the PC) nothing is sent and the
+ * code is in the answer. The same Gmail carries the messages to the support (/api/supporto).
  */
 
 const ENC = new TextEncoder();
@@ -31,6 +33,7 @@ const LIMITS = {
   reportsPerDay: 10,        // problems reported by one account in a day
   reportText: 3000,         // characters of the explanation
   reportImage: 1500000,     // characters of the screenshot (a small JPEG as data: address)
+  supportPerIp: 5,          // support messages from one address in 24 hours
   emailsPerDay: 90,         // e-mails of the whole app in 24 hours (Gmail allows 100)
   emailsPerAccount: 3,      // codes for one account in 24 hours (the first may end in the spam)
   emailsPerIp: 10,          // codes asked from one address in 24 hours
@@ -194,27 +197,42 @@ async function register(request, env) {
   const b = await body(request);
   const user = userName(b.utente);
   const password = checkPassword(b.password, user);
-  const email = String(b.email || '').trim() ? emailOf(b.email) : '';   // the e-mail is optional: only for a forgotten password
+  if (!String(b.email || '').trim()) throw new UserError(400, 'Scrivi la tua email: serve se dimentichi la password e per le risposte del supporto.');
+  const email = emailOf(b.email);
   const exists = await env.DB.prepare('SELECT 1 FROM account WHERE utente = ?').bind(user).first();
   if (exists) throw new UserError(409, 'Questo nome utente è già preso: scegline un altro.');
+  await emailFree(env, email, '');
   const id = randomId(12);
-  const code = newRecoveryCode();
+  const code = newRecoveryCode();   // never shown (Garadron, 16 November 2026: no recovery code to keep): fills the old column
   await env.DB.prepare(
     `INSERT INTO account (id, utente, password_impronta, recupero_impronta, errori, bloccato_fino, creato_il, email_impronta, email_vista)
      VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?)`,
   ).bind(id, user, await fingerprint(env, passwordText(id, password)), await fingerprint(env, recoveryText(id, code)), Date.now(),
-    email ? await fingerprint(env, emailText(email)) : '', email ? emailShown(email) : '').run();
+    await fingerprint(env, emailText(email)), emailShown(email)).run();
   await countAttempt(env, ip, DAY);
-  return json(request, { token: await newSession(env, id), utente: user, recupero: code });
+  return json(request, { token: await newSession(env, id), utente: user });
+}
+
+// The account from what the person wrote: the user name, or the e-mail of the account (with an "@").
+async function findAccount(env, who) {
+  const w = String(who || '').trim().toLowerCase();
+  if (w.indexOf('@') < 0) return env.DB.prepare('SELECT * FROM account WHERE utente = ?').bind(w).first();
+  if (w.length > 200) return null;
+  return env.DB.prepare('SELECT * FROM account WHERE email_impronta = ?').bind(await fingerprint(env, emailText(w))).first();
+}
+
+// One e-mail, one account: so one can sign in and get the code with the e-mail alone.
+async function emailFree(env, email, myId) {
+  const other = await env.DB.prepare('SELECT id FROM account WHERE email_impronta = ?').bind(await fingerprint(env, emailText(email))).first();
+  if (other && other.id !== myId) throw new UserError(409, 'Questa email è già di un altro account: se è tuo, entra con quello.');
 }
 
 async function login(request, env) {
   const ip = 'accesso:' + ipOf(request);
   await checkAttempts(env, ip, LIMITS.attemptsPerIp, 15 * MINUTE);
   const b = await body(request);
-  const user = String(b.utente || '').trim().toLowerCase();
-  const row = await env.DB.prepare('SELECT * FROM account WHERE utente = ?').bind(user).first();
-  const wrong = new UserError(401, 'Nome utente o password sbagliati.');
+  const row = await findAccount(env, b.utente);
+  const wrong = new UserError(401, 'Nome utente (o email) o password sbagliati.');
   if (!row) { await countAttempt(env, ip, 15 * MINUTE); throw wrong; }
   if (row.bloccato_fino > Date.now()) throw new UserError(429, 'Troppi tentativi. Riprova tra un quarto d\'ora.');
   const ok = sameText(await fingerprint(env, passwordText(row.id, String(b.password || ''))), row.password_impronta);
@@ -236,23 +254,18 @@ async function recover(request, env) {
   const ip = 'accesso:' + ipOf(request);
   await checkAttempts(env, ip, LIMITS.attemptsPerIp, 15 * MINUTE);
   const b = await body(request);
-  const user = String(b.utente || '').trim().toLowerCase();
-  const row = await env.DB.prepare('SELECT * FROM account WHERE utente = ?').bind(user).first();
-  if (b.codice !== undefined) await checkMailCode(env, ip, row, b.codice);
-  else if (!row || !sameText(await fingerprint(env, recoveryText(row.id, b.recupero)), row.recupero_impronta)) {
-    await countAttempt(env, ip, 15 * MINUTE);
-    throw new UserError(401, 'Nome utente o codice di recupero sbagliati.');
-  }
+  const row = await findAccount(env, b.utente);
+  if (b.codice === undefined) throw new UserError(400, 'Serve il codice di 6 cifre arrivato per email.');
+  await checkMailCode(env, ip, row, b.codice);
   const password = checkPassword(b.password, row.utente);
-  const code = newRecoveryCode();
   await env.DB.batch([
-    env.DB.prepare(`UPDATE account SET password_impronta = ?, recupero_impronta = ?, errori = 0, bloccato_fino = 0,
+    env.DB.prepare(`UPDATE account SET password_impronta = ?, errori = 0, bloccato_fino = 0,
       codice_impronta = '', codice_scade = 0, codice_errori = 0 WHERE id = ?`)
-      .bind(await fingerprint(env, passwordText(row.id, password)), await fingerprint(env, recoveryText(row.id, code)), row.id),
+      .bind(await fingerprint(env, passwordText(row.id, password)), row.id),
     env.DB.prepare('DELETE FROM sessioni WHERE account_id = ?').bind(row.id),
   ]);
   await clearAttempts(env, ip);
-  return json(request, { token: await newSession(env, row.id), utente: row.utente, recupero: code });
+  return json(request, { token: await newSession(env, row.id), utente: row.utente });
 }
 
 // The code from the e-mail: right, not expired, at most LIMITS.codeTries wrong tries.
@@ -271,22 +284,21 @@ async function checkMailCode(env, ip, row, typed) {
 }
 
 // Forgotten password, first step: user name + e-mail of the account, and a code goes to that e-mail.
+const SUPPORT_MAIL = 'supporto.casellino@gmail.com';
 const mailTesting = function (env) { return env.MODO_PROVA === 'si'; };
 const mailOn = function (env) { return mailTesting(env) || Boolean(env.POSTA_INDIRIZZO && env.POSTA_SEGRETO); };
 
 async function mailCode(request, env) {
-  if (!mailOn(env)) throw new UserError(503, 'Le email non sono ancora attive: usa il codice di recupero.', 'posta_spenta');
+  if (!mailOn(env)) throw new UserError(503, 'Le email non sono ancora attive: per ora la password dimenticata non si può recuperare.', 'posta_spenta');
   const ip = 'accesso:' + ipOf(request);
   await checkAttempts(env, ip, LIMITS.attemptsPerIp, 15 * MINUTE);
   const b = await body(request);
-  const user = String(b.utente || '').trim().toLowerCase();
   const email = emailOf(b.email);
-  const row = await env.DB.prepare('SELECT * FROM account WHERE utente = ?').bind(user).first();
-  if (!row || !row.email_impronta || !sameText(await fingerprint(env, emailText(email)), row.email_impronta)) {
+  const row = await findAccount(env, email);
+  const user = String(b.utente || '').trim().toLowerCase();
+  if (!row || (user && user !== row.utente)) {
     await countAttempt(env, ip, 15 * MINUTE);
-    throw new UserError(403, row && !row.email_impronta
-      ? 'Questo account non ha un\'email: usa il codice di recupero.'
-      : 'Nome utente ed email non corrispondono: scrivi l\'email che hai dato al tuo account.');
+    throw new UserError(403, 'Questa email non è di nessun account: scrivi quella che hai dato al tuo account.');
   }
   const now = Date.now();
   const sent = await env.DB.prepare(
@@ -296,7 +308,7 @@ async function mailCode(request, env) {
     throw new UserError(429, 'Oggi ti ho già mandato ' + LIMITS.emailsPerAccount + ' codici: usa l\'ultimo arrivato (guarda anche nella posta indesiderata) o riprova domani.');
   }
   if (!mailTesting(env) && ((sent.da_qui || 0) >= LIMITS.emailsPerIp || sent.tutte >= LIMITS.emailsPerDay)) {  // on the PC all tests come from one place
-    throw new UserError(429, 'Oggi sono partite già tante email: riprova domani, o usa il codice di recupero.');
+    throw new UserError(429, 'Oggi sono partite già tante email: riprova domani.');
   }
   const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
   await env.DB.batch([
@@ -319,7 +331,7 @@ async function mailCode(request, env) {
     }),
   }).catch(function () { return null; });
   const done = res ? await res.json().catch(function () { return null; }) : null;
-  if (!done || !done.ok) throw new UserError(502, 'L\'email non è partita. Riprova tra poco, o usa il codice di recupero.', 'posta_ferma');
+  if (!done || !done.ok) throw new UserError(502, 'L\'email non è partita. Riprova tra poco.', 'posta_ferma');
   return json(request, { ok: true, email: row.email_vista });
 }
 
@@ -368,6 +380,7 @@ async function changeEmail(request, env, me) {
   const b = await body(request);
   const email = emailOf(b.email);
   await checkMine(request, env, me, b.password);
+  await emailFree(env, email, me.id);
   await env.DB.prepare('UPDATE account SET email_impronta = ?, email_vista = ? WHERE id = ?')
     .bind(await fingerprint(env, emailText(email)), emailShown(email), me.id).run();
   return json(request, { email: emailShown(email) });
@@ -443,6 +456,41 @@ async function deleteWork(request, env, me, id) {
 
 const clip = function (v, n) { return String(v || '').slice(0, n); };
 
+/*
+ * The support (Garadron, 16 November 2026): a message to the Casellino Gmail, also without an account. It carries
+ * the version and the kind of device, never the person's work; the answer goes to the e-mail written in the form
+ * (reply-to). Same limits as the other e-mails.
+ */
+async function support(request, env) {
+  if (!mailOn(env)) throw new UserError(503, 'I messaggi non partono ancora da qui: scrivi direttamente all\'email del supporto.', 'posta_spenta');
+  const ip = 'supporto:' + ipOf(request);
+  const b = await body(request);
+  const email = emailOf(b.email);
+  const text = String(b.testo || '').trim().slice(0, 3000);
+  if (text.length < 5) throw new UserError(400, 'Scrivi il messaggio.');
+  const now = Date.now();
+  const sent = await env.DB.prepare('SELECT COUNT(*) AS tutte, SUM(ip = ?1) AS da_qui FROM email_inviate WHERE quando > ?2')
+    .bind(ip, now - DAY).first();
+  if (!mailTesting(env) && ((sent.da_qui || 0) >= LIMITS.supportPerIp || sent.tutte >= LIMITS.emailsPerDay)) {
+    throw new UserError(429, 'Oggi sono partiti già tanti messaggi: riprova domani, o scrivi direttamente all\'email del supporto.');
+  }
+  await env.DB.prepare('INSERT INTO email_inviate (account_id, ip, quando) VALUES (?, ?, ?)').bind('supporto', ip, now).run();
+  if (mailTesting(env)) return json(request, { ok: true, prova: true });
+  const res = await fetch(env.POSTA_INDIRIZZO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      segreto: env.POSTA_SEGRETO, a: env.POSTA_SUPPORTO || SUPPORT_MAIL, rispondiA: email,
+      oggetto: 'Casellino: messaggio al supporto da ' + email,
+      testo: text + '\n\n----\nDa: ' + email + ' (rispondi a questa email)\nVersione: ' + String(b.versione || '?').slice(0, 20) +
+        '\nDispositivo: ' + String(b.dispositivo || '?').slice(0, 200),
+    }),
+  }).catch(function () { return null; });
+  const done = res ? await res.json().catch(function () { return null; }) : null;
+  if (!done || !done.ok) throw new UserError(502, 'Il messaggio non è partito. Riprova tra poco, o scrivi direttamente all\'email del supporto.', 'posta_ferma');
+  return json(request, { ok: true });
+}
+
 async function report(request, env, me) {
   const b = await body(request);
   const day = Date.now() - DAY;
@@ -484,6 +532,7 @@ async function route(request, env) {
   if (path === '/api/accedi' && m === 'POST') return login(request, env);
   if (path === '/api/recupera' && m === 'POST') return recover(request, env);
   if (path === '/api/codice-email' && m === 'POST') return mailCode(request, env);
+  if (path === '/api/supporto' && m === 'POST') return support(request, env);
   if (path.indexOf('/api/segnalazioni') === 0 && isAdmin(request, env)) {
     if (path === '/api/segnalazioni' && m === 'GET') return listReports(request, env);
     const r = /^\/api\/segnalazioni\/([A-Za-z0-9_-]{8,40})$/.exec(path);

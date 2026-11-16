@@ -40,6 +40,7 @@ async function until(fn, ms, label) {
   try { await fetch(API + '/api'); } catch (e) { console.log('Server non acceso: prova saltata.'); return; }
   const user = 'pagina' + Date.now().toString(36);
   const pass = 'password di prova';
+  const mail = user + '@esempio.it';   // one e-mail, one account: a new one for every run
 
   // device 1: write something, create the account
   const one = device({ confirm: false });
@@ -56,14 +57,14 @@ async function until(fn, ms, label) {
   assert.ok(/palmare/.test(d1.getElementById('account-body').textContent), 'il consiglio sul nome utente');
   assert.ok(d1.querySelector('#account-body a[href*="privacy"]') && /14 anni/.test(d1.getElementById('account-body').textContent), 'informativa e età nella registrazione');
   const inputs = d1.querySelectorAll('#account-body input');
-  inputs[0].value = user; inputs[1].value = 'Mario.Rossi@esempio.it'; inputs[2].value = pass;
+  inputs[0].value = user; inputs[1].value = mail.toUpperCase(); inputs[2].value = pass;
   assert.strictEqual(inputs[1].type, 'email');
   d1.querySelector('#account-body form').dispatchEvent(new w1.Event('submit', { cancelable: true }));
-  const code = await until(function () { const c = d1.querySelector('.recovery .code'); return c && c.textContent; });
-  assert.ok(/^[A-Z2-9-]{14}$/.test(code), 'codice di recupero mostrato');
+  await until(function () { const c = d1.querySelector('.done-note'); return c && /Account creato/.test(c.textContent); }, 8000, 'account creato');
+  assert.ok(!/codice di recupero/i.test(d1.getElementById('account-body').textContent), 'niente codice di recupero da conservare');
   assert.strictEqual(d1.getElementById('btn-account').textContent, '👤 ' + user);
   await until(function () { return /Zona 9/.test(d1.querySelector('.works').textContent); });
-  await until(function () { return /m\*\*\*@esempio\.it/.test(d1.querySelector('.account-details').textContent); }, 8000, 'email nascosta');
+  await until(function () { return /p\*\*\*@esempio\.it/.test(d1.querySelector('.account-details').textContent); }, 8000, 'email nascosta');
   // a new account: closing its window, the tutorial opens
   d1.getElementById('dlg-account').open = false;
   d1.getElementById('dlg-account').dispatchEvent(new w1.Event('close'));
@@ -86,7 +87,7 @@ async function until(fn, ms, label) {
   await wait(300);
   d2.getElementById('btn-account').dispatchEvent(new w2.Event('click'));
   const in2 = d2.querySelectorAll('#account-body input');
-  in2[0].value = user.toUpperCase(); in2[1].value = pass;  // capitals or not, the same name
+  in2[0].value = mail.toUpperCase(); in2[1].value = pass;  // with the e-mail instead of the name, capitals or not
   d2.querySelector('#account-body form').dispatchEvent(new w2.Event('submit', { cancelable: true }));
   const openBtn = await until(function () {
     return [...d2.querySelectorAll('.works button')].find(function (b) { return b.textContent === 'Apri'; });
@@ -133,21 +134,30 @@ async function until(fn, ms, label) {
   await until(function () { return !d1.getElementById('dlg-bug').open; }, 8000, 'segnalazione inviata');
   assert.ok(/Segnalazione inviata/.test(d1.querySelector('.toast').textContent));
 
+  // the support, without an account (the office computer has just signed out)
+  d2.getElementById('btn-support').dispatchEvent(new w2.Event('click'));
+  assert.ok(d2.getElementById('dlg-support').open && /supporto\.casellino@gmail\.com/.test(d2.getElementById('dlg-support').textContent), 'il supporto con la sua email');
+  d2.getElementById('support-email').value = mail;
+  d2.getElementById('support-text').value = 'Come si mette una cascina?';
+  d2.getElementById('support-send').dispatchEvent(new w2.Event('click'));
+  await until(function () { return !d2.getElementById('dlg-support').open; }, 8000, 'messaggio al supporto');
+  assert.ok(/Messaggio mandato/.test(d2.querySelector('.toast').textContent));
+
   // forgotten password on the office computer: a code by e-mail (on the PC the server gives it back and the page writes it)
   d2.getElementById('btn-account').dispatchEvent(new w2.Event('click'));
   [...d2.querySelectorAll('#account-body .tabs button')].find(function (b) { return b.textContent === 'Password dimenticata'; }).dispatchEvent(new w2.Event('click'));
   let form2 = d2.querySelector('#account-body form');
   assert.strictEqual(form2.querySelector('button[type=submit]').textContent, 'Mandami il codice');
   fields = form2.querySelectorAll('input');
-  fields[0].value = renamed; fields[1].value = 'mario.rossi@esempio.it';
+  assert.strictEqual(fields.length, 1, "basta l'email dell'account");
+  fields[0].value = mail;
   form2.dispatchEvent(new w2.Event('submit', { cancelable: true }));
-  await until(function () { return /Ti ho mandato un codice di 6 cifre a m\*\*\*@esempio\.it/.test(d2.getElementById('account-body').textContent); }, 8000, 'codice mandato');
+  await until(function () { return /Ti ho mandato un codice di 6 cifre a p\*\*\*@esempio\.it/.test(d2.getElementById('account-body').textContent); }, 8000, 'codice mandato');
   form2 = d2.querySelector('#account-body form');
   assert.ok(/^\d{6}$/.test(form2.querySelector('input[autocomplete=one-time-code]').value), 'il codice di prova è scritto');
   form2.querySelector('input[type=password]').value = pass;
   form2.dispatchEvent(new w2.Event('submit', { cancelable: true }));
-  await until(function () { return d2.querySelector('.recovery .code'); }, 8000, 'password cambiata');
-  assert.ok(/Password cambiata/.test(d2.querySelector('.recovery').textContent));
+  await until(function () { const c = d2.querySelector('.done-note'); return c && /Password cambiata/.test(c.textContent); }, 8000, 'password cambiata');
   assert.strictEqual(d2.getElementById('btn-account').textContent, '👤 ' + renamed);
 
   // clean up: delete the test account

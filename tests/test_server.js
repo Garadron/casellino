@@ -18,6 +18,7 @@ async function call(method, path, body, token) {
 (async function () {
   const user = 'prova' + Date.now().toString(36);
   const pass = 'una password lunga';
+  const mail = user + '@esempio.it';   // one e-mail, one account: a new one for every run
 
   let r = await call('POST', '/api/registrati', { utente: 'ab', password: pass });
   assert.strictEqual(r.status, 400, 'nome troppo corto');
@@ -28,27 +29,25 @@ async function call(method, path, body, token) {
     r = await call('POST', '/api/registrati', { utente: user, password: easy });
     assert.strictEqual(r.status, 400, 'password tra le più usate: ' + easy);
   }
-  // the e-mail is optional: an account without it, which then uses only the recovery code
-  r = await call('POST', '/api/registrati', { utente: user + 'z', password: pass });
-  assert.strictEqual(r.status, 200, 'account senza email: ' + JSON.stringify(r.data));
-  r = await call('POST', '/api/codice-email', { utente: user + 'z', email: 'nessuna@esempio.it' });
-  assert.ok(r.status === 403 && /codice di recupero/.test(r.data.errore), 'senza email: si usa il codice di recupero');
+  r = await call('POST', '/api/registrati', { utente: user, password: pass });
+  assert.strictEqual(r.status, 400, "serve l'email");
   r = await call('POST', '/api/registrati', { utente: user, password: pass, email: 'senza-chiocciola.it' });
   assert.strictEqual(r.status, 400, 'email non valida');
-  r = await call('POST', '/api/registrati', { utente: user.toUpperCase(), password: pass, email: ' Mario.Rossi@Esempio.IT ' });
+  r = await call('POST', '/api/registrati', { utente: user.toUpperCase(), password: pass, email: ' ' + mail.toUpperCase() + ' ' });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
   assert.strictEqual(r.cors, ORIGIN, 'permesso per la pagina');
   assert.strictEqual(r.data.utente, user);
-  assert.ok(/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(r.data.recupero), 'codice di recupero');
-  const recovery = r.data.recupero;
+  assert.ok(!('recupero' in r.data), 'niente codice di recupero da conservare');
   let token = r.data.token;
 
-  r = await call('POST', '/api/registrati', { utente: user, password: pass, email: 'a@esempio.it' });
+  r = await call('POST', '/api/registrati', { utente: user, password: pass, email: 'a' + mail });
   assert.strictEqual(r.status, 409, 'nome già preso');
+  r = await call('POST', '/api/registrati', { utente: user + 'y', password: pass, email: mail });
+  assert.ok(r.status === 409 && /email/.test(r.data.errore), 'una email, un account');
 
   r = await call('GET', '/api/io', undefined, token);
   assert.strictEqual(r.data.utente, user);
-  assert.strictEqual(r.data.email, 'm***@esempio.it', "l'email si vede solo nascosta");
+  assert.strictEqual(r.data.email, 'p***@esempio.it', "l'email si vede solo nascosta");
   assert.strictEqual(r.data.prossimoCambioNome, 0);
   r = await call('GET', '/api/lavori');
   assert.strictEqual(r.status, 401, 'senza accesso niente lavori');
@@ -71,7 +70,7 @@ async function call(method, path, body, token) {
   assert.strictEqual(JSON.parse(r.data.dati).zone, 'forzato');
 
   // another account cannot see or overwrite it
-  const other = await call('POST', '/api/registrati', { utente: user + 'x', password: pass, email: 'altro@esempio.it' });
+  const other = await call('POST', '/api/registrati', { utente: user + 'x', password: pass, email: 'x' + mail });
   r = await call('GET', '/api/lavori/' + id, undefined, other.data.token);
   assert.strictEqual(r.status, 404);
   r = await call('PUT', '/api/lavori/' + id, { nome: 'x', dati: {}, versione: 3 }, other.data.token);
@@ -83,44 +82,38 @@ async function call(method, path, body, token) {
   r = await call('POST', '/api/accedi', { utente: user.toUpperCase(), password: pass });
   assert.strictEqual(r.status, 200, 'maiuscole o minuscole: è lo stesso nome');
   const second = r.data.token;
+  r = await call('POST', '/api/accedi', { utente: ' ' + mail.toUpperCase(), password: pass });
+  assert.strictEqual(r.status, 200, "si entra anche con l'email");
+  await call('POST', '/api/esci', {}, r.data.token);
   await call('POST', '/api/esci', {}, second);
   r = await call('GET', '/api/io', undefined, second);
   assert.strictEqual(r.status, 401, 'dopo «esci» il token non vale più');
 
-  // forgotten password with the recovery code: other devices signed out, new code
   r = await call('POST', '/api/recupera', { utente: user, recupero: 'AAAA-BBBB-CCCC', password: 'nuova password 1' });
-  assert.strictEqual(r.status, 401);
-  r = await call('POST', '/api/recupera', { utente: user, recupero: recovery.toLowerCase(), password: 'nuova password 1' });
-  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
-  assert.notStrictEqual(r.data.recupero, recovery);
-  r = await call('GET', '/api/io', undefined, token);
-  assert.strictEqual(r.status, 401, 'il vecchio dispositivo è uscito');
-  r = await call('POST', '/api/accedi', { utente: user, password: 'nuova password 1' });
-  token = r.data.token;
-  assert.ok(token);
+  assert.strictEqual(r.status, 400, 'niente più codice di recupero: solo quello per email');
 
   // forgotten password with the e-mail (on the PC, MODO_PROVA=si: nothing is sent, the code is in the answer)
-  r = await call('POST', '/api/codice-email', { utente: user, email: 'altra@esempio.it' });
-  assert.strictEqual(r.status, 403, "non è l'email dell'account");
-  r = await call('POST', '/api/codice-email', { utente: user.toUpperCase(), email: ' MARIO.ROSSI@esempio.it' });
+  r = await call('POST', '/api/codice-email', { email: 'nessuno' + mail });
+  assert.strictEqual(r.status, 403, "non è l'email di un account");
+  r = await call('POST', '/api/codice-email', { email: ' ' + mail.toUpperCase() });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
-  assert.strictEqual(r.data.email, 'm***@esempio.it', "l'email si dice solo nascosta");
+  assert.strictEqual(r.data.email, 'p***@esempio.it', "l'email si dice solo nascosta");
   assert.ok(/^\d{6}$/.test(r.data.prova), 'codice di 6 cifre');
-  r = await call('POST', '/api/codice-email', { utente: user, email: 'mario.rossi@esempio.it' });
+  r = await call('POST', '/api/codice-email', { email: mail });
   const mailed = r.data.prova;
-  r = await call('POST', '/api/recupera', { utente: user, codice: String((+mailed + 1) % 1000000).padStart(6, '0'), password: 'nuova password 1' });
+  r = await call('POST', '/api/recupera', { utente: mail, codice: String((+mailed + 1) % 1000000).padStart(6, '0'), password: 'nuova password 1' });
   assert.strictEqual(r.status, 401, 'codice sbagliato');
-  r = await call('POST', '/api/recupera', { utente: user, codice: mailed.slice(0, 3) + ' ' + mailed.slice(3), password: 'nuova password 1' });
+  r = await call('POST', '/api/recupera', { utente: mail, codice: mailed.slice(0, 3) + ' ' + mailed.slice(3), password: 'nuova password 1' });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
-  assert.ok(r.data.recupero && r.data.token, 'dentro, con un codice di recupero nuovo');
+  assert.ok(r.data.token && !('recupero' in r.data), 'dentro, senza codici da conservare');
   r = await call('GET', '/api/io', undefined, token);
   assert.strictEqual(r.status, 401, 'gli altri dispositivi sono usciti');
   token = (await call('POST', '/api/accedi', { utente: user, password: 'nuova password 1' })).data.token;
-  r = await call('POST', '/api/recupera', { utente: user, codice: mailed, password: 'nuova password 1' });
+  r = await call('POST', '/api/recupera', { utente: mail, codice: mailed, password: 'nuova password 1' });
   assert.strictEqual(r.status, 401, 'il codice vale una volta sola');
-  r = await call('POST', '/api/codice-email', { utente: user, email: 'mario.rossi@esempio.it' });
+  r = await call('POST', '/api/codice-email', { email: mail });
   assert.strictEqual(r.status, 200, 'il terzo codice del giorno');
-  r = await call('POST', '/api/codice-email', { utente: user, email: 'mario.rossi@esempio.it' });
+  r = await call('POST', '/api/codice-email', { email: mail });
   assert.strictEqual(r.status, 429, 'non più di tre al giorno');
 
   // a new user name, then no other change for a week
@@ -148,8 +141,18 @@ async function call(method, path, body, token) {
   assert.strictEqual(r.status, 403, 'password sbagliata, ma il dispositivo resta dentro');
   r = await call('POST', '/api/cambia-email', { email: 'nuova', password: 'nuova password 1' }, token);
   assert.strictEqual(r.status, 400);
-  r = await call('POST', '/api/cambia-email', { email: 'nuova@esempio.it', password: 'nuova password 1' }, token);
+  r = await call('POST', '/api/cambia-email', { email: 'x' + mail, password: 'nuova password 1' }, token);
+  assert.strictEqual(r.status, 409, "l'email di un altro account");
+  r = await call('POST', '/api/cambia-email', { email: 'n' + mail, password: 'nuova password 1' }, token);
   assert.strictEqual(r.data.email, 'n***@esempio.it');
+
+  // the support: also without an account; the answer goes to the e-mail written
+  r = await call('POST', '/api/supporto', { email: 'non-una-email', testo: 'una domanda' });
+  assert.strictEqual(r.status, 400, 'serve una email valida per la risposta');
+  r = await call('POST', '/api/supporto', { email: mail, testo: '' });
+  assert.strictEqual(r.status, 400, 'serve il messaggio');
+  r = await call('POST', '/api/supporto', { email: mail, testo: 'Come si mette una cascina?', versione: '0.37.0', dispositivo: 'prova' });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
 
   // a problem reported from the page; the PC picks it up with its key and removes it
   r = await call('POST', '/api/segnala', { testo: '', immagine: '' }, token);

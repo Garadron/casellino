@@ -494,7 +494,8 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .foto-stage canvas { display: block; max-width: 100%; height: auto; touch-action: none; cursor: crosshair; }
 .foto-rot { display: flex; align-items: center; gap: 8px; }
 .bug-field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; margin: 6px 0; flex: 1 1 200px; }
-.bug-field textarea, .bug-field input[type="text"], .bug-field input:not([type]) { width: 100%; font-size: 16px; }
+.bug-field textarea, .bug-field input[type="text"], .bug-field input[type="email"], .bug-field input:not([type]) { width: 100%; font-size: 16px; }
+.dlg > .bug-field { flex: none; }   /* in a column, 200px would be its height */
 .foto-first { border: 2px solid var(--accent); border-radius: 8px; padding: 6px 10px; margin: 6px 0; background: var(--accent-soft); }
 .foto-first p { margin: 4px 0; }
 #foto-first-name { width: 6em; text-transform: uppercase; }
@@ -557,7 +558,7 @@ button.primary-soft { border-color: var(--accent); color: var(--accent); font-we
 .works li.open { border-color: var(--accent); }
 .works li.bad { color: var(--bad); }
 .recovery { border: 2px solid var(--warn); background: var(--warn-soft); border-radius: 10px; padding: 10px 12px; }
-.recovery .code { font: 700 24px/1.2 ui-monospace, Consolas, monospace; letter-spacing: .06em; margin: 6px 0; }
+.done-note { margin: 0 0 8px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); font-weight: 600; }
 .account-end { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
 
 /* the print menu, highlighted like the main button */

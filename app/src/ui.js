@@ -2868,10 +2868,9 @@
 
   // The account window: sign in / register / forgotten password, or the list of saved works.
   let accountMode = 'accedi';
-  let recoverWay = 'email';   // forgotten password: 'email' (a 6-digit code by e-mail) or 'codice' (the recovery code)
-  let mailSent = null;        // { utente, email, prova } once the code has gone
+  let mailSent = null;        // { addr, email, prova } once the code has gone (addr: the e-mail written, email: hidden)
   let accountNote = '';       // a message for the next form (e.g. e-mails not active yet)
-  let typedUser = '';         // the user name stays when the form changes (tab, e-mail or recovery code)
+  let typedUser = '';         // the user name stays when the form changes tab
   function accountForm(box) {
     const modes = { accedi: 'Accedi', registrati: 'Registrati', recupera: 'Password dimenticata' };
     const tabs = h('div', { class: 'tabs' });
@@ -2883,64 +2882,55 @@
       oninput: function () { typedUser = user.value; } });
     user.value = typedUser;
     const pass = h('input', { type: 'password', autocomplete: accountMode === 'accedi' ? 'current-password' : 'new-password' });
-    const code = h('input', { autocapitalize: 'characters', spellcheck: 'false', placeholder: 'XXXX-XXXX-XXXX' });
     const email = h('input', { type: 'email', autocomplete: 'email', autocapitalize: 'none', spellcheck: 'false', placeholder: 'es. nome@gmail.com' });
     const mailCode = h('input', { inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '7', placeholder: '123456' });
     const msg = h('p', { class: 'small bad' }, accountNote);
     accountNote = '';
     const fresh = accountMode === 'registrati';
     const recovering = accountMode === 'recupera';
-    const byMail = recovering && recoverWay === 'email';
-    const asking = byMail && !mailSent;   // first step: user name and e-mail, then the code goes
-    if (byMail && mailSent) { user.value = mailSent.utente; mailCode.value = mailSent.prova || ''; }
+    const asking = recovering && !mailSent;   // first step: the e-mail of the account, then the code goes there
+    if (recovering && mailSent) mailCode.value = mailSent.prova || '';
     const go = h('button', { type: 'submit', class: 'primary' },
       accountMode === 'accedi' ? 'Accedi' : (fresh ? 'Crea l\'account' : (asking ? 'Mandami il codice' : 'Cambia la password')));
     const switchTo = function (label, onclick) { return h('button', { type: 'button', class: 'link-btn', onclick: onclick }, label); };
     const form = h('form', { class: 'account-form' },
-      h('label', null, 'Nome utente' + (fresh ? '' : ' (maiuscole o minuscole, è uguale)'), user),
+      recovering ? null : h('label', null, fresh ? 'Nome utente' : 'Nome utente o email (maiuscole o minuscole, è uguale)', user),
       fresh ? h('p', { class: 'small hint' }, USER_TIP) : null,
-      fresh || asking ? h('label', null, fresh ? 'La tua email (facoltativa: serve solo se dimentichi la password)' : 'L\'email del tuo account', email) : null,
-      byMail && mailSent ? h('p', { class: 'small hint' }, 'Ti ho mandato un codice di 6 cifre a ' + mailSent.email +
+      fresh || asking ? h('label', null, fresh ? 'La tua email (serve se dimentichi la password e per le risposte del supporto)' : 'L\'email del tuo account', email) : null,
+      recovering && mailSent ? h('p', { class: 'small hint' }, 'Ti ho mandato un codice di 6 cifre a ' + mailSent.email +
         '. Se non lo vedi, guarda nella posta indesiderata.') : null,
-      byMail && mailSent ? h('label', null, 'Codice dall\'email (6 cifre)', mailCode) : null,
-      recovering && !byMail ? h('label', null, 'Codice di recupero (te l\'ho dato quando hai creato l\'account)', code) : null,
+      recovering && mailSent ? h('label', null, 'Codice dall\'email (6 cifre)', mailCode) : null,
       asking ? null : h('label', null, recovering ? 'Password nuova (almeno 8 caratteri)' : 'Password' + (fresh ? ' (almeno 8 caratteri)' : ''), pass),
       fresh ? h('p', { class: 'small hint' }, 'Creando l\'account accetti l\'',
         h('a', { href: 'https://garadron.github.io/casellino/privacy.html', target: '_blank', rel: 'noopener' }, 'informativa sulla privacy'),
         '. L\'account è per chi ha almeno 14 anni.') : null,
       msg, h('p', { class: 'actions-inline' }, go),
       recovering ? h('p', { class: 'small' },
-        byMail && mailSent ? switchTo('Mandami un altro codice', function () { mailSent = null; renderAccountDialog(); }) : null,
-        byMail ? switchTo('Non ho più quell\'email: uso il codice di recupero', function () { recoverWay = 'codice'; renderAccountDialog(); })
-          : switchTo('Uso l\'email del mio account', function () { recoverWay = 'email'; renderAccountDialog(); })) : null);
+        mailSent ? switchTo('Mandami un altro codice', function () { mailSent = null; renderAccountDialog(); }) : null,
+        switchTo('Non ho più quell\'email: scrivo al supporto', function () { $('dlg-account').close(); openSupport(); })) : null);
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       msg.textContent = '';
       go.disabled = true;
       try {
         if (asking) {
-          const sent = await api('POST', '/api/codice-email', { utente: user.value, email: email.value });
-          mailSent = { utente: user.value.trim(), email: sent.email, prova: sent.prova };
+          const sent = await api('POST', '/api/codice-email', { email: email.value });
+          mailSent = { addr: email.value.trim(), email: sent.email, prova: sent.prova };
           renderAccountDialog();
           return;
         }
         const path = accountMode === 'accedi' ? '/api/accedi' : (fresh ? '/api/registrati' : '/api/recupera');
-        const data = { utente: user.value, password: pass.value, email: email.value };
-        if (byMail) data.codice = mailCode.value; else data.recupero = code.value;
+        const data = { utente: recovering ? mailSent.addr : user.value, password: pass.value, email: email.value };
+        if (recovering) data.codice = mailCode.value;
         const r = await api('POST', path, data);
         mailSent = null; typedUser = '';
         account.token = r.token; account.utente = r.utente;
         accountStore();
         renderAccountButton();
-        afterSignIn(r.recupero, accountMode);
+        afterSignIn(accountMode);
       } catch (err) {
-        if (asking && (err.data && err.data.motivo === 'posta_spenta' || err.status === 401 || err.status === 404)) {
-          recoverWay = 'codice';   // e-mails not active yet, or a server older than v0.29.0
-          accountNote = 'Le email non sono ancora attive: usa il codice di recupero.';
-          renderAccountDialog();
-          return;
-        }
-        msg.textContent = err.message;
+        msg.textContent = err.data && err.data.motivo === 'posta_spenta'
+          ? 'Le email non sono ancora attive: per ora la password dimenticata non si può recuperare. Scrivi al supporto.' : err.message;
       } finally {
         go.disabled = false;
       }
@@ -2948,10 +2938,9 @@
     box.append(
       h('p', null, 'Con un account i tuoi lavori si salvano da soli mentre scrivi e li ritrovi da qualsiasi telefono o computer. È gratis.'),
       tabs, form,
-      h('p', { class: 'small muted' }, 'Se dimentichi la password ti mando un codice all\'email dell\'account. Quando crei l\'account ti do anche un ' +
-        'codice di recupero: scrivilo da qualche parte, serve se l\'email non arriva. ' +
+      h('p', { class: 'small muted' }, 'Se dimentichi la password ti mando un codice all\'email dell\'account. ' +
         'L\'email nel server resta nascosta: nessuno la può leggere, nemmeno da lì. Nell\'account si salvano solo i tuoi lavori.'));
-    setTimeout(function () { (byMail && mailSent ? mailCode : user).focus(); }, 30);
+    setTimeout(function () { (mailSent ? mailCode : (recovering ? email : user)).focus(); }, 30);
   }
   const USER_TIP = 'Usa pure il tuo stesso nome utente che usi nel palmare se ti viene più facile da ricordare. Ma non la stessa password!';
 
@@ -2988,6 +2977,12 @@
         }, me.email ? 'Cambia' : 'Aggiungi'));
     };
     show();
+    if (!me.email) {   // an account from before the e-mail was required: it adds it now
+      part.prepend(h('p', { class: 'recovery' }, h('b', null, 'Aggiungi la tua email: '),
+        'serve se dimentichi la password e per le risposte del supporto.'));
+      const add = rows.querySelectorAll('.detail-row')[1];
+      if (add) add.querySelector('.link-btn').click();
+    }
   }
   function detailRow(label, value, note, onChange, button) {
     const slot = h('div');
@@ -3017,13 +3012,13 @@
   }
 
   // After signing in: the code to keep (new account or new password), then the works.
-  async function afterSignIn(recovery, mode) {
+  async function afterSignIn(mode) {
     if (mode === 'registrati') tutorialAfterAccount = true;
     if (!state.project.cloud && !isEmptyProject()) {
       await cloudSave(false);
       if (state.project.cloud) toast('Il lavoro aperto ora è salvato anche nel tuo account.');
     }
-    renderAccountDialog(recovery ? { recovery: recovery, fresh: mode === 'registrati' } : null);
+    renderAccountDialog({ done: mode === 'registrati' ? 'Account creato.' : (mode === 'recupera' ? 'Password cambiata: gli altri dispositivi sono usciti.' : '') });
   }
 
   async function worksList(box) {
@@ -3063,20 +3058,36 @@
     }
   }
 
+  // The support (Garadron, 16 November 2026): opens also without an account; the message goes through the server.
+  function openSupport() {
+    $('support-msg').textContent = '';
+    $('dlg-support').showModal();
+    setTimeout(function () { $($('support-email').value ? 'support-text' : 'support-email').focus(); }, 30);
+  }
+  async function sendSupport() {
+    const btn = $('support-send');
+    $('support-msg').textContent = '';
+    btn.disabled = true;
+    try {
+      await api('POST', '/api/supporto', { email: $('support-email').value, testo: $('support-text').value,
+        versione: window.CASELLINO_VERSION || '', dispositivo: navigator.userAgent });
+      $('support-text').value = '';
+      $('dlg-support').close();
+      toast('Messaggio mandato: la risposta arriva alla tua email.');
+    } catch (e) {
+      $('support-msg').textContent = e.data && e.data.motivo === 'posta_spenta'
+        ? 'Da qui i messaggi non partono ancora: scrivi direttamente a supporto.casellino@gmail.com.' : e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   function renderAccountDialog(extra) {
     const box = $('account-body');
     box.textContent = '';
     if (!account.token) { $('account-title').textContent = 'Il tuo account'; accountForm(box); return; }
     $('account-title').textContent = 'Account: ' + account.utente;
-    if (extra && extra.recovery) {
-      box.append(h('div', { class: 'recovery' },
-        h('p', null, h('b', null, extra.fresh ? 'Account creato. ' : 'Password cambiata. '), 'Questo è il tuo codice di recupero:'),
-        h('p', { class: 'code' }, extra.recovery),
-        h('p', { class: 'small' }, 'Scrivilo o fai una foto: serve se dimentichi la password. Non lo vedrai più.'),
-        h('button', { type: 'button', onclick: function () {
-          if (navigator.clipboard) navigator.clipboard.writeText(extra.recovery).then(function () { toast('Codice copiato.'); });
-        } }, 'Copia il codice')));
-    }
+    if (extra && extra.done) box.append(h('p', { class: 'done-note' }, extra.done));
     worksList(box);
     accountDetails(box);
     box.append(h('p', { class: 'actions-inline account-end' },
@@ -3297,6 +3308,8 @@
     $('btn-help').addEventListener('click', function () { closeMenu(); $('dlg-help').showModal(); });
     $('btn-photos').addEventListener('click', function () { closeMenu(); openPhotos(); });
     $('btn-bug').addEventListener('click', openReport);
+    $('btn-support').addEventListener('click', function () { closeMenu(); openSupport(); });
+    $('support-send').addEventListener('click', sendSupport);
     $('bug-send').addEventListener('click', sendReport);
     $('btn-open-excel').addEventListener('click', function () { closeMenu(); $('file-input').click(); });
     $('dlg-import').addEventListener('close', function () {

@@ -16,12 +16,15 @@ function doPost(e) {
     return risposta({ ok: false });
   }
   if (dati.segreto !== SEGRETO || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dati.a || '')) return risposta({ ok: false });
-  MailApp.sendEmail({
+  const mail = {
     to: dati.a,
     subject: String(dati.oggetto).slice(0, 150),
-    body: String(dati.testo).slice(0, 2000),
+    body: String(dati.testo).slice(0, 4000),
     name: 'Casellino',
-  });
+  };
+  // a message to the support: the answer goes to who wrote it
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dati.rispondiA || '')) mail.replyTo = dati.rispondiA;
+  MailApp.sendEmail(mail);
   return risposta({ ok: true });
 }
 

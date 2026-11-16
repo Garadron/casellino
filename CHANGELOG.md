@@ -1,5 +1,26 @@
 # Registro delle versioni
 
+## v0.37.0 · 2026-11-17 · Account aggiornati: email obbligatoria, niente codice di recupero, Supporto
+
+La Regola Mondiale «Gli account sono uguali in tutte le app» è cambiata (Garadron, 16 novembre 2026, nella chat del
+Leggio).
+
+- **Ci si registra con nome utente, email e password**: l'email torna obbligatoria (in v0.36.0 era facoltativa) e
+  ogni email vale per un account solo. **Si entra con il nome utente oppure con l'email.**
+- **Niente più codice di recupero da conservare.** La password dimenticata si cambia solo con il codice di 6 cifre
+  per email: basta scrivere l'email dell'account. Gli account vecchi senza email la aggiungono alla prima entrata
+  (la finestra dell'account la chiede da sola). Se le email non funzionano, l'app dice che per ora la password non si
+  può recuperare e porta al Supporto.
+- **Il Supporto**: «Altro → ✉️ Supporto», anche senza account. C'è l'email del supporto e un modulo: il messaggio parte
+  dal server con la versione del programma e il tipo di dispositivo, mai il lavoro; la risposta arriva all'email
+  scritta nel modulo. Al massimo 5 messaggi al giorno da uno stesso indirizzo, dentro i 90 al giorno di tutte le email.
+- **Il programmino di Google** sa mettere il «rispondi a» (`tools/posta-google.gs`).
+- **L'informativa sulla privacy** aggiornata (17 novembre 2026): l'email, il Supporto, niente codice di recupero.
+- Sistemato: nelle finestre i campi di una colonna erano alti 200 punti (si vedeva un buco sotto l'email).
+- File: `server/src/worker.js`, `tools/posta-google.gs`, `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`,
+  `app/privacy.html`, `tests/test_server.js`, `tests/test_account_pagina.js`, `CLAUDE.md`, `PROMEMORIA.md`,
+  `Casellino.html`, `sito/`.
+
 ## v0.36.0 · 2026-11-16 · Account come in tutte le app: privacy, email facoltativa, password troppo facili
 
 Controllo della Regola Mondiale «Gli account sono uguali in tutte le app» (Garadron, 16 novembre 2026). Il resto

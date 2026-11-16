@@ -5,6 +5,12 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
+0. **Pubblicare il server** (v0.36.0 e v0.37.0: email obbligatoria, si entra anche con l'email, niente codice di
+   recupero, password più usate, Supporto): serve il «sì, pubblica il server» di Garadron; non c'è niente da cambiare
+   nel database. Poi Garadron aggiorna il programmino di Google, perché le risposte del Supporto tornino a chi ha
+   scritto: su script.google.com (con il Gmail di Casellino, in una finestra privata) incolla di nuovo
+   `dati/posta-google.gs`, salva, «Esegui il deployment → Gestisci deployment → ✏️ → Versione: Nuova versione →
+   Esegui il deployment». L'indirizzo resta lo stesso.
 1. **Prova di stampa** del PDF (A4 orizzontale, «dimensioni reali / 100%») appoggiata alle caselle del mobile vero:
    larghezza delle caselle, caselle oblique, colori scuri. Se non combacia, si aggiunge una regolazione della larghezza
    nel PDF (proposta, non fatta).
