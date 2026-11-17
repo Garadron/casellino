@@ -1,5 +1,14 @@
 # Registro delle versioni
 
+## v0.37.1 · 2026-11-17 · La proposta per l'azienda in una cartella sua
+
+- Garadron (17 novembre 2026): l'anteprima per l'azienda si sposta dentro il progetto, in una cartella sua,
+  **`Proposta per l'azienda/`**, privata come `dati/` (mai su GitHub: c'è il nome, il logo e le parole dell'azienda).
+  `python tools/build.py --anteprima` scrive lì. Nella stessa cartella ci sono la documentazione, le slide e la mappa
+  concettuale da consegnare, firmate da Garadron, con i programmini per rifarle.
+- README aggiornato: niente più codice di recupero, l'accesso con l'email, il Supporto e la Privacy.
+- File: `tools/build.py`, `app/src/ui.js` (solo commenti), `.gitignore`, `README.md`, `CLAUDE.md`, `PROMEMORIA.md`.
+
 ## v0.37.0 · 2026-11-17 · Account aggiornati: email obbligatoria, niente codice di recupero, Supporto
 
 La Regola Mondiale «Gli account sono uguali in tutte le app» è cambiata (Garadron, 16 novembre 2026, nella chat del

@@ -18,9 +18,13 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
    (la conferma arriva da sola, gratis) e salvare.
 3. **Guida privata con le foto vere** pronta: `dati/Guida foto - zona 2 (privata).pdf`, da mandare ai colleghi (non
    pubblicarla: logo, indirizzo del centro, targa). Garadron dice se la guida pubblica resta con i disegni.
-4. **Anteprima per l'azienda** pronta (v0.32.0, 12 novembre 2026): `dati/anteprima/Casellino anteprima.html`, con i
-   colori esatti, il logo e le parole ufficiali; in `dati/anteprima/` anche le parole e le sigle trovate. Garadron la
-   prova e decide come presentarla, e che cosa del nome dell'azienda va nel programma pubblico.
+4. **Proposta per l'azienda pronta** (17 novembre 2026), nella cartella privata `Proposta per l'azienda/` (mai su
+   GitHub; elenco in `Leggimi.txt`): documentazione (PDF e Word), slide (PowerPoint e PDF), mappa concettuale, tutte
+   firmate, e l'anteprima dell'app. Garadron la rilegge, poi la presenta a PCL; decide che cosa del nome dell'azienda
+   va nel programma pubblico.
+5. **Regole Mondiali nuove da applicare** (16 novembre 2026): tasto sole/luna per tutti (oggi il tema segue solo il
+   telefono), tasto **Condividi** con il link e il codice QR, tutorial che indica i tasti veri con una prova
+   automatica, il progetto di Google rinominato «Posta di Casellino».
 
 ## Più avanti (solo cose gratuite)
 

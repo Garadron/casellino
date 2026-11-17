@@ -55,7 +55,7 @@ tutti i postini, non solo alla zona di Garadron.
   raccolti o i servizi usati).
 - **La proposta all'azienda** (Garadron, 12 novembre 2026): un'anteprima privata con i colori, il logo, le parole e
   il nome ufficiale del programma scelti per l'azienda (`python tools/build.py --anteprima`, tutto in
-  `dati/anteprima/`, mai su GitHub). Il programma pubblico resta Casellino, senza nome né logo dell'azienda, finché
+  nella cartella `Proposta per l'azienda/`, mai su GitHub). Il programma pubblico resta Casellino, senza nome né logo dell'azienda, finché
   l'azienda non dà il suo sì per iscritto.
 - La mappa per ora mostra un indirizzo alla volta su Google Maps; il percorso intero verrà dopo (gratis, OpenStreetMap).
 

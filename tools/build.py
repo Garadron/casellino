@@ -8,7 +8,7 @@
 
 The version shown in the program comes from the first "## v..." line of CHANGELOG.md.
 Run it after every change in app/:   python tools/build.py
-The yellow-and-blue preview (private, in dati/anteprima/):   python tools/build.py --anteprima
+The yellow-and-blue preview (private, in «Proposta per l'azienda/Anteprima/»):   python tools/build.py --anteprima
 """
 import re
 import shutil
@@ -82,12 +82,12 @@ def build():
 
 
 def preview():
-    """A preview of the yellow-and-blue colours, in one file in dati/anteprima/ (private: it carries what belongs to
+    """A preview of the yellow-and-blue colours, in one file in «Proposta per l'azienda/Anteprima/» (private, never on GitHub: it carries what belongs to
     the company it is shown to). From that folder, when they are there: testo.txt (the note on top), logo-azienda.svg
     (the logo, cleaned: only shapes and colours), termini.txt (their words, "ours = theirs", one pair a line).
     The program does not change."""
     import json
-    out_dir = ROOT / "dati" / "anteprima"
+    out_dir = ROOT / "Proposta per l'azienda" / "Anteprima"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     def read(name):

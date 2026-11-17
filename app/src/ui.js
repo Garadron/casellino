@@ -2283,7 +2283,7 @@
         h('button', { type: 'button', 'aria-label': 'Chiudi la nota', onclick: function () { note.remove(); } }, '✕'));
       document.body.prepend(note);
     }
-    if (preview.logo) {  // the logo of the company the preview is for (an SVG from dati/anteprima/, cleaned by hand)
+    if (preview.logo) {  // the logo of the company the preview is for (an SVG from the private proposal folder, cleaned by hand)
       const logo = h('span', { class: 'preview-logo' });
       logo.innerHTML = preview.logo;
       document.querySelector('.brand').prepend(logo);
@@ -2292,7 +2292,7 @@
   }
 
   /*
-   * The words of the company the preview is for (pairs [words, theirs], from dati/anteprima/termini.txt, in that
+   * The words of the company the preview is for (pairs [words, theirs], from the private termini.txt, in that
    * order: a few words first, e.g. to add an article, then the single word): they replace ours in everything the
    * page shows, now and later, with the same capital letters. What the person writes (the route text) stays as it
    * is: the program reads both words.

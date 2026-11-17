@@ -16,3 +16,6 @@ node_modules/
 .dev.vars
 
 *.lnk
+
+# the proposal to the company: its name, logo and words, never on GitHub
+/Proposta per l'azienda/
