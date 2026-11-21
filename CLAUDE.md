@@ -2,6 +2,8 @@
 
 Progetto di Garadron (Emmanuel), nato il 4 novembre 2026. Si parla e si scrive in italiano, semplice e senza gergo; il
 codice e i suoi commenti sono in inglese. Valgono le Regole Mondiali (le preferenze generali di Garadron).
+Tipi di progetto per le Regole Mondiali (17 novembre 2026): **tutti**, **programma** (una pagina e un'app) e
+**account** (gli account degli utenti).
 
 ## Che cosa serve
 
