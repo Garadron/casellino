@@ -423,11 +423,20 @@
       const pick = function () { select(p, idx); };
       const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '');
       const width = c.span * slot;
-      let inside, size, cls = '';
-      if (c.second) {
+      let inside, size, cls = '', paint = 'background-color:' + bg;
+      const two = C.twoStreets(proj, c);
+      if (two && two.side) {   // two streets, two numbers side by side: each half with its street's colour
+        size = Math.min(fitPx(two.left, width / 2, 13), fitPx(two.right, width / 2, 13));
+        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink }, two.left),
+          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 }, two.right)];
+        cls = ' halves';
+      } else if (c.second) {
         size = diagPx(c.top, c.second, width, 32);
-        inside = [h('span', { class: 'd1' }, c.top), h('span', { class: 'd2' }, c.second)];
+        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 } : { class: 'd2' }, c.second)];
         cls = ' diag';
+        // two streets: the upper-left triangle has the first street's colour, the lower-right one the second's
+        if (two) paint += ';background-image:linear-gradient(to bottom right, transparent calc(50% - 0.75px), ' + ink + ' 50%, transparent calc(50% + 0.75px)),' +
+          'linear-gradient(to bottom right, #' + two.color + ' 50%, #' + two.color2 + ' 50%)';
       } else {
         const long = /\s/.test(c.top) && c.top.length > 4 * c.span;
         size = long ? fitPx(c.top, width, 10, 2) : fitPx(c.top, width, 13);
@@ -436,7 +445,7 @@
       }
       el.append(h.apply(null, ['div', {
         class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + mark,
-        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';background-color:' + bg + ';color:' + ink +
+        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink +
           ';--ink:' + ink + ';font-size:' + size + 'px',
         title: tip, onclick: pick, 'data-idx': idx,
       }].concat(inside)));
@@ -445,6 +454,18 @@
       const idx = s.cells.findIndex(function (c) { return c.start === r.start; });
       const width = (r.end - r.start + 1) * slot;
       const two = !!r.street2;
+      if (two && r.key2) {   // two streets: the line split in two, each name on its street's colour
+        const px = Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8));
+        el.append(h('div', {
+          class: 'cell run two halves', title: r.street + ' / ' + r.street2 + (r.town ? ' · ' + r.town : ''),
+          style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';font-size:' + px + 'px',
+          onclick: function () { select(p, idx); },
+        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) },
+          h('span', { class: 'run-name' }, r.street)),
+        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) },
+          h('span', { class: 'run-name' }, r.street2))));
+        return;
+      }
       el.append(h('div', {
         class: 'cell run' + (two ? ' two' : ''), title: r.street + (two ? ' / ' + r.street2 : '') + (r.town ? ' · ' + r.town : ''),
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +

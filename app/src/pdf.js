@@ -55,6 +55,10 @@
   Canvas.prototype.fill = function (x, y, w, h, hex) {
     this.ops.push(rgb(hex) + ' rg ' + n(x) + ' ' + n(PAGE.h - y - h) + ' ' + n(w) + ' ' + n(h) + ' re f');
   };
+  // A filled shape through the points [[x, y], ...] (the triangles of a pigeonhole with two streets).
+  Canvas.prototype.poly = function (points, hex) {
+    this.ops.push(rgb(hex) + ' rg ' + points.map(function (p, i) { return n(p[0]) + ' ' + n(PAGE.h - p[1]) + (i ? ' l' : ' m'); }).join(' ') + ' h f');
+  };
   Canvas.prototype.line = function (x1, y1, x2, y2, width, hex) {
     this.ops.push(rgb(hex || '111111') + ' RG ' + n(width) + ' w ' + n(x1) + ' ' + n(PAGE.h - y1) + ' m ' + n(x2) + ' ' + n(PAGE.h - y2) + ' l S');
   };
@@ -103,13 +107,24 @@
       const a = Math.max(c.start, piece.from), b = Math.min(c.end, piece.to);
       const x = xOf(a), w = (b - a + 1) * SLOT;
       const ink = Core.textColorOf(project, c.key);
+      const pair = Core.twoStreets(project, c);   // two streets: each number on its street's colour
       cv.fill(x, yTop, w, TOP, Core.colorOf(project, c.key));
+      if (pair && c.second) cv.poly([[x + w, yTop], [x + w, yTop + TOP], [x, yTop + TOP]], pair.color2);
+      if (pair && pair.side) {
+        cv.fill(x + w / 2, yTop, w / 2, TOP, pair.color2);
+        cv.line(x + w / 2, yTop, x + w / 2, yTop + TOP, THIN);
+        const s = Math.min(20, (w / 2 - 3) / Math.max(1, textWidth(pair.left, 1)), (w / 2 - 3) / Math.max(1, textWidth(pair.right, 1)), TOP * 0.8);
+        cv.centered(x, yTop, w / 2, TOP, pair.left, s, pair.ink);
+        cv.centered(x + w / 2, yTop, w / 2, TOP, pair.right, s, pair.ink2);
+        if (c.other) cv.line(x + 2.5, yBottom - 2.2, x + w - 2.5, yBottom - 2.2, 3, ink);
+        return;
+      }
       if (c.other) cv.line(x + 2.5, yBottom - 2.2, x + w - 2.5, yBottom - 2.2, 3, ink);  // for another line: underlined
       if (c.second) {
         const s = diagonalSize(c.top, c.second, w, TOP);
         cv.line(x, yTop + TOP, x + w, yTop, THIN, ink);
         cv.text(x + 3, yTop + 2 + 0.72 * s, s, c.top, ink);
-        cv.text(x + w - 3 - textWidth(c.second, s), yTop + TOP - 3, s, c.second, ink);
+        cv.text(x + w - 3 - textWidth(c.second, s), yTop + TOP - 3, s, c.second, pair ? pair.ink2 : ink);
         return;
       }
       const two = /\s/.test(c.top) && c.top.length > 6 ? twoLines(c.top, w) : null;
@@ -122,9 +137,10 @@
     piece.runs.forEach(function (r) {
       const a = Math.max(r.start, piece.from), b = Math.min(r.end, piece.to);
       cv.fill(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, Core.colorOf(project, r.key));
-      if (r.street2) {   // two names, one above the other
+      if (r.street2) {   // two names, one above the other; two streets: the lower half in the second one's colour
+        if (r.key2) cv.fill(xOf(a), yBottom + BOTTOM / 2, (b - a + 1) * SLOT, BOTTOM / 2, Core.colorOf(project, r.key2));
         cv.centered(xOf(a), yBottom + 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street, 9, Core.textColorOf(project, r.key));
-        cv.centered(xOf(a), yBottom + BOTTOM / 2 - 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street2, 9, Core.textColorOf(project, r.key));
+        cv.centered(xOf(a), yBottom + BOTTOM / 2 - 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street2, 9, Core.textColorOf(project, r.key2 || r.key));
       } else cv.centered(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, r.street, 16, Core.textColorOf(project, r.key));
     });
     // lines: between pigeonholes and between streets (thin), between the two rows (thin), around (medium)

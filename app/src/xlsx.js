@@ -366,7 +366,16 @@
       const e = edges(a, b);
       // for another line: a thick line under the number, in the colour of the writing
       const under = c.other ? { b: 'thick', bc: ink } : { b: 'thin' };
-      if (c.second) {
+      // two streets, two numbers side by side over two or more slots: each number on its own slots, with its
+      // street's colour (Excel cannot split one cell in two colours: it blends them)
+      const two = Core.twoStreets(project, c);
+      if (two && two.side && b > a) {
+        const mid = a + Math.ceil((b - a + 1) / 2) - 1;
+        sb.block(top, col(a), top, col(mid), two.left,
+          Object.assign({ bold: true, text: true, fill: two.color, color: two.ink, border: Object.assign({ l: e.l, r: 'thin', t: 'medium' }, under) }, topTextStyle(two.left)));
+        sb.block(top, col(mid + 1), top, col(b), two.right,
+          Object.assign({ bold: true, text: true, fill: two.color2, color: two.ink2, border: Object.assign({ l: 'thin', r: e.r, t: 'medium' }, under) }, topTextStyle(two.right)));
+      } else if (c.second) {
         const d = diagonalText(c.top, c.second, b - a + 1);
         sb.block(top, col(a), top, col(b), d.text,
           { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: Object.assign({ l: e.l, r: e.r, t: 'medium', d: ink }, under) });

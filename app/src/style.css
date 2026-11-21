@@ -335,6 +335,13 @@ a.btn, label.btn {
 .cell.run { grid-row: 2; letter-spacing: .02em; overflow: hidden; overflow: clip; }
 /* the street name stays in sight while the strip scrolls sideways (the strip is wider than the screen) */
 .cell.run .run-name { position: sticky; left: 4px; right: 4px; }
+/* a pigeonhole with two streets: two halves, each with its street's colour */
+.cell.top.halves { padding: 0; display: flex; align-items: stretch; }
+.cell.top.halves .h1, .cell.top.halves .h2 { flex: 1 1 50%; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; }
+.cell.top.halves .h1 { border-right: 1px solid rgba(0,0,0,.28); }
+.cell.run.halves { padding: 0; display: flex; flex-direction: column; align-items: stretch; justify-content: stretch; line-height: 1; }
+.cell.run.halves .half { flex: 1 1 50%; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.cell.run.halves .half + .half { border-top: 1px solid rgba(0,0,0,.28); }
 .cell.run.two { line-height: 1.05; white-space: nowrap; text-align: center; }
 .cell.foreign { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.0) 0 6px, rgba(255,255,255,.18) 6px 8px); }
 .cell.top.diag.foreign { background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px)); }

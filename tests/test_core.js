@@ -166,6 +166,35 @@ test('without a next sub-zone the extra pigeonholes are reported', function () {
   assert.ok(/più lungo/.test(a.warnings[0].text));
 });
 
+test('two streets in one pigeonhole: each keeps its colour, on screen, in the PDF and in the Excel', function () {
+  const Pdf = require('../app/src/pdf.js');
+  const p = Core.newProject();
+  const a = Core.newSubzone('9A', 'Borgo'); a.modules = { alaA: false, casello: true, alaB: false };
+  // VIA DEL PONTE is only the second street of its pigeonholes: it still gets a colour of its own
+  a.route = 'VIA DEL MULINO: 1, 3\nVIA DEL MULINO/VIA DEL PONTE: 10|37 (2), 2/4, 8\nVIA DEI FIORI: 5';
+  p.subzones = [a];
+  Core.assignColors(p);
+  const mulino = Core.streetKey('VIA DEL MULINO', 'Borgo'), ponte = Core.streetKey('VIA DEL PONTE', 'Borgo');
+  assert.ok(p.streets[ponte] && p.streets[ponte].color !== p.streets[mulino].color, 'la seconda via ha il suo colore');
+  const strip = Core.analyseProject(p)[0].casello[0].layout;
+  const pair = strip.cells.find(function (c) { return c.top === '10|37'; });
+  const t = Core.twoStreets(p, pair);
+  assert.deepStrictEqual([t.side, t.left, t.right, t.color, t.color2], [true, '10', '37', p.streets[mulino].color, p.streets[ponte].color]);
+  assert.strictEqual(Core.twoStreets(p, strip.cells.find(function (c) { return c.second === '4'; })).side, false, '2/4: i due triangoli');
+  assert.strictEqual(Core.twoStreets(p, strip.cells.find(function (c) { return c.top === '1'; })), null, 'una via sola: niente da dividere');
+  const run = strip.runs.find(function (r) { return r.street2; });
+  assert.strictEqual(run.key2, ponte, 'la riga delle vie sa il colore della seconda');
+  // Excel (it blends two colours in one cell): 10|37 over two slots becomes 10 and 37, each in its slot and colour
+  const sheet = Xlsx.buildWorkbookFiles(p).find(function (f) { return f.name === 'xl/worksheets/sheet1.xml'; }).data;
+  assert.ok(/<c r="[A-Z]+(\d+)" s="(\d+)"><v>10<\/v><\/c><c r="[A-Z]+\1" s="(?!\2")\d+"><v>37<\/v><\/c>/.test(sheet),
+    'Excel: il 10 e il 37 in due caselle vicine, con due colori');
+  // PDF: the lower half of the street line and the right half of 10|37 in the second street's colour
+  const pdf = Buffer.from(Pdf.buildPdf(JSON.parse(JSON.stringify(p)), 'prova').bytes).toString('latin1');
+  const hex = p.streets[ponte].color;
+  const rgb = [0, 2, 4].map(function (i) { return (parseInt(hex.slice(i, i + 2), 16) / 255).toFixed(3); }).join(' ');
+  assert.ok(pdf.indexOf(rgb + ' rg') >= 0 && / h f/.test(pdf), 'PDF: colore della seconda via e triangolo');
+});
+
 test('colours: strong contrast, never alike next to each other, light and dark alternate', function () {
   // every colour has readable writing on it
   const lum = function (hex) {

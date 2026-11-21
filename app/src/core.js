@@ -616,7 +616,7 @@
         Math.floor(c.end / SLOTS_PER_PAGE) === Math.floor(cur.start / SLOTS_PER_PAGE);
       if (sameRun) { cur.end = c.end; return; }
       if (free) {
-        cur = { key: c.key, street: c.street, street2: c.street2, town: c.town, start: c.start, end: Math.min(c.end, capacity - 1) };
+        cur = { key: c.key, street: c.street, street2: c.street2, key2: c.key2, town: c.town, start: c.start, end: Math.min(c.end, capacity - 1) };
         runs.push(cur);
       } else cur = null;
     });
@@ -1042,7 +1042,9 @@
   function subzoneStreets(project) {
     return analyseProject(project).map(function (a) {
       const keys = [];
-      allCells(a).forEach(function (c) { if (c.key && keys.indexOf(c.key) < 0) keys.push(c.key); });
+      allCells(a).forEach(function (c) {
+        [c.key, c.key2].forEach(function (k) { if (k && keys.indexOf(k) < 0) keys.push(k); });   // the second street has its own colour too
+      });
       return keys;
     });
   }
@@ -1126,6 +1128,22 @@
       changed = true;
     });
     return changed;
+  }
+
+  /*
+   * A pigeonhole with two streets (Garadron, 21 November 2026: "VIA A/VIA B: 10|37", the same people or the same
+   * workplace at two addresses): each street keeps its colour. The street line is split in two, the first street
+   * above and the second below; the house numbers follow the same order: two side by side ("10|37", "61\59",
+   * "67-69") split the pigeonhole in a left and a right half, two split by "/" in the two triangles; a single
+   * number stays in the colour of the first street. Returns null for an ordinary pigeonhole, otherwise
+   * { left, right } for side-by-side numbers (or null) and the two colours with their writing.
+   */
+  function twoStreets(project, c) {
+    if (!c.key2) return null;
+    const m = c.second ? null : /^\s*([^|\\-]+?)\s*(?:[|\\]|-)\s*([^|\\-]+?)\s*$/.exec(String(c.top || ''));
+    return { left: m ? m[1] : '', right: m ? m[2] : '', side: !!m,
+      color: colorOf(project, c.key), ink: textColorOf(project, c.key),
+      color2: colorOf(project, c.key2), ink2: textColorOf(project, c.key2) };
   }
 
   function colorOf(project, key) {
@@ -1533,6 +1551,7 @@
     rowsToRoute: rowsToRoute,
     assignColors: assignColors,
     colorOf: colorOf,
+    twoStreets: twoStreets,
     textColorOf: textColorOf,
     similarColors: similarColors,
     subzoneStreets: subzoneStreets,

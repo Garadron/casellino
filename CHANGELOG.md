@@ -1,5 +1,24 @@
 # Registro delle versioni
 
+## v0.38.0 · 2026-11-21 · Una casella con due vie: ognuna con il suo colore
+
+Idea di Garadron (21 novembre 2026): una casella che tiene due vie (per esempio `VIA DEL MULINO/VIA DEL PONTE: 10|37 (2)`:
+la stessa famiglia o la stessa ditta in due vie, con la posta portata in un posto solo) non deve far sparire il
+colore della seconda via. Vale per tutte le caselle con due vie, in ogni casello.
+
+- **La riga delle vie si divide in due in orizzontale**: sopra la prima via con il suo colore, sotto la seconda con il
+  suo.
+- **I civici seguono lo stesso ordine**: due uno accanto all'altro (`10|37`, `61\59`, `67-69`) dividono la casella a
+  metà, il primo con il colore della prima via e il secondo con quello della seconda; con la riga obliqua (`6/9`) si
+  dividono i due triangoli; un civico solo resta del colore della prima via.
+- Sullo schermo e nel **PDF** tutto come sopra. Nell'**Excel** due civici su due caselle o più vanno ognuno nelle sue
+  caselle, con il suo colore; la riga delle vie e la casella singola restano del colore della prima via, perché Excel
+  non sa dividere una cella in due colori (le sfuma: provato con Excel vero, misure del modello invariate).
+- Sistemato: una via che compariva solo come seconda di una casella non aveva un colore suo e restava bianca.
+- «Come si scrive» lo spiega, e accetta anche `10|37` tra i civici uno accanto all'altro.
+- File: `app/src/core.js` (`twoStreets`, il colore della seconda via), `app/src/ui.js`, `app/src/style.css`,
+  `app/src/pdf.js`, `app/src/xlsx.js`, `app/index.src.html`, `tests/test_core.js`, `Casellino.html`, `sito/`.
+
 ## v0.37.1 · 2026-11-17 · La proposta per l'azienda in una cartella sua
 
 - Garadron (17 novembre 2026): l'anteprima per l'azienda si sposta dentro il progetto, in una cartella sua,

@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.37.1';</script>
+<script>window.CASELLINO_VERSION = '0.38.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -353,6 +353,13 @@ a.btn, label.btn {
 .cell.run { grid-row: 2; letter-spacing: .02em; overflow: hidden; overflow: clip; }
 /* the street name stays in sight while the strip scrolls sideways (the strip is wider than the screen) */
 .cell.run .run-name { position: sticky; left: 4px; right: 4px; }
+/* a pigeonhole with two streets: two halves, each with its street's colour */
+.cell.top.halves { padding: 0; display: flex; align-items: stretch; }
+.cell.top.halves .h1, .cell.top.halves .h2 { flex: 1 1 50%; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; }
+.cell.top.halves .h1 { border-right: 1px solid rgba(0,0,0,.28); }
+.cell.run.halves { padding: 0; display: flex; flex-direction: column; align-items: stretch; justify-content: stretch; line-height: 1; }
+.cell.run.halves .half { flex: 1 1 50%; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.cell.run.halves .half + .half { border-top: 1px solid rgba(0,0,0,.28); }
 .cell.run.two { line-height: 1.05; white-space: nowrap; text-align: center; }
 .cell.foreign { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.0) 0 6px, rgba(255,255,255,.18) 6px 8px); }
 .cell.top.diag.foreign { background-image: linear-gradient(to bottom right, transparent calc(50% - 0.75px), var(--ink, #111) 50%, transparent calc(50% + 0.75px)); }
@@ -776,7 +783,7 @@ input[type="file"]::file-selector-button {
     <table class="help">
       <tr><td><code>VIA DEI TIGLI: 1, 3, 5</code></td><td>tre caselle, una per civico</td></tr>
       <tr><td><code>2/4</code></td><td>una casella divisa da una riga obliqua (da in basso a sinistra a in alto a destra): 2 in alto a sinistra, 4 in basso a destra. I numeri non toccano mai la riga; se sono lunghi, fai la casella larga due: <code>20G/20H (2)</code></td></tr>
-      <tr><td><code>61\59</code> o <code>67-69</code></td><td>una casella con due civici uno accanto all'altro</td></tr>
+      <tr><td><code>61\59</code>, <code>67-69</code> o <code>10|37</code></td><td>una casella con due civici uno accanto all'altro</td></tr>
       <tr><td><code>1..15</code></td><td>1, 3, 5 … 15 (resta sullo stesso lato della via)</td></tr>
       <tr><td><code>14..2</code></td><td>14, 12 … 2 (all'indietro)</td></tr>
       <tr><td><code>1..6</code></td><td>1, 2, 3, 4, 5, 6 (tutti)</td></tr>
@@ -787,7 +794,7 @@ input[type="file"]::file-selector-button {
       <tr><td><code>vuota</code></td><td>una casella vuota della via</td></tr>
       <tr><td><code>vuote 3</code> (riga da sola)</td><td>tre caselle vuote, senza via</td></tr>
       <tr><td><code>CASCINA ALTA (2)</code> (riga senza due punti)</td><td>una casella con il nome scritto sotto</td></tr>
-      <tr><td><code>C.NA ALTA / C.NA BASSA (2)</code></td><td>una casella con due nomi sotto, uno sopra l'altro (per esempio due cascine delle stesse famiglie). Va anche con i civici: <code>VIA X / VIA Y: 1, 2</code>. La casella ha il colore del primo; nell'elenco delle vie ci sono tutti e due.</td></tr>
+      <tr><td><code>C.NA ALTA / C.NA BASSA (2)</code></td><td>una casella con due nomi sotto, uno sopra l'altro (per esempio due cascine delle stesse famiglie). Va anche con i civici: <code>VIA X / VIA Y: 10|37 (2)</code>, per esempio la stessa famiglia o la stessa ditta in due vie, con la posta portata in un posto solo. <b>Ognuna tiene il suo colore</b>: la riga delle vie si divide in due, sopra la prima e sotto la seconda; i civici seguono lo stesso ordine (il 10 col colore della prima via, il 37 della seconda; in <code>6/9</code> i due triangoli). Un civico solo resta del colore della prima. Nell'Excel la riga delle vie resta del colore della prima: Excel non sa dividere una cella in due colori (nel PDF sì).</td></tr>
       <tr><td><code>FINE STRISCIA</code></td><td>il resto della striscia resta vuoto: si continua sulla striscia dopo (a destra, o la fila sotto)</td></tr>
       <tr><td><code>FINE FILA</code></td><td>il resto della fila resta vuoto: si continua all'inizio della fila sotto</td></tr>
       <tr><td><code>STRISCIA VUOTA</code></td><td>salta una striscia intera</td></tr>
@@ -2231,7 +2238,7 @@ input[type="file"]::file-selector-button {
         Math.floor(c.end / SLOTS_PER_PAGE) === Math.floor(cur.start / SLOTS_PER_PAGE);
       if (sameRun) { cur.end = c.end; return; }
       if (free) {
-        cur = { key: c.key, street: c.street, street2: c.street2, town: c.town, start: c.start, end: Math.min(c.end, capacity - 1) };
+        cur = { key: c.key, street: c.street, street2: c.street2, key2: c.key2, town: c.town, start: c.start, end: Math.min(c.end, capacity - 1) };
         runs.push(cur);
       } else cur = null;
     });
@@ -2657,7 +2664,9 @@ input[type="file"]::file-selector-button {
   function subzoneStreets(project) {
     return analyseProject(project).map(function (a) {
       const keys = [];
-      allCells(a).forEach(function (c) { if (c.key && keys.indexOf(c.key) < 0) keys.push(c.key); });
+      allCells(a).forEach(function (c) {
+        [c.key, c.key2].forEach(function (k) { if (k && keys.indexOf(k) < 0) keys.push(k); });   // the second street has its own colour too
+      });
       return keys;
     });
   }
@@ -2741,6 +2750,22 @@ input[type="file"]::file-selector-button {
       changed = true;
     });
     return changed;
+  }
+
+  /*
+   * A pigeonhole with two streets (Garadron, 21 November 2026: "VIA A/VIA B: 10|37", the same people or the same
+   * workplace at two addresses): each street keeps its colour. The street line is split in two, the first street
+   * above and the second below; the house numbers follow the same order: two side by side ("10|37", "61\59",
+   * "67-69") split the pigeonhole in a left and a right half, two split by "/" in the two triangles; a single
+   * number stays in the colour of the first street. Returns null for an ordinary pigeonhole, otherwise
+   * { left, right } for side-by-side numbers (or null) and the two colours with their writing.
+   */
+  function twoStreets(project, c) {
+    if (!c.key2) return null;
+    const m = c.second ? null : /^\s*([^|\\-]+?)\s*(?:[|\\]|-)\s*([^|\\-]+?)\s*$/.exec(String(c.top || ''));
+    return { left: m ? m[1] : '', right: m ? m[2] : '', side: !!m,
+      color: colorOf(project, c.key), ink: textColorOf(project, c.key),
+      color2: colorOf(project, c.key2), ink2: textColorOf(project, c.key2) };
   }
 
   function colorOf(project, key) {
@@ -3148,6 +3173,7 @@ input[type="file"]::file-selector-button {
     rowsToRoute: rowsToRoute,
     assignColors: assignColors,
     colorOf: colorOf,
+    twoStreets: twoStreets,
     textColorOf: textColorOf,
     similarColors: similarColors,
     subzoneStreets: subzoneStreets,
@@ -3541,7 +3567,16 @@ input[type="file"]::file-selector-button {
       const e = edges(a, b);
       // for another line: a thick line under the number, in the colour of the writing
       const under = c.other ? { b: 'thick', bc: ink } : { b: 'thin' };
-      if (c.second) {
+      // two streets, two numbers side by side over two or more slots: each number on its own slots, with its
+      // street's colour (Excel cannot split one cell in two colours: it blends them)
+      const two = Core.twoStreets(project, c);
+      if (two && two.side && b > a) {
+        const mid = a + Math.ceil((b - a + 1) / 2) - 1;
+        sb.block(top, col(a), top, col(mid), two.left,
+          Object.assign({ bold: true, text: true, fill: two.color, color: two.ink, border: Object.assign({ l: e.l, r: 'thin', t: 'medium' }, under) }, topTextStyle(two.left)));
+        sb.block(top, col(mid + 1), top, col(b), two.right,
+          Object.assign({ bold: true, text: true, fill: two.color2, color: two.ink2, border: Object.assign({ l: 'thin', r: e.r, t: 'medium' }, under) }, topTextStyle(two.right)));
+      } else if (c.second) {
         const d = diagonalText(c.top, c.second, b - a + 1);
         sb.block(top, col(a), top, col(b), d.text,
           { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: Object.assign({ l: e.l, r: e.r, t: 'medium', d: ink }, under) });
@@ -3823,6 +3858,10 @@ input[type="file"]::file-selector-button {
   Canvas.prototype.fill = function (x, y, w, h, hex) {
     this.ops.push(rgb(hex) + ' rg ' + n(x) + ' ' + n(PAGE.h - y - h) + ' ' + n(w) + ' ' + n(h) + ' re f');
   };
+  // A filled shape through the points [[x, y], ...] (the triangles of a pigeonhole with two streets).
+  Canvas.prototype.poly = function (points, hex) {
+    this.ops.push(rgb(hex) + ' rg ' + points.map(function (p, i) { return n(p[0]) + ' ' + n(PAGE.h - p[1]) + (i ? ' l' : ' m'); }).join(' ') + ' h f');
+  };
   Canvas.prototype.line = function (x1, y1, x2, y2, width, hex) {
     this.ops.push(rgb(hex || '111111') + ' RG ' + n(width) + ' w ' + n(x1) + ' ' + n(PAGE.h - y1) + ' m ' + n(x2) + ' ' + n(PAGE.h - y2) + ' l S');
   };
@@ -3871,13 +3910,24 @@ input[type="file"]::file-selector-button {
       const a = Math.max(c.start, piece.from), b = Math.min(c.end, piece.to);
       const x = xOf(a), w = (b - a + 1) * SLOT;
       const ink = Core.textColorOf(project, c.key);
+      const pair = Core.twoStreets(project, c);   // two streets: each number on its street's colour
       cv.fill(x, yTop, w, TOP, Core.colorOf(project, c.key));
+      if (pair && c.second) cv.poly([[x + w, yTop], [x + w, yTop + TOP], [x, yTop + TOP]], pair.color2);
+      if (pair && pair.side) {
+        cv.fill(x + w / 2, yTop, w / 2, TOP, pair.color2);
+        cv.line(x + w / 2, yTop, x + w / 2, yTop + TOP, THIN);
+        const s = Math.min(20, (w / 2 - 3) / Math.max(1, textWidth(pair.left, 1)), (w / 2 - 3) / Math.max(1, textWidth(pair.right, 1)), TOP * 0.8);
+        cv.centered(x, yTop, w / 2, TOP, pair.left, s, pair.ink);
+        cv.centered(x + w / 2, yTop, w / 2, TOP, pair.right, s, pair.ink2);
+        if (c.other) cv.line(x + 2.5, yBottom - 2.2, x + w - 2.5, yBottom - 2.2, 3, ink);
+        return;
+      }
       if (c.other) cv.line(x + 2.5, yBottom - 2.2, x + w - 2.5, yBottom - 2.2, 3, ink);  // for another line: underlined
       if (c.second) {
         const s = diagonalSize(c.top, c.second, w, TOP);
         cv.line(x, yTop + TOP, x + w, yTop, THIN, ink);
         cv.text(x + 3, yTop + 2 + 0.72 * s, s, c.top, ink);
-        cv.text(x + w - 3 - textWidth(c.second, s), yTop + TOP - 3, s, c.second, ink);
+        cv.text(x + w - 3 - textWidth(c.second, s), yTop + TOP - 3, s, c.second, pair ? pair.ink2 : ink);
         return;
       }
       const two = /\s/.test(c.top) && c.top.length > 6 ? twoLines(c.top, w) : null;
@@ -3890,9 +3940,10 @@ input[type="file"]::file-selector-button {
     piece.runs.forEach(function (r) {
       const a = Math.max(r.start, piece.from), b = Math.min(r.end, piece.to);
       cv.fill(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, Core.colorOf(project, r.key));
-      if (r.street2) {   // two names, one above the other
+      if (r.street2) {   // two names, one above the other; two streets: the lower half in the second one's colour
+        if (r.key2) cv.fill(xOf(a), yBottom + BOTTOM / 2, (b - a + 1) * SLOT, BOTTOM / 2, Core.colorOf(project, r.key2));
         cv.centered(xOf(a), yBottom + 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street, 9, Core.textColorOf(project, r.key));
-        cv.centered(xOf(a), yBottom + BOTTOM / 2 - 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street2, 9, Core.textColorOf(project, r.key));
+        cv.centered(xOf(a), yBottom + BOTTOM / 2 - 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street2, 9, Core.textColorOf(project, r.key2 || r.key));
       } else cv.centered(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, r.street, 16, Core.textColorOf(project, r.key));
     });
     // lines: between pigeonholes and between streets (thin), between the two rows (thin), around (medium)
@@ -5606,11 +5657,20 @@ input[type="file"]::file-selector-button {
       const pick = function () { select(p, idx); };
       const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '');
       const width = c.span * slot;
-      let inside, size, cls = '';
-      if (c.second) {
+      let inside, size, cls = '', paint = 'background-color:' + bg;
+      const two = C.twoStreets(proj, c);
+      if (two && two.side) {   // two streets, two numbers side by side: each half with its street's colour
+        size = Math.min(fitPx(two.left, width / 2, 13), fitPx(two.right, width / 2, 13));
+        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink }, two.left),
+          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 }, two.right)];
+        cls = ' halves';
+      } else if (c.second) {
         size = diagPx(c.top, c.second, width, 32);
-        inside = [h('span', { class: 'd1' }, c.top), h('span', { class: 'd2' }, c.second)];
+        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 } : { class: 'd2' }, c.second)];
         cls = ' diag';
+        // two streets: the upper-left triangle has the first street's colour, the lower-right one the second's
+        if (two) paint += ';background-image:linear-gradient(to bottom right, transparent calc(50% - 0.75px), ' + ink + ' 50%, transparent calc(50% + 0.75px)),' +
+          'linear-gradient(to bottom right, #' + two.color + ' 50%, #' + two.color2 + ' 50%)';
       } else {
         const long = /\s/.test(c.top) && c.top.length > 4 * c.span;
         size = long ? fitPx(c.top, width, 10, 2) : fitPx(c.top, width, 13);
@@ -5619,7 +5679,7 @@ input[type="file"]::file-selector-button {
       }
       el.append(h.apply(null, ['div', {
         class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + mark,
-        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';background-color:' + bg + ';color:' + ink +
+        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink +
           ';--ink:' + ink + ';font-size:' + size + 'px',
         title: tip, onclick: pick, 'data-idx': idx,
       }].concat(inside)));
@@ -5628,6 +5688,18 @@ input[type="file"]::file-selector-button {
       const idx = s.cells.findIndex(function (c) { return c.start === r.start; });
       const width = (r.end - r.start + 1) * slot;
       const two = !!r.street2;
+      if (two && r.key2) {   // two streets: the line split in two, each name on its street's colour
+        const px = Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8));
+        el.append(h('div', {
+          class: 'cell run two halves', title: r.street + ' / ' + r.street2 + (r.town ? ' · ' + r.town : ''),
+          style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';font-size:' + px + 'px',
+          onclick: function () { select(p, idx); },
+        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) },
+          h('span', { class: 'run-name' }, r.street)),
+        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) },
+          h('span', { class: 'run-name' }, r.street2))));
+        return;
+      }
       el.append(h('div', {
         class: 'cell run' + (two ? ' two' : ''), title: r.street + (two ? ' / ' + r.street2 : '') + (r.town ? ' · ' + r.town : ''),
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
