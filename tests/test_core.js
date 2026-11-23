@@ -301,24 +301,42 @@ test('optimizing the round: shortest order from the office and back', function (
   // one-way streets: the matrix is not symmetric
   const one = [[0, 1, 9], [9, 0, 1], [1, 9, 0]];
   assert.deepStrictEqual(Core.optimizeOrder(one), [1, 2]);
+  // never longer than the order of now
+  for (let seed = 1; seed <= 20; seed++) {
+    let x = seed;
+    const rnd = function () { x = (x * 16807) % 2147483647; return x / 2147483647; };
+    const pts = []; for (let i = 0; i < 25; i++) pts.push([rnd() * 10, rnd() * 10]);
+    const m = pts.map(function (a) { return pts.map(function (b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); }); });
+    const now = []; for (let i = 1; i < 25; i++) now.push(i);
+    assert.ok(Core.tourCost(m, Core.optimizeOrder(m)) <= Core.tourCost(m, now) + 1e-9, 'mai più lungo di adesso');
+  }
 });
 
-test('optimizing the round: the route text in the new order', function () {
+test('points put right by hand stay: by street and number, however they are written', function () {
   const p = Core.newProject();
   const sz = p.subzones[0];
   sz.town = 'Borgo';
-  sz.route = ['# inizio', 'VIA A: 1, 3', 'FINE STRISCIA', '# nota della B', 'VIA B: 2', '? NOMI: X', 'vuote 3',
-    'COMUNE: Villa', 'VIA C: 5', 'CONFINE: 1B'].join('\n');
-  const stops = Core.routeStops(p, 0);
-  assert.deepStrictEqual(stops.map(function (s) { return s.street + '@' + s.town; }), ['VIA A@Borgo', 'VIA B@Borgo', 'VIA C@Villa']);
-  const r = Core.reorderRoute(sz, stops, [2, 0, 1]);
-  // a note travels with the line under it
-  assert.strictEqual(r.route, ['COMUNE: Villa', 'VIA C: 5', 'COMUNE: Borgo', '# inizio', 'VIA A: 1, 3', '# nota della B', 'VIA B: 2', '? NOMI: X', ''].join('\n'));
-  assert.deepStrictEqual(r.dropped, ['FINE STRISCIA', 'vuote 3', 'CONFINE: 1B']);
-  // nothing is lost: the same pigeonholes, in another order
-  const before = Core.allCells(Core.analyseSubzone(sz)).map(function (c) { return c.street + c.top; }).sort();
-  const after = Core.allCells(Core.analyseSubzone(Object.assign({}, sz, { route: r.route }))).map(function (c) { return c.street + c.top; }).sort();
-  assert.deepStrictEqual(after, before.filter(function (x) { return x !== ''; }));
+  sz.route = 'VIA DEI GELSI: 12, 14\nVIA DEI TIGLI: 3';
+  let stops = Core.routeStops(p, 0);
+  // the map put VIA DEI GELSI 12 in another town; it is put right by hand
+  p.geo[stops[0].queries[0]] = { lat: 46.0, lon: 10.0, found: 'civico' };
+  p.pins[stops[0].pin] = { lat: 45.40, lon: 9.50 };
+  assert.deepStrictEqual(Core.stopPoint(p, stops[0]), { lat: 45.40, lon: 9.50, found: 'mano' });
+  // the street written another way, the town with capitals: the same point
+  sz.route = 'V. DEI GELSI: 12, 14\nVIA DEI TIGLI: 3';
+  sz.town = 'BORGO';
+  stops = Core.routeStops(p, 0);
+  assert.deepStrictEqual(Core.stopPoint(p, stops[0]), { lat: 45.40, lon: 9.50, found: 'mano' }, 'scritta in un altro modo');
+  // the line now starts with another number, which the map puts far away again: the point by hand of the street wins
+  sz.route = 'VIA DEI GELSI: 10, 12, 14\nVIA DEI TIGLI: 3';
+  stops = Core.routeStops(p, 0);
+  p.geo[stops[0].queries[0]] = { lat: 46.0, lon: 10.0, found: 'civico' };
+  assert.strictEqual(Core.stopPoint(p, stops[0]).lat, 45.40, 'il civico 10 vicino al 12 messo a mano');
+  // a street found well by the map stays where it is
+  p.geo[stops[1].queries[0]] = { lat: 45.41, lon: 9.51, found: 'civico' };
+  assert.strictEqual(Core.stopPoint(p, stops[1]).found, 'civico');
+  // kept in the file
+  assert.deepStrictEqual(Core.sanitizeProject(JSON.parse(JSON.stringify(p))).pins, p.pins);
 });
 
 test('one street, written in different ways, is one street', function () {

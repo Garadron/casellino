@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.38.0';</script>
+<script>window.CASELLINO_VERSION = '0.39.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -810,7 +810,7 @@ input[type="file"]::file-selector-button {
     <p><b>Una sottozona più lunga del suo casello e della sua ala</b> continua da sola nell'ultima fila della sottozona dopo (per esempio la A nella fila 4 della B), come nel mobile vero: si scrive tutto nel giro della A, e la B comincia quella fila dopo.</p>
     <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Nella stessa sottozona <b>nessun colore si ripete</b>: ogni via ha il suo. Due vie vicine non hanno mai colori simili. Nell'elenco delle vie i colori già usati nella sottozona e quelli troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
     <p><b>Un Excel già fatto</b> (fatto con il modello, anche vecchio): «Apri» o «Altro → Apri un Excel già fatto». Ogni foglio scritto diventa una sottozona, con il suo giro letto striscia per striscia: poi si corregge e si ristampa.</p>
-    <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. Lì si dice anche com'è fatto il mobile: i moduli da sinistra a destra (casello o ala) e di quale sottozona è ognuno, in qualsiasi ordine (ala, casello, ala, casello… oppure ala, ala, casello, casello…). Con la <b>matita</b> del colore di una sottozona si tocca la casella da cui comincia: da lì verso destra quella fila è sua (per esempio la B che prende metà dell'ultima fila della A). La gomma toglie il segno. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate. Una tappa nel posto sbagliato si trascina dove va. <b>Ottimizzazione gita</b> cerca l'ordine delle vie con meno chilometri, partendo e tornando al centro di partenza scritto in alto (nome e indirizzo; se l'indirizzo non si trova, il punto si sceglie sulla mappa o con la posizione del telefono); il giro cambia solo se premi «Applica», e «Torna al giro di prima» lo rimette.</p>
+    <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. Lì si dice anche com'è fatto il mobile: i moduli da sinistra a destra (casello o ala) e di quale sottozona è ognuno, in qualsiasi ordine (ala, casello, ala, casello… oppure ala, ala, casello, casello…). Con la <b>matita</b> del colore di una sottozona si tocca la casella da cui comincia: da lì verso destra quella fila è sua (per esempio la B che prende metà dell'ultima fila della A). La gomma toglie il segno. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate. Una tappa nel posto sbagliato si trascina dove va. <b>Ottimizzazione gita</b> cerca l'ordine delle vie con meno chilometri, partendo e tornando al centro di partenza scritto in alto (nome e indirizzo; se l'indirizzo non si trova, il punto si sceglie sulla mappa o con la posizione del telefono); è solo per sapere: mostra i chilometri della gita di adesso e di quella più corta, con il suo ordine, e il giro del casello non cambia. Un punto spostato a mano resta per quella via e quel civico, anche se il giro cambia o il programma si aggiorna. Una tappa che la mappa trova solo in un altro comune resta rossa: la metti tu.</p>
     <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie. Nello stesso elenco, toccando un nome (o la matita ✏️) lo <b>correggi in tutto il giro</b>: cambia in ogni riga e in ogni sottozona dello stesso comune, i civici restano. Così, dopo la lettura delle foto, i nomi si sistemano da lì e nel giro si pensa solo ai numeri.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>
@@ -1835,6 +1835,7 @@ input[type="file"]::file-selector-button {
       streets: {},      // streetKey -> { color: 'RRGGBB' }
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
+      pins: {},         // points put right by hand: pinKey (street + number) -> { lat, lon }
       depot: '',        // address of the office where the round starts and ends, optional (written from depotAddr)
       depotAddr: { comune: '', provincia: '', via: '', civico: '' },
       depotName: '',    // its name, optional
@@ -1879,6 +1880,12 @@ input[type="file"]::file-selector-button {
       Object.keys(p.streets).forEach(function (k) {
         const c = p.streets[k] && String(p.streets[k].color || '').replace('#', '').toUpperCase();
         if (/^[0-9A-F]{6}$/.test(c)) out.streets[k] = { color: c };
+      });
+    }
+    if (p.pins && typeof p.pins === 'object') {
+      Object.keys(p.pins).forEach(function (k) {
+        const g = p.pins[k];
+        if (g && isFinite(g.lat) && isFinite(g.lon)) out.pins[k] = { lat: +g.lat, lon: +g.lon };
       });
     }
     if (p.geo && typeof p.geo === 'object') {
@@ -2813,12 +2820,50 @@ input[type="file"]::file-selector-button {
       if (!c.key || /^\?/.test(String(c.street).trim()) || !streetName(c.street)) { last = null; return; }
       if (last && last.line === c.line && last.key === c.key) { last.cells++; return; }
       const number = /^\d+\s*[A-Z]?$/i.test(String(c.top).trim()) ? c.top : '';
-      last = { line: c.line, key: c.key, street: c.street, town: c.town, cells: 1,
+      last = { line: c.line, key: c.key, street: c.street, town: c.town, cells: 1, pin: pinKey(c.street, number, c.town),
         queries: [mapQuery(c.street, number, c.town), mapQuery(c.street, '', c.town), mapQuery(bareName(c.street), '', c.town)]
           .filter(function (q, i, arr) { return q && arr.indexOf(q) === i; }) };
       stops.push(last);
     });
     return stops;
+  }
+
+  /*
+   * A point put right by hand belongs to the street and the house number, however they are written ("V. DEI GELSI 12",
+   * "VIA DEI GELSI 12", capitals, town): it stays when the route is changed or the program updated (Garadron, 23 November
+   * 2026: the points corrected on the map came back to the wrong places, because they were kept under the exact text
+   * asked to the map).
+   */
+  function pinKey(street, top, town) {
+    const m = /^(\d+)\s*([A-Z])?/i.exec(String(top || '').trim());
+    return streetKey(street, town) + '#' + (m ? m[1] + (m[2] || '').toUpperCase() : '');
+  }
+
+  /*
+   * The point of a stop: the one put by hand for that street and number first; then the one found on the map. When the
+   * map found only the street, or found it far away (over 2 km: another town), a point put by hand for another number
+   * of the same street wins, the nearest number first.
+   */
+  function stopPoint(project, stop) {
+    const pins = project.pins || {};
+    if (pins[stop.pin]) return { lat: pins[stop.pin].lat, lon: pins[stop.pin].lon, found: 'mano' };
+    let found = null;
+    for (let i = 0; i < stop.queries.length && !found; i++) {
+      const g = project.geo[stop.queries[i]];
+      if (g && g.found !== 'no') found = g;
+    }
+    if (found && found.found === 'mano') return found;   // corrected before the points by street and number
+    const street = stop.pin.slice(0, stop.pin.lastIndexOf('#'));
+    const number = parseInt(stop.pin.slice(stop.pin.lastIndexOf('#') + 1), 10);
+    let near = null, gap = Infinity;
+    Object.keys(pins).forEach(function (k) {
+      if (k.slice(0, k.lastIndexOf('#')) !== street) return;
+      const n = parseInt(k.slice(k.lastIndexOf('#') + 1), 10);
+      const d = isFinite(n) && isFinite(number) ? Math.abs(n - number) : 1e6;
+      if (d < gap) { gap = d; near = pins[k]; }
+    });
+    if (near && (!found || found.found === 'via' || airKm(found, near) > 2)) return { lat: near.lat, lon: near.lon, found: 'mano' };
+    return found;
   }
 
   // The name without the word for the kind of street ("VIA DEI TIGLI" -> "DEI TIGLI"): a last try on
@@ -2850,10 +2895,12 @@ input[type="file"]::file-selector-button {
    * road distances (not symmetric: one-way streets). Nearest neighbour, then moving pieces of 1-3
    * stops and reversing stretches while the round gets shorter. Good, not guaranteed best.
    */
+  // The order with the fewest kilometres: improved from the nearest stop each time and from the order of now (the round
+  // of the frame), the shorter of the two, so it is never longer than the round of now.
   function optimizeOrder(dist) {
     const n = dist.length - 1;
-    const left = [];
-    for (let k = 1; k <= n; k++) left.push(k);
+    const left = [], now = [];
+    for (let k = 1; k <= n; k++) { left.push(k); now.push(k); }
     let order = [], at = 0;
     while (left.length) {
       let best = 0;
@@ -2861,6 +2908,12 @@ input[type="file"]::file-selector-button {
       at = left.splice(best, 1)[0];
       order.push(at);
     }
+    const a = improveOrder(dist, order), b = improveOrder(dist, now);
+    return tourCost(dist, b) < tourCost(dist, a) ? b : a;
+  }
+  // Better and better orders: a piece turned round (2-opt), one to three stops moved elsewhere (or-opt).
+  function improveOrder(dist, order) {
+    const n = order.length;
     let cost = tourCost(dist, order), better = true;
     while (better) {
       better = false;
@@ -2888,44 +2941,6 @@ input[type="file"]::file-selector-button {
 
   // Lines that only say where pigeonholes stay empty or where a row ends: after a new order they mean nothing.
   const LAYOUT_LINE = /^\s*(fine\s+striscia|fine\s+fila|striscia\s+vuota|vuot[ae](\s+\d+)?|confine\b.*)\s*$/i;
-
-  /*
-   * The route of a sub-zone with its stops in a new order (`order`: indexes into `stops`). Each stop
-   * takes its line, the notes just above it and the lines without a place on the map that follow it.
-   * Lines about empty pigeonholes are left out (returned in `dropped`); a COMUNE line is written where
-   * the town changes.
-   */
-  function reorderRoute(sz, stops, order) {
-    const lines = String(sz.route || '').split(/\r?\n/);
-    let current = -1;
-    const stopOfLine = {};
-    stops.forEach(function (s, k) { if (stopOfLine[s.line] === undefined) stopOfLine[s.line] = k; });
-    const blocks = stops.map(function () { return []; });
-    const head = [], dropped = [];
-    let notes = [];
-    lines.forEach(function (raw, i) {
-      const t = raw.trim();
-      if (!t) return;
-      if (LAYOUT_LINE.test(t)) { dropped.push(t); return; }
-      if (/^comune\s*:/i.test(t)) return;
-      if (t[0] === '#') { notes.push(raw); return; }
-      if (stopOfLine[i] !== undefined) current = stopOfLine[i];
-      const target = current < 0 ? head : blocks[current];
-      notes.forEach(function (x) { target.push(x); });
-      notes = [];
-      target.push(raw);
-    });
-    const out = head.slice();
-    let town = sz.town || '';
-    order.forEach(function (k) {
-      if (!blocks[k].length) return;
-      const t = stops[k].town || '';
-      if (norm(t) !== norm(town)) { out.push('COMUNE: ' + (t || sz.town || '')); town = t; }
-      blocks[k].forEach(function (x) { out.push(x); });
-    });
-    notes.forEach(function (x) { out.push(x); });
-    return { route: out.join('\n') + '\n', dropped: dropped };
-  }
 
   // ---------------------------------------------------------------- printing: strips packed on A4 sheets
 
@@ -3187,7 +3202,8 @@ input[type="file"]::file-selector-button {
     routeStops: routeStops,
     tourCost: tourCost,
     optimizeOrder: optimizeOrder,
-    reorderRoute: reorderRoute,
+    pinKey: pinKey,
+    stopPoint: stopPoint,
     printPieces: printPieces,
     printBlocks: printBlocks,
     packPages: packPages,
@@ -6459,9 +6475,35 @@ input[type="file"]::file-selector-button {
     if (!res.ok) throw new Error('il servizio delle mappe non risponde (' + res.status + ')');
     return res.json();
   }
-  async function geocode(q) {
-    const j = await nominatim('search?limit=1&countrycodes=it&q=' + encodeURIComponent(q));
-    return j.length ? { lat: +j[0].lat, lon: +j[0].lon } : null;
+  /*
+   * Where an address is, only inside its town (Garadron, 23 November 2026: points put in another town, far from the
+   * round). First the street and the town asked apart, then the whole text; a result counts only if the map says it is
+   * in that town, or if it is within 6 km of the town's centre (hamlets). Otherwise: not found, and it is put by hand.
+   */
+  const placeNames = function (a) {
+    return [a.city, a.town, a.village, a.municipality, a.hamlet, a.suburb, a.city_district].filter(Boolean).map(C.norm);
+  };
+  async function townCentre(town) {
+    const key = 'COMUNE|' + C.norm(town);
+    const geo = state.project.geo;
+    if (!geo[key]) {
+      const j = await nominatim('search?limit=1&countrycodes=it&city=' + encodeURIComponent(town));
+      geo[key] = j.length ? { lat: +j[0].lat, lon: +j[0].lon, found: 'via' } : { found: 'no' };
+    }
+    return geo[key].found === 'no' ? null : geo[key];
+  }
+  async function geocode(q, town) {
+    const centre = town ? await townCentre(town) : null;
+    const inTown = function (r) {
+      return !town || placeNames(r.address || {}).indexOf(C.norm(town)) >= 0 || (centre && C.airKm(centre, { lat: +r.lat, lon: +r.lon }) <= 6);
+    };
+    const pick = function (list) { const r = (list || []).find(inTown); return r ? { lat: +r.lat, lon: +r.lon } : null; };
+    if (town) {
+      const r = pick(await nominatim('search?limit=5&countrycodes=it&addressdetails=1&street=' + encodeURIComponent(q.split(',')[0].trim()) +
+        '&city=' + encodeURIComponent(town)));
+      if (r) return r;
+    }
+    return pick(await nominatim('search?limit=5&countrycodes=it&addressdetails=1&q=' + encodeURIComponent(q)));
   }
   // The address of a point: { via, civico, comune }, or null if there is no street there.
   async function addressOf(p) {
@@ -6520,7 +6562,7 @@ input[type="file"]::file-selector-button {
       const known = geo[q];
       if (known && known.found !== 'no') return known;
       if (known) continue;
-      const g = await geocode(q);
+      const g = await geocode(q, stop.town);
       geo[q] = g ? { lat: g.lat, lon: g.lon, found: i === 0 && stop.queries.length > 1 ? 'civico' : 'via' } : { found: 'no' };
       storeSave();
       if (g) return geo[q];
@@ -6528,13 +6570,7 @@ input[type="file"]::file-selector-button {
     return null;
   }
 
-  function knownPoint(stop) {
-    for (let i = 0; i < stop.queries.length; i++) {
-      const g = state.project.geo[stop.queries[i]];
-      if (g && g.found !== 'no') return g;
-    }
-    return null;
-  }
+  function knownPoint(stop) { return C.stopPoint(state.project, stop); }
 
   // The road route between the points, by car, with the free OSRM service (80 points at a time).
   async function roadRoute(points) {
@@ -6615,8 +6651,11 @@ input[type="file"]::file-selector-button {
     }
     return null;
   }
-  const depotTapText = function () { return 'Tocca sulla mappa il punto di ' + depotWord() + ' (prima puoi ingrandire e spostare la mappa).'; };
+  const depotTapText = function () {
+    return 'Tocca sulla mappa il punto ' + (state.project.depotName ? 'di «' + state.project.depotName + '»' : 'dell\'ufficio') + ' (prima puoi ingrandire e spostare la mappa).';
+  };
   const depotWord = function () { return state.project.depotName ? '«' + state.project.depotName + '»' : 'l\'ufficio'; };
+  const toDepot = function () { return state.project.depotName ? 'a «' + state.project.depotName + '»' : 'all\'ufficio'; };
 
   function renderDepotStatus() {
     const el = $('depot-status');
@@ -6662,7 +6701,7 @@ input[type="file"]::file-selector-button {
     el.className = 'muted';
     el.textContent = 'Cerco l\'indirizzo sulla mappa…';
     try {
-      round.depot = await locate({ queries: depotQueries() });
+      round.depot = await locate({ queries: depotQueries(), town: state.project.depotAddr.comune.trim() });
       changed();
     } catch (e) {
       el.textContent = 'Non riesco a cercare: serve internet.';
@@ -6728,10 +6767,13 @@ input[type="file"]::file-selector-button {
     ol.textContent = '';
     round.stops.forEach(function (s, i) {
       const g = s.point;
-      const how = g ? ({ civico: 'trovata con il civico', via: 'trovata la via', mano: 'messa a mano' })[g.found] || 'trovata'
-        : (s.asked ? 'non trovata' : 'da cercare');
+      // a point found long ago far from the office (before the town check): to be looked at
+      const far = g && g.found !== 'mano' && round.depot ? C.airKm(g, round.depot) : 0;
+      const how = far > 15 ? 'lontana dall\'ufficio (' + kmText(far) + '): controllala'
+        : g ? ({ civico: 'trovata con il civico', via: 'trovata la via', mano: 'messa a mano' })[g.found] || 'trovata'
+          : (s.asked ? 'non trovata' : 'da cercare');
       const placing = round.placing === s;
-      ol.append(h('li', { class: g ? '' : (s.asked ? 'bad' : 'muted') },
+      ol.append(h('li', { class: far > 15 ? 'bad' : (g ? '' : (s.asked ? 'bad' : 'muted')) },
         h('button', { type: 'button', class: 'link', onclick: function () {
           if (g && routeMap) routeMap.setView([g.lat, g.lon], 17);
           goToLine(s.line);
@@ -6756,7 +6798,7 @@ input[type="file"]::file-selector-button {
       routeMap.on('click', function (e) {
         if (!round.placing) return;
         if (round.placing === 'depot') setDepotPoint(e.latlng, 'mano');
-        else setPoint(round.placing.queries[0], e.latlng);
+        else setPoint(round.placing, e.latlng);
         round.placing = null;
         renderStopList();
       });
@@ -6766,9 +6808,9 @@ input[type="file"]::file-selector-button {
     return L;
   }
 
-  // A point corrected by hand: saved for that address, used from now on (round, optimization).
-  function setPoint(query, latlng) {
-    state.project.geo[query] = { lat: latlng.lat, lon: latlng.lng, found: 'mano' };
+  // A point corrected by hand: saved for that street and number, used from now on (round, optimization).
+  function setPoint(stop, latlng) {
+    state.project.pins[stop.pin] = { lat: latlng.lat, lon: latlng.lng };
     changed();
     round.stops.forEach(function (s) { s.point = knownPoint(s); });
     round.depot = depotPoint();
@@ -6796,7 +6838,7 @@ input[type="file"]::file-selector-button {
         const html = '<span style="background:#' + C.colorOf(state.project, s.key) + ';color:#' + C.textColorOf(state.project, s.key) + '">' + (i + 1) + '</span>';
         L.marker([s.point.lat, s.point.lon], { draggable: true, icon: L.divIcon({ className: 'stop-pin', html: html, iconSize: [26, 20] }) })
           .bindTooltip((i + 1) + '. ' + s.queries[0] + ' (trascinala per correggerla)')
-          .on('dragend', function (e) { setPoint(s.queries[0], e.target.getLatLng()); })
+          .on('dragend', function (e) { setPoint(s, e.target.getLatLng()); })
           .addTo(routeLayer);
         bounds.push([s.point.lat, s.point.lon]);
       });
@@ -6806,7 +6848,15 @@ input[type="file"]::file-selector-button {
 
   function loadStops() {
     round.stops = C.routeStops(state.project, state.current);
-    round.stops.forEach(function (s) { s.point = knownPoint(s); s.asked = s.queries.every(function (q) { return state.project.geo[q]; }); });
+    let moved = false;
+    round.stops.forEach(function (s) {
+      // a point put right by hand before v0.39.0 (kept under the text asked to the map): now by street and number
+      const old = s.queries.map(function (q) { return state.project.geo[q]; }).find(function (g) { return g && g.found === 'mano'; });
+      if (old && !state.project.pins[s.pin]) { state.project.pins[s.pin] = { lat: old.lat, lon: old.lon }; moved = true; }
+      s.point = knownPoint(s);
+      s.asked = s.queries.every(function (q) { return state.project.geo[q]; });
+    });
+    if (moved) changed();
     round.depot = depotPoint();
     if (round.placing !== 'depot') round.placing = null; // the stops are new objects; waiting for the office's point stays
   }
@@ -6836,7 +6886,7 @@ input[type="file"]::file-selector-button {
     loadStops();
     if (depotQueries().length && !round.depot) {
       status.textContent = 'Cerco ' + depotWord() + '…';
-      round.depot = await locate({ queries: depotQueries() });
+      round.depot = await locate({ queries: depotQueries(), town: state.project.depotAddr.comune.trim() });
       renderDepotStatus();
     }
     for (let i = 0; i < round.stops.length; i++) {
@@ -6869,11 +6919,12 @@ input[type="file"]::file-selector-button {
       if (round.depot) { points.unshift(round.depot); points.push(round.depot); }
       status.textContent = 'Calcolo il percorso…';
       const r = await roadRoute(points);
+      round.line = r.line;   // kept, to compare it with the shortest one
       redraw(r.line);
       const found = round.stops.filter(function (s) { return s.point; }).length;
       total.textContent = 'Giro' + (sz().name ? ' della ' + sz().name : '') + ': ' + kmText(r.km) +
         (r.onRoads ? ' su strada, circa ' + Math.round(r.minutes) + ' minuti di guida senza le fermate' : ' in linea d\'aria (il calcolo su strada non ha risposto)') +
-        (round.depot ? ', partendo e tornando a ' + depotWord() : ', senza l\'ufficio (scrivilo in alto)') + '. Tappe sulla mappa: ' + found + ' su ' + round.stops.length + '.';
+        (round.depot ? ', partendo e tornando ' + toDepot() : ', senza l\'ufficio (scrivilo in alto)') + '. Tappe sulla mappa: ' + found + ' su ' + round.stops.length + '.';
       status.textContent = found < round.stops.length
         ? 'Le tappe in rosso non sono state trovate: con «📍 mettila sulla mappa» le metti tu.'
         : 'Fatto. Se una tappa è nel posto sbagliato, trascinala dove va.';
@@ -6926,8 +6977,17 @@ input[type="file"]::file-selector-button {
         return;
       }
       status.textContent = 'Calcolo le distanze fra tutte le tappe…';
-      const points = [round.depot].concat(round.stops.map(function (s) { return s.point; }));
-      const m = await distanceMatrix(points);
+      // stops at the same point (pieces of the same street) are asked once: up to 100 points the distances are on roads
+      const same = function (a, b) { return Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lon - b.lon) < 1e-6; };
+      const places = [round.depot];
+      const placeOf = round.stops.map(function (s) {
+        let k = places.findIndex(function (q) { return same(q, s.point); });
+        if (k < 0) { places.push(s.point); k = places.length - 1; }
+        return k;
+      });
+      const pm = await distanceMatrix(places);
+      const idx = [0].concat(placeOf);
+      const m = { onRoads: pm.onRoads, dist: idx.map(function (a) { return idx.map(function (b) { return pm.dist[a][b]; }); }) };
       const now = round.stops.map(function (_, i) { return i + 1; });
       status.textContent = 'Cerco l\'ordine migliore…';
       await pause(30);
@@ -6935,37 +6995,23 @@ input[type="file"]::file-selector-button {
       const before = C.tourCost(m.dist, now) / 1000, after = C.tourCost(m.dist, best) / 1000;
       const order = best.map(function (x) { return x - 1; });
       const line = await roadRoute([round.depot].concat(order.map(function (i) { return round.stops[i].point; }), [round.depot]));
-      redraw(null, true, line.line);
+      redraw(round.line || null, true, line.line);
       const saved = before - after;
       status.textContent = m.onRoads ? 'Fatto, con le distanze su strada.' : 'Fatto, con le distanze in linea d\'aria (il calcolo su strada non ha risposto).';
+      // only to know (Garadron, 23 November 2026): the round of the frame does not change
+      const list = h('ol', { class: 'small better-order' });
+      order.forEach(function (i) { list.append(h('li', null, round.stops[i].queries[0])); });
       box.append(
-        h('p', null, h('b', null, 'Giro di adesso: ' + kmText(before) + ' · Ottimizzato: ' + kmText(after)),
-          saved > 0.05 ? ' (' + kmText(saved) + ' in meno, −' + Math.round(saved / before * 100) + '%)' : ' (il giro è già buono)'),
-        h('p', { class: 'small muted' }, 'Sulla mappa il percorso ottimizzato è la linea verde tratteggiata. Ordine nuovo: ' +
-          order.slice(0, 12).map(function (i) { return round.stops[i].street; }).join(' → ') + (order.length > 12 ? ' → …' : '')),
-        saved > 0.05 ? h('p', { class: 'actions-inline' },
-          h('button', { type: 'button', class: 'primary', onclick: function () { applyOrder(order); } }, 'Applica il nuovo ordine al giro')) : null);
+        h('p', null, h('b', null, 'Gita di adesso: ' + kmText(before) + ' · Gita più corta: ' + kmText(after)),
+          saved > 0.05 ? ' (' + kmText(saved) + ' in meno, −' + Math.round(saved / before * 100) + '%)' : ' (la gita di adesso è già la più corta)'),
+        h('p', { class: 'small muted' }, 'Solo per sapere: il giro del casello non cambia. Sulla mappa la gita più corta è la linea ' +
+          'verde tratteggiata, partendo e tornando ' + toDepot() + '.'),
+        saved > 0.05 ? h('details', null, h('summary', null, 'L\'ordine della gita più corta (' + order.length + ' tappe)'), list) : null);
     } catch (e) {
       status.textContent = 'Non riesco a ottimizzare: ' + e.message + '. Serve internet.';
     } finally {
       routeBusy = false;
     }
-  }
-
-  function applyOrder(order) {
-    const s = sz();
-    const warn = s.locked ? '\n\nIl giro è bloccato: cambio solo l\'ordine delle vie, i civici restano quelli controllati.' : '';
-    if (!confirm('Riordino il giro della ' + (s.name || 'sottozona') + ' come l\'ottimizzazione? Cambia il posto delle vie nelle caselle. ' +
-      'Il giro di adesso resta salvato: «Torna al giro di prima» lo rimette.' + warn)) return;
-    const r = C.reorderRoute(s, round.stops, order);
-    s.routeBefore = s.route;
-    s.route = r.route;
-    changed();
-    renderSubzone();
-    refreshSide();
-    $('optimize-result').textContent = '';
-    showKnownRound();
-    toast('Giro riordinato.' + (r.dropped.length ? ' Ho tolto le righe delle caselle vuote (' + r.dropped.join(', ') + '): rimettile dove servono.' : ''));
   }
 
   function renderOptimizeUndo() {

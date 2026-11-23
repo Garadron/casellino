@@ -1,5 +1,31 @@
 # Registro delle versioni
 
+## v0.39.0 · 2026-11-23 · La cartina del giro tiene i punti corretti a mano; l'ottimizzazione solo per sapere
+
+Garadron (23 novembre 2026): sulla cartina della sua sottozona alcune tappe erano state messe in posti sbagliati (una
+via in un'altra parte, punti fuori dal comune); lui le aveva spostate a mano, ma con gli aggiornamenti tornavano dov'erano.
+La cartina serve a vedere la **gita** (dall'ufficio, nell'ordine del casello, e ritorno); l'ottimizzazione deve trovare
+la gita con meno chilometri, **solo per sapere**.
+
+- **I punti spostati a mano restano**: si salvano per via e civico, scritti in qualsiasi modo (abbreviazioni, maiuscole,
+  comune), non più per il testo esatto chiesto alla mappa, che cambiava appena cambiava il giro. Se il primo civico di
+  una riga cambia, vale il punto messo a mano più vicino sulla stessa via, quando la mappa la mette lontano o trova
+  solo la via. Le correzioni fatte prima si ricopiano da sole.
+- **Niente più tappe in un altro comune**: la mappa cerca la via dentro il suo comune (via e comune chiesti a parte) e
+  accetta solo un risultato di quel comune, o a meno di 6 km dal suo centro (le frazioni). Se non la trova lì, la tappa
+  resta rossa e la metti tu. Le tappe trovate in passato a più di 15 km dall'ufficio sono segnate «lontana
+  dall'ufficio: controllala». Provato con vie vere: prima 59,5 km con due tappe in altri paesi, ora 17,1 km.
+- **L'ottimizzazione è solo informativa**: dice i km della gita di adesso e di quella più corta, con il suo ordine, e
+  non cambia più il giro del casello (tolto «Applica il nuovo ordine»; «Torna al giro di prima» resta per chi l'aveva
+  usato). Sulla mappa restano tutte e due: la gita di adesso in blu, la più corta in verde tratteggiato.
+- **L'ottimizzazione non propone mai una gita più lunga** di quella di adesso (parte anche da quella), e le tappe nello
+  stesso punto si contano una volta: con molte tappe le distanze restano quelle vere su strada.
+- Sistemate le frasi «tornando a l'ufficio» e «il punto di l'ufficio».
+- Debug: nuovo `tools/controllo_pagina.py` (Edge vero, telefono e computer: errori del programma, cose fuori dallo
+  schermo, pulsanti piccoli, ogni finestra, il tutorial): nessun errore.
+- File: `app/src/core.js` (`pinKey`, `stopPoint`, `improveOrder`; tolto `reorderRoute`), `app/src/ui.js`,
+  `app/index.src.html`, `tests/test_core.js`, `tools/controllo_pagina.py`, `README.md`, `Casellino.html`, `sito/`.
+
 ## v0.38.0 · 2026-11-21 · Una casella con due vie: ognuna con il suo colore
 
 Idea di Garadron (21 novembre 2026): una casella che tiene due vie (per esempio `VIA DEL MULINO/VIA DEL PONTE: 10|37 (2)`:

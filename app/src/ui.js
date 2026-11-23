@@ -1225,9 +1225,35 @@
     if (!res.ok) throw new Error('il servizio delle mappe non risponde (' + res.status + ')');
     return res.json();
   }
-  async function geocode(q) {
-    const j = await nominatim('search?limit=1&countrycodes=it&q=' + encodeURIComponent(q));
-    return j.length ? { lat: +j[0].lat, lon: +j[0].lon } : null;
+  /*
+   * Where an address is, only inside its town (Garadron, 23 November 2026: points put in another town, far from the
+   * round). First the street and the town asked apart, then the whole text; a result counts only if the map says it is
+   * in that town, or if it is within 6 km of the town's centre (hamlets). Otherwise: not found, and it is put by hand.
+   */
+  const placeNames = function (a) {
+    return [a.city, a.town, a.village, a.municipality, a.hamlet, a.suburb, a.city_district].filter(Boolean).map(C.norm);
+  };
+  async function townCentre(town) {
+    const key = 'COMUNE|' + C.norm(town);
+    const geo = state.project.geo;
+    if (!geo[key]) {
+      const j = await nominatim('search?limit=1&countrycodes=it&city=' + encodeURIComponent(town));
+      geo[key] = j.length ? { lat: +j[0].lat, lon: +j[0].lon, found: 'via' } : { found: 'no' };
+    }
+    return geo[key].found === 'no' ? null : geo[key];
+  }
+  async function geocode(q, town) {
+    const centre = town ? await townCentre(town) : null;
+    const inTown = function (r) {
+      return !town || placeNames(r.address || {}).indexOf(C.norm(town)) >= 0 || (centre && C.airKm(centre, { lat: +r.lat, lon: +r.lon }) <= 6);
+    };
+    const pick = function (list) { const r = (list || []).find(inTown); return r ? { lat: +r.lat, lon: +r.lon } : null; };
+    if (town) {
+      const r = pick(await nominatim('search?limit=5&countrycodes=it&addressdetails=1&street=' + encodeURIComponent(q.split(',')[0].trim()) +
+        '&city=' + encodeURIComponent(town)));
+      if (r) return r;
+    }
+    return pick(await nominatim('search?limit=5&countrycodes=it&addressdetails=1&q=' + encodeURIComponent(q)));
   }
   // The address of a point: { via, civico, comune }, or null if there is no street there.
   async function addressOf(p) {
@@ -1286,7 +1312,7 @@
       const known = geo[q];
       if (known && known.found !== 'no') return known;
       if (known) continue;
-      const g = await geocode(q);
+      const g = await geocode(q, stop.town);
       geo[q] = g ? { lat: g.lat, lon: g.lon, found: i === 0 && stop.queries.length > 1 ? 'civico' : 'via' } : { found: 'no' };
       storeSave();
       if (g) return geo[q];
@@ -1294,13 +1320,7 @@
     return null;
   }
 
-  function knownPoint(stop) {
-    for (let i = 0; i < stop.queries.length; i++) {
-      const g = state.project.geo[stop.queries[i]];
-      if (g && g.found !== 'no') return g;
-    }
-    return null;
-  }
+  function knownPoint(stop) { return C.stopPoint(state.project, stop); }
 
   // The road route between the points, by car, with the free OSRM service (80 points at a time).
   async function roadRoute(points) {
@@ -1381,8 +1401,11 @@
     }
     return null;
   }
-  const depotTapText = function () { return 'Tocca sulla mappa il punto di ' + depotWord() + ' (prima puoi ingrandire e spostare la mappa).'; };
+  const depotTapText = function () {
+    return 'Tocca sulla mappa il punto ' + (state.project.depotName ? 'di «' + state.project.depotName + '»' : 'dell\'ufficio') + ' (prima puoi ingrandire e spostare la mappa).';
+  };
   const depotWord = function () { return state.project.depotName ? '«' + state.project.depotName + '»' : 'l\'ufficio'; };
+  const toDepot = function () { return state.project.depotName ? 'a «' + state.project.depotName + '»' : 'all\'ufficio'; };
 
   function renderDepotStatus() {
     const el = $('depot-status');
@@ -1428,7 +1451,7 @@
     el.className = 'muted';
     el.textContent = 'Cerco l\'indirizzo sulla mappa…';
     try {
-      round.depot = await locate({ queries: depotQueries() });
+      round.depot = await locate({ queries: depotQueries(), town: state.project.depotAddr.comune.trim() });
       changed();
     } catch (e) {
       el.textContent = 'Non riesco a cercare: serve internet.';
@@ -1494,10 +1517,13 @@
     ol.textContent = '';
     round.stops.forEach(function (s, i) {
       const g = s.point;
-      const how = g ? ({ civico: 'trovata con il civico', via: 'trovata la via', mano: 'messa a mano' })[g.found] || 'trovata'
-        : (s.asked ? 'non trovata' : 'da cercare');
+      // a point found long ago far from the office (before the town check): to be looked at
+      const far = g && g.found !== 'mano' && round.depot ? C.airKm(g, round.depot) : 0;
+      const how = far > 15 ? 'lontana dall\'ufficio (' + kmText(far) + '): controllala'
+        : g ? ({ civico: 'trovata con il civico', via: 'trovata la via', mano: 'messa a mano' })[g.found] || 'trovata'
+          : (s.asked ? 'non trovata' : 'da cercare');
       const placing = round.placing === s;
-      ol.append(h('li', { class: g ? '' : (s.asked ? 'bad' : 'muted') },
+      ol.append(h('li', { class: far > 15 ? 'bad' : (g ? '' : (s.asked ? 'bad' : 'muted')) },
         h('button', { type: 'button', class: 'link', onclick: function () {
           if (g && routeMap) routeMap.setView([g.lat, g.lon], 17);
           goToLine(s.line);
@@ -1522,7 +1548,7 @@
       routeMap.on('click', function (e) {
         if (!round.placing) return;
         if (round.placing === 'depot') setDepotPoint(e.latlng, 'mano');
-        else setPoint(round.placing.queries[0], e.latlng);
+        else setPoint(round.placing, e.latlng);
         round.placing = null;
         renderStopList();
       });
@@ -1532,9 +1558,9 @@
     return L;
   }
 
-  // A point corrected by hand: saved for that address, used from now on (round, optimization).
-  function setPoint(query, latlng) {
-    state.project.geo[query] = { lat: latlng.lat, lon: latlng.lng, found: 'mano' };
+  // A point corrected by hand: saved for that street and number, used from now on (round, optimization).
+  function setPoint(stop, latlng) {
+    state.project.pins[stop.pin] = { lat: latlng.lat, lon: latlng.lng };
     changed();
     round.stops.forEach(function (s) { s.point = knownPoint(s); });
     round.depot = depotPoint();
@@ -1562,7 +1588,7 @@
         const html = '<span style="background:#' + C.colorOf(state.project, s.key) + ';color:#' + C.textColorOf(state.project, s.key) + '">' + (i + 1) + '</span>';
         L.marker([s.point.lat, s.point.lon], { draggable: true, icon: L.divIcon({ className: 'stop-pin', html: html, iconSize: [26, 20] }) })
           .bindTooltip((i + 1) + '. ' + s.queries[0] + ' (trascinala per correggerla)')
-          .on('dragend', function (e) { setPoint(s.queries[0], e.target.getLatLng()); })
+          .on('dragend', function (e) { setPoint(s, e.target.getLatLng()); })
           .addTo(routeLayer);
         bounds.push([s.point.lat, s.point.lon]);
       });
@@ -1572,7 +1598,15 @@
 
   function loadStops() {
     round.stops = C.routeStops(state.project, state.current);
-    round.stops.forEach(function (s) { s.point = knownPoint(s); s.asked = s.queries.every(function (q) { return state.project.geo[q]; }); });
+    let moved = false;
+    round.stops.forEach(function (s) {
+      // a point put right by hand before v0.39.0 (kept under the text asked to the map): now by street and number
+      const old = s.queries.map(function (q) { return state.project.geo[q]; }).find(function (g) { return g && g.found === 'mano'; });
+      if (old && !state.project.pins[s.pin]) { state.project.pins[s.pin] = { lat: old.lat, lon: old.lon }; moved = true; }
+      s.point = knownPoint(s);
+      s.asked = s.queries.every(function (q) { return state.project.geo[q]; });
+    });
+    if (moved) changed();
     round.depot = depotPoint();
     if (round.placing !== 'depot') round.placing = null; // the stops are new objects; waiting for the office's point stays
   }
@@ -1602,7 +1636,7 @@
     loadStops();
     if (depotQueries().length && !round.depot) {
       status.textContent = 'Cerco ' + depotWord() + '…';
-      round.depot = await locate({ queries: depotQueries() });
+      round.depot = await locate({ queries: depotQueries(), town: state.project.depotAddr.comune.trim() });
       renderDepotStatus();
     }
     for (let i = 0; i < round.stops.length; i++) {
@@ -1635,11 +1669,12 @@
       if (round.depot) { points.unshift(round.depot); points.push(round.depot); }
       status.textContent = 'Calcolo il percorso…';
       const r = await roadRoute(points);
+      round.line = r.line;   // kept, to compare it with the shortest one
       redraw(r.line);
       const found = round.stops.filter(function (s) { return s.point; }).length;
       total.textContent = 'Giro' + (sz().name ? ' della ' + sz().name : '') + ': ' + kmText(r.km) +
         (r.onRoads ? ' su strada, circa ' + Math.round(r.minutes) + ' minuti di guida senza le fermate' : ' in linea d\'aria (il calcolo su strada non ha risposto)') +
-        (round.depot ? ', partendo e tornando a ' + depotWord() : ', senza l\'ufficio (scrivilo in alto)') + '. Tappe sulla mappa: ' + found + ' su ' + round.stops.length + '.';
+        (round.depot ? ', partendo e tornando ' + toDepot() : ', senza l\'ufficio (scrivilo in alto)') + '. Tappe sulla mappa: ' + found + ' su ' + round.stops.length + '.';
       status.textContent = found < round.stops.length
         ? 'Le tappe in rosso non sono state trovate: con «📍 mettila sulla mappa» le metti tu.'
         : 'Fatto. Se una tappa è nel posto sbagliato, trascinala dove va.';
@@ -1692,8 +1727,17 @@
         return;
       }
       status.textContent = 'Calcolo le distanze fra tutte le tappe…';
-      const points = [round.depot].concat(round.stops.map(function (s) { return s.point; }));
-      const m = await distanceMatrix(points);
+      // stops at the same point (pieces of the same street) are asked once: up to 100 points the distances are on roads
+      const same = function (a, b) { return Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lon - b.lon) < 1e-6; };
+      const places = [round.depot];
+      const placeOf = round.stops.map(function (s) {
+        let k = places.findIndex(function (q) { return same(q, s.point); });
+        if (k < 0) { places.push(s.point); k = places.length - 1; }
+        return k;
+      });
+      const pm = await distanceMatrix(places);
+      const idx = [0].concat(placeOf);
+      const m = { onRoads: pm.onRoads, dist: idx.map(function (a) { return idx.map(function (b) { return pm.dist[a][b]; }); }) };
       const now = round.stops.map(function (_, i) { return i + 1; });
       status.textContent = 'Cerco l\'ordine migliore…';
       await pause(30);
@@ -1701,37 +1745,23 @@
       const before = C.tourCost(m.dist, now) / 1000, after = C.tourCost(m.dist, best) / 1000;
       const order = best.map(function (x) { return x - 1; });
       const line = await roadRoute([round.depot].concat(order.map(function (i) { return round.stops[i].point; }), [round.depot]));
-      redraw(null, true, line.line);
+      redraw(round.line || null, true, line.line);
       const saved = before - after;
       status.textContent = m.onRoads ? 'Fatto, con le distanze su strada.' : 'Fatto, con le distanze in linea d\'aria (il calcolo su strada non ha risposto).';
+      // only to know (Garadron, 23 November 2026): the round of the frame does not change
+      const list = h('ol', { class: 'small better-order' });
+      order.forEach(function (i) { list.append(h('li', null, round.stops[i].queries[0])); });
       box.append(
-        h('p', null, h('b', null, 'Giro di adesso: ' + kmText(before) + ' · Ottimizzato: ' + kmText(after)),
-          saved > 0.05 ? ' (' + kmText(saved) + ' in meno, −' + Math.round(saved / before * 100) + '%)' : ' (il giro è già buono)'),
-        h('p', { class: 'small muted' }, 'Sulla mappa il percorso ottimizzato è la linea verde tratteggiata. Ordine nuovo: ' +
-          order.slice(0, 12).map(function (i) { return round.stops[i].street; }).join(' → ') + (order.length > 12 ? ' → …' : '')),
-        saved > 0.05 ? h('p', { class: 'actions-inline' },
-          h('button', { type: 'button', class: 'primary', onclick: function () { applyOrder(order); } }, 'Applica il nuovo ordine al giro')) : null);
+        h('p', null, h('b', null, 'Gita di adesso: ' + kmText(before) + ' · Gita più corta: ' + kmText(after)),
+          saved > 0.05 ? ' (' + kmText(saved) + ' in meno, −' + Math.round(saved / before * 100) + '%)' : ' (la gita di adesso è già la più corta)'),
+        h('p', { class: 'small muted' }, 'Solo per sapere: il giro del casello non cambia. Sulla mappa la gita più corta è la linea ' +
+          'verde tratteggiata, partendo e tornando ' + toDepot() + '.'),
+        saved > 0.05 ? h('details', null, h('summary', null, 'L\'ordine della gita più corta (' + order.length + ' tappe)'), list) : null);
     } catch (e) {
       status.textContent = 'Non riesco a ottimizzare: ' + e.message + '. Serve internet.';
     } finally {
       routeBusy = false;
     }
-  }
-
-  function applyOrder(order) {
-    const s = sz();
-    const warn = s.locked ? '\n\nIl giro è bloccato: cambio solo l\'ordine delle vie, i civici restano quelli controllati.' : '';
-    if (!confirm('Riordino il giro della ' + (s.name || 'sottozona') + ' come l\'ottimizzazione? Cambia il posto delle vie nelle caselle. ' +
-      'Il giro di adesso resta salvato: «Torna al giro di prima» lo rimette.' + warn)) return;
-    const r = C.reorderRoute(s, round.stops, order);
-    s.routeBefore = s.route;
-    s.route = r.route;
-    changed();
-    renderSubzone();
-    refreshSide();
-    $('optimize-result').textContent = '';
-    showKnownRound();
-    toast('Giro riordinato.' + (r.dropped.length ? ' Ho tolto le righe delle caselle vuote (' + r.dropped.join(', ') + '): rimettile dove servono.' : ''));
   }
 
   function renderOptimizeUndo() {

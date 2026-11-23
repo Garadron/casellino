@@ -213,6 +213,7 @@
       streets: {},      // streetKey -> { color: 'RRGGBB' }
       streetLists: {},  // norm(town) -> [street names] (official list, optional)
       geo: {},          // map query -> { lat, lon, found: 'civico' | 'via' } or { found: 'no' }
+      pins: {},         // points put right by hand: pinKey (street + number) -> { lat, lon }
       depot: '',        // address of the office where the round starts and ends, optional (written from depotAddr)
       depotAddr: { comune: '', provincia: '', via: '', civico: '' },
       depotName: '',    // its name, optional
@@ -257,6 +258,12 @@
       Object.keys(p.streets).forEach(function (k) {
         const c = p.streets[k] && String(p.streets[k].color || '').replace('#', '').toUpperCase();
         if (/^[0-9A-F]{6}$/.test(c)) out.streets[k] = { color: c };
+      });
+    }
+    if (p.pins && typeof p.pins === 'object') {
+      Object.keys(p.pins).forEach(function (k) {
+        const g = p.pins[k];
+        if (g && isFinite(g.lat) && isFinite(g.lon)) out.pins[k] = { lat: +g.lat, lon: +g.lon };
       });
     }
     if (p.geo && typeof p.geo === 'object') {
@@ -1191,12 +1198,50 @@
       if (!c.key || /^\?/.test(String(c.street).trim()) || !streetName(c.street)) { last = null; return; }
       if (last && last.line === c.line && last.key === c.key) { last.cells++; return; }
       const number = /^\d+\s*[A-Z]?$/i.test(String(c.top).trim()) ? c.top : '';
-      last = { line: c.line, key: c.key, street: c.street, town: c.town, cells: 1,
+      last = { line: c.line, key: c.key, street: c.street, town: c.town, cells: 1, pin: pinKey(c.street, number, c.town),
         queries: [mapQuery(c.street, number, c.town), mapQuery(c.street, '', c.town), mapQuery(bareName(c.street), '', c.town)]
           .filter(function (q, i, arr) { return q && arr.indexOf(q) === i; }) };
       stops.push(last);
     });
     return stops;
+  }
+
+  /*
+   * A point put right by hand belongs to the street and the house number, however they are written ("V. DEI GELSI 12",
+   * "VIA DEI GELSI 12", capitals, town): it stays when the route is changed or the program updated (Garadron, 23 November
+   * 2026: the points corrected on the map came back to the wrong places, because they were kept under the exact text
+   * asked to the map).
+   */
+  function pinKey(street, top, town) {
+    const m = /^(\d+)\s*([A-Z])?/i.exec(String(top || '').trim());
+    return streetKey(street, town) + '#' + (m ? m[1] + (m[2] || '').toUpperCase() : '');
+  }
+
+  /*
+   * The point of a stop: the one put by hand for that street and number first; then the one found on the map. When the
+   * map found only the street, or found it far away (over 2 km: another town), a point put by hand for another number
+   * of the same street wins, the nearest number first.
+   */
+  function stopPoint(project, stop) {
+    const pins = project.pins || {};
+    if (pins[stop.pin]) return { lat: pins[stop.pin].lat, lon: pins[stop.pin].lon, found: 'mano' };
+    let found = null;
+    for (let i = 0; i < stop.queries.length && !found; i++) {
+      const g = project.geo[stop.queries[i]];
+      if (g && g.found !== 'no') found = g;
+    }
+    if (found && found.found === 'mano') return found;   // corrected before the points by street and number
+    const street = stop.pin.slice(0, stop.pin.lastIndexOf('#'));
+    const number = parseInt(stop.pin.slice(stop.pin.lastIndexOf('#') + 1), 10);
+    let near = null, gap = Infinity;
+    Object.keys(pins).forEach(function (k) {
+      if (k.slice(0, k.lastIndexOf('#')) !== street) return;
+      const n = parseInt(k.slice(k.lastIndexOf('#') + 1), 10);
+      const d = isFinite(n) && isFinite(number) ? Math.abs(n - number) : 1e6;
+      if (d < gap) { gap = d; near = pins[k]; }
+    });
+    if (near && (!found || found.found === 'via' || airKm(found, near) > 2)) return { lat: near.lat, lon: near.lon, found: 'mano' };
+    return found;
   }
 
   // The name without the word for the kind of street ("VIA DEI TIGLI" -> "DEI TIGLI"): a last try on
@@ -1228,10 +1273,12 @@
    * road distances (not symmetric: one-way streets). Nearest neighbour, then moving pieces of 1-3
    * stops and reversing stretches while the round gets shorter. Good, not guaranteed best.
    */
+  // The order with the fewest kilometres: improved from the nearest stop each time and from the order of now (the round
+  // of the frame), the shorter of the two, so it is never longer than the round of now.
   function optimizeOrder(dist) {
     const n = dist.length - 1;
-    const left = [];
-    for (let k = 1; k <= n; k++) left.push(k);
+    const left = [], now = [];
+    for (let k = 1; k <= n; k++) { left.push(k); now.push(k); }
     let order = [], at = 0;
     while (left.length) {
       let best = 0;
@@ -1239,6 +1286,12 @@
       at = left.splice(best, 1)[0];
       order.push(at);
     }
+    const a = improveOrder(dist, order), b = improveOrder(dist, now);
+    return tourCost(dist, b) < tourCost(dist, a) ? b : a;
+  }
+  // Better and better orders: a piece turned round (2-opt), one to three stops moved elsewhere (or-opt).
+  function improveOrder(dist, order) {
+    const n = order.length;
     let cost = tourCost(dist, order), better = true;
     while (better) {
       better = false;
@@ -1266,44 +1319,6 @@
 
   // Lines that only say where pigeonholes stay empty or where a row ends: after a new order they mean nothing.
   const LAYOUT_LINE = /^\s*(fine\s+striscia|fine\s+fila|striscia\s+vuota|vuot[ae](\s+\d+)?|confine\b.*)\s*$/i;
-
-  /*
-   * The route of a sub-zone with its stops in a new order (`order`: indexes into `stops`). Each stop
-   * takes its line, the notes just above it and the lines without a place on the map that follow it.
-   * Lines about empty pigeonholes are left out (returned in `dropped`); a COMUNE line is written where
-   * the town changes.
-   */
-  function reorderRoute(sz, stops, order) {
-    const lines = String(sz.route || '').split(/\r?\n/);
-    let current = -1;
-    const stopOfLine = {};
-    stops.forEach(function (s, k) { if (stopOfLine[s.line] === undefined) stopOfLine[s.line] = k; });
-    const blocks = stops.map(function () { return []; });
-    const head = [], dropped = [];
-    let notes = [];
-    lines.forEach(function (raw, i) {
-      const t = raw.trim();
-      if (!t) return;
-      if (LAYOUT_LINE.test(t)) { dropped.push(t); return; }
-      if (/^comune\s*:/i.test(t)) return;
-      if (t[0] === '#') { notes.push(raw); return; }
-      if (stopOfLine[i] !== undefined) current = stopOfLine[i];
-      const target = current < 0 ? head : blocks[current];
-      notes.forEach(function (x) { target.push(x); });
-      notes = [];
-      target.push(raw);
-    });
-    const out = head.slice();
-    let town = sz.town || '';
-    order.forEach(function (k) {
-      if (!blocks[k].length) return;
-      const t = stops[k].town || '';
-      if (norm(t) !== norm(town)) { out.push('COMUNE: ' + (t || sz.town || '')); town = t; }
-      blocks[k].forEach(function (x) { out.push(x); });
-    });
-    notes.forEach(function (x) { out.push(x); });
-    return { route: out.join('\n') + '\n', dropped: dropped };
-  }
 
   // ---------------------------------------------------------------- printing: strips packed on A4 sheets
 
@@ -1565,7 +1580,8 @@
     routeStops: routeStops,
     tourCost: tourCost,
     optimizeOrder: optimizeOrder,
-    reorderRoute: reorderRoute,
+    pinKey: pinKey,
+    stopPoint: stopPoint,
     printPieces: printPieces,
     printBlocks: printBlocks,
     packPages: packPages,
