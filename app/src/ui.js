@@ -1995,11 +1995,13 @@
     const add = function (text) { out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + text + '\n'; out.scrollTop = out.scrollHeight; };
     const known = knownStreets();
     const items = F.routeItems(res.cells, res.phrases).map(function (it) { return { street: F.snapStreet(it.street, known), tok: it.tok }; });
+    const repeat = F.repeatsEarlier(photo.items, items);
     const fresh = F.withoutOverlap(photo.items, items);
     const again = F.repeatedItems(photo.items, fresh);
     photo.items = photo.items.concat(fresh);
     const same = items.length - fresh.length;
-    add('# foto ' + (i + 1) + ' (letta in automatico: da controllare)' + (same ? ' · ' + same + (same === 1 ? ' casella uguale' : ' caselle uguali') + ' alla foto prima, non ripetute' : ''));
+    add('# foto ' + (i + 1) + (repeat ? ': questa striscia c\'era già in una foto prima, non la riscrivo'
+      : ' (letta in automatico: da controllare)' + (same ? ' · ' + same + (same === 1 ? ' casella uguale' : ' caselle uguali') + ' alla foto prima, non ripetute' : '')));
     // two numbers in one pigeonhole follow the way of the street (read "7/5" between 4 and 6: it is 5/7)
     if (fresh.length) add(C.fixPairOrder(F.itemLines(fresh).join('\n'), sz().town).text);
     // the same number further on: maybe the same pigeonhole seen twice, maybe a number read wrong
@@ -2578,17 +2580,24 @@
     return list.sort(function (a, b) { return a.order - b.order; });
   }
   // A smaller copy (at most 2400 px on the long side): sharp enough to read, light on the device.
+  // A photo the browser cannot open here (HEIC on some phones) is kept as it is.
   async function smallCopy(file) {
-    const img = await createImageBitmap(file);
+    let img;
+    try { img = await createImageBitmap(file); } catch (e) { return file; }
     const k = Math.min(1, 2400 / Math.max(img.width, img.height));
     const c = document.createElement('canvas');
     c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return new Promise(function (ok) { c.toBlob(function (b) { ok(b || file); }, 'image/jpeg', 0.85); });
+    if (img.close) img.close();   // a whole photo takes tens of MB: freed at once, or a phone with many photos runs out of memory
+    const blob = await new Promise(function (ok) { c.toBlob(function (b) { ok(b || file); }, 'image/jpeg', 0.85); });
+    c.width = c.height = 0;
+    return blob;
   }
   // Keeps the photos of the open sub-zone (the same photo twice is kept once).
   async function keepPhotos(files) {
     const szId = sz().id;
+    // the browser is asked not to clear the photos by itself when the device is short of space
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* only a wish */ }
     const have = await photosOf(szId);
     let order = have.length ? have[have.length - 1].order + 1 : 0, added = 0;
     for (const f of files) {

@@ -31,7 +31,7 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Più avanti (solo cose gratuite)
 
-1. Lettura delle foto (v0.28.0 al 59% sulle 6 strisce di prova): trovare la striscia anche senza rettangolo o con
+1. Lettura delle foto (v0.40.0 all'83% sulle 6 strisce di prova, era al 59%): trovare la striscia anche senza rettangolo o con
    tanto mobile intorno, le caselle doppie con numeri piccoli, lo scritto a mano. Più strisce di prova con i numeri
    giusti (in `dati/prova-lettura/`) aiutano a misurare.
 2. Note dal telefono: il bot non le mette nel repository pubblico (giusto); se servono note solo per Casellino, un

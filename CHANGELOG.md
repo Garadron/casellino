@@ -1,5 +1,29 @@
 # Registro delle versioni
 
+## v0.40.0 · 2026-11-24 · Lettura delle foto più precisa, niente strisce ripetute, foto salvate più sicure
+
+Garadron (24 novembre 2026): migliorare l'uso, fare un debug, controllare velocità, foto salvate e account; soprattutto
+la trascrizione dalle foto, senza mettere due volte le strisce o i civici fotografati due volte.
+
+- **Lettura delle foto: da 81 a 115 civici giusti su 138 (dal 59% all'83%), inventati da 37 a 20**, sulle 6 strisce di
+  prova private (`tools/misura_lettura_foto.js`); nessuna striscia peggiora. In ogni casella (`app/src/foto.js`):
+  - la casella si prende un po' più alta, così la cima dei numeri non viene tagliata;
+  - la luce si fa uguale su tutta la casella (l'ombra del ripiano sopra non cancella più metà dei numeri);
+  - si tengono solo i pezzi di scritto: i resti delle righe stampate che toccano il bordo e lo sporco vanno via, i
+    tratti sottili spezzati (il piede di un «2») restano; una casella con solo sporco è vuota, non un «1» inventato;
+  - ogni casella si legge in due misure e due modi, e vince la risposta più sicura; la seconda misura solo se serve;
+  - i due civici con la barra («8\10», «23/21») si leggono uno per uno, a destra e a sinistra della barra;
+  - nelle caselle larghe le lettere vicine restano insieme («35A» non diventa «3» e «5»).
+- **Ripetizioni**: una striscia rifotografata più avanti (anche più di 40 caselle indietro, come all'inizio di una fila
+  di 91) non entra due volte nel giro, e la pagina lo dice («questa striscia c'era già»). Nuova prova automatica: un
+  giro intero letto da tante foto che si sovrappongono, con una striscia rifotografata, la stessa foto due volte di
+  fila e numeri letti un po' diversi: il giro esce uguale a quello vero, senza civici doppi (`tests/test_core.js`).
+- **Foto salvate sul dispositivo** (`app/src/ui.js`): la memoria di ogni foto si libera subito (con tante foto il
+  telefono poteva bloccarsi); una foto che il browser non apre (HEIC) si tiene com'è e non ferma le altre; il browser
+  viene pregato di non cancellare le foto da solo quando manca spazio.
+- Prove: tutte superate (`test_core`, pagina, anteprima, account nella pagina, server in locale, foto in Edge, misure
+  del modello bianco).
+
 ## Strumenti · 2026-11-24 · Skill nuove per tutti i progetti
 
 - Da Archivista (24 novembre 2026), già installate sul PC per tutti: watch, ponytail, verification-before-completion,

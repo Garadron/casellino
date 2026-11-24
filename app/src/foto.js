@@ -212,6 +212,7 @@
   function blackWhite(b) {
     const g = new Uint8Array(b.width * b.height);
     for (let i = 0; i < g.length; i++) g[i] = b.data[i * 4];
+    if (b.keepInside) evenLight(g, b.width, b.height, b.keepInside);
     const t = threshold(g);
     let dark = 0;
     for (let i = 0; i < g.length; i++) if (g[i] <= t) dark++;
@@ -231,12 +232,165 @@
       for (let y = 0; y < H; y++) n += ink[y * W + x];
       if (n > H * 0.8) for (let y = 0; y < H; y++) ink[y * W + x] = 0;
     }
+    if (b.keepInside) {
+      keepInside(ink, W, H, b.keepInside);
+      let n = 0;
+      for (let i = 0; i < ink.length; i++) n += ink[i];
+      out.ink = n / g.length;
+    }
     for (let i = 0; i < g.length; i++) {
       const v = ink[i] ? 0 : 255;
       out.data[i * 4] = out.data[i * 4 + 1] = out.data[i * 4 + 2] = v;
       out.data[i * 4 + 3] = 255;
     }
     return out;
+  }
+
+  // The pieces of ink that touch each other: { label (the piece of each point), parts: [{ id, x0, y0, x1, y1, n }] }
+  function pieces(ink, W, H) {
+    const label = new Int32Array(W * H), parts = [], stack = [];
+    for (let start = 0; start < ink.length; start++) {
+      if (!ink[start] || label[start]) continue;
+      const id = parts.length + 1;
+      let x0 = W, y0 = H, x1 = 0, y1 = 0, n = 0;
+      label[start] = id; stack.push(start);
+      while (stack.length) {
+        const p = stack.pop(), x = p % W, y = (p - x) / W;
+        n++;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        if (x > 0 && ink[p - 1] && !label[p - 1]) { label[p - 1] = id; stack.push(p - 1); }
+        if (x < W - 1 && ink[p + 1] && !label[p + 1]) { label[p + 1] = id; stack.push(p + 1); }
+        if (y > 0 && ink[p - W] && !label[p - W]) { label[p - W] = id; stack.push(p - W); }
+        if (y < H - 1 && ink[p + W] && !label[p + W]) { label[p + W] = id; stack.push(p + W); }
+      }
+      parts.push({ id: id, x0: x0, y0: y0, x1: x1, y1: y1, n: n });
+    }
+    return { label: label, parts: parts };
+  }
+
+  /*
+   * The slanted stroke between two house numbers in one pigeonhole ("8\10", "27/25"), in a black-and-white
+   * picture: a piece as tall as the numbers, thin on every row, that moves steadily left or right going
+   * down (a "1" stands straight, a "7" or a "4" has a wide bar). Returns { x0, x1 } or null.
+   */
+  function findSlash(b) {
+    const W = b.width, H = b.height, ink = new Uint8Array(W * H);
+    for (let i = 0; i < ink.length; i++) ink[i] = b.data[i * 4] < 128 ? 1 : 0;
+    const found = pieces(ink, W, H), parts = found.parts.filter(function (c) { return c.n > 10; });
+    const tall = parts.reduce(function (a, c) { return Math.max(a, c.y1 - c.y0 + 1); }, 0);
+    let best = null;
+    parts.forEach(function (c) {
+      const w = c.x1 - c.x0 + 1, h = c.y1 - c.y0 + 1;
+      if (h < tall * 0.8 || w < h * 0.2 || w > h * 0.8) return;
+      // the middle of the ink on each row, and how wide it is
+      const mids = [];
+      let wide = 0;
+      for (let y = c.y0; y <= c.y1; y++) {
+        let a = -1, z = -1;
+        for (let x = c.x0; x <= c.x1; x++) if (found.label[y * W + x] === c.id) { if (a < 0) a = x; z = x; }
+        if (a < 0) continue;
+        mids.push({ y: y, x: (a + z) / 2 });
+        if (z - a + 1 > w * 0.6) wide++;
+      }
+      if (mids.length < h * 0.8 || wide > h * 0.15) return;
+      // steady slope: the top quarter and the bottom quarter are far apart, the middle in between
+      const q = Math.max(1, Math.floor(mids.length / 4));
+      const avg = function (list) { return list.reduce(function (s, m) { return s + m.x; }, 0) / list.length; };
+      const top = avg(mids.slice(0, q)), bottom = avg(mids.slice(-q)), middle = avg(mids.slice(q, -q).length ? mids.slice(q, -q) : mids);
+      if (Math.abs(bottom - top) < w * 0.45) return;
+      if (Math.abs(middle - (top + bottom) / 2) > w * 0.25) return;
+      // numbers on both sides
+      const left = parts.some(function (d) { return d !== c && d.x1 < c.x0 + w * 0.3 && d.y1 - d.y0 + 1 >= tall * 0.5; });
+      const right = parts.some(function (d) { return d !== c && d.x0 > c.x1 - w * 0.3 && d.y1 - d.y0 + 1 >= tall * 0.5; });
+      if (left && right && (!best || h > best.h)) best = { x0: c.x0, x1: c.x1, h: h };
+    });
+    return best && { x0: best.x0, x1: best.x1 };
+  }
+
+  // Columns x0..x1 of a black-and-white picture, with a white border.
+  function columnsOf(b, x0, x1, pad) {
+    const w = x1 - x0 + 1 + 2 * pad, H = b.height;
+    const out = { width: w, height: H, data: new Uint8ClampedArray(w * H * 4).fill(255), ink: b.ink };
+    for (let y = 0; y < H; y++) for (let x = x0; x <= x1; x++) {
+      const si = (y * b.width + x) * 4, di = (y * w + x - x0 + pad) * 4;
+      out.data[di] = out.data[di + 1] = out.data[di + 2] = b.data[si];
+    }
+    return out;
+  }
+
+  /*
+   * The writing of a black-and-white picture, cut out with a white border around it and brought to
+   * the size the reader likes best (letters about `tall` points high, softened at the edges).
+   */
+  function fitInk(b, tall) {
+    const W = b.width, H = b.height;
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (b.data[(y * W + x) * 4] < 128) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    if (x1 < 0) return b;
+    const k = tall / (y1 - y0 + 1), pad = Math.round(tall * 0.5);
+    const w = Math.max(1, Math.round((x1 - x0 + 1) * k)) + 2 * pad, h = tall + 2 * pad;
+    const out = { width: w, height: h, data: new Uint8ClampedArray(w * h * 4).fill(255), ink: b.ink };
+    for (let y = 0; y < tall; y++) for (let x = 0; x < w - 2 * pad; x++) {
+      // the mean of the points of the original that fall in this one
+      const sx0 = x0 + x / k, sx1 = x0 + (x + 1) / k, sy0 = y0 + y / k, sy1 = y0 + (y + 1) / k;
+      let s = 0, n = 0;
+      for (let sy = Math.floor(sy0); sy < Math.max(Math.floor(sy0) + 1, Math.ceil(sy1)); sy++) {
+        for (let sx = Math.floor(sx0); sx < Math.max(Math.floor(sx0) + 1, Math.ceil(sx1)); sx++) {
+          if (sx > x1 || sy > y1) continue;
+          s += b.data[(sy * W + sx) * 4]; n++;
+        }
+      }
+      const i = ((y + pad) * w + x + pad) * 4;
+      out.data[i] = out.data[i + 1] = out.data[i + 2] = n ? Math.round(s / n) : 255;
+    }
+    return out;
+  }
+
+  /*
+   * The same light on the whole pigeonhole: the shadow of the shelf above darkens the top rows of the
+   * paper, and one grey level for the whole picture would take that shadow (and the numbers in it) for
+   * a line. Each row is brightened by its own paper colour (the light points of the row: numbers fill
+   * less than half of it). `pad` is the white border, not looked at.
+   */
+  function evenLight(g, W, H, pad) {
+    const vals = [];
+    for (let y = pad; y < H - pad; y++) {
+      vals.length = 0;
+      for (let x = pad; x < W - pad; x++) vals.push(g[y * W + x]);
+      if (!vals.length) continue;
+      vals.sort(function (a, b) { return a - b; });
+      const paper = Math.max(1, vals[Math.floor(vals.length * 0.85)]);
+      for (let x = pad; x < W - pad; x++) g[y * W + x] = Math.min(255, Math.round(g[y * W + x] * 255 / paper));
+    }
+  }
+
+  /*
+   * Only the writing of the pigeonhole is kept: the pieces of ink touching the edge of the picture are
+   * what is left of the printed lines around it (or of the next pigeonhole), and specks and dashes much
+   * smaller than the biggest piece are dirt. `pad` is the white border around the picture, not looked at.
+   */
+  function keepInside(ink, W, H, pad) {
+    const found = pieces(ink, W, H), label = found.label, parts = found.parts;
+    const edge = function (c) { return c.x0 <= pad + 1 || c.y0 <= pad + 1 || c.x1 >= W - pad - 2 || c.y1 >= H - pad - 2; };
+    // a long thin piece touching the edge is a line; a digit cut by the edge (a big piece) stays
+    const inside = parts.filter(function (c) {
+      if (!edge(c)) return true;
+      const w = c.x1 - c.x0 + 1, h = c.y1 - c.y0 + 1;
+      return Math.min(w, h) > Math.max(w, h) * 0.3 && c.n > w * h * 0.15 && h < (H - 2 * pad) * 0.9 && w < (W - 2 * pad) * 0.9;
+    });
+    const tall = inside.reduce(function (a, c) { return Math.max(a, c.y1 - c.y0 + 1); }, 0);
+    const keep = {};
+    // only specks left (an empty pigeonhole, dirt): nothing to read
+    const most = inside.reduce(function (a, c) { return Math.max(a, c.n); }, 0);
+    const band = inside.filter(function (c) { return c.y1 - c.y0 + 1 >= tall * 0.45; });
+    const bandTop = band.reduce(function (a, c) { return Math.min(a, c.y0); }, H), bandBottom = band.reduce(function (a, c) { return Math.max(a, c.y1); }, 0);
+    // a broken stroke (the foot of a "2" seen thin) is kept when it is big enough and lies among the numbers
+    if (tall >= (H - 2 * pad) * 0.25) inside.forEach(function (c) {
+      if (c.y1 - c.y0 + 1 >= tall * 0.45 || (c.n >= most * 0.12 && c.y0 >= bandTop - 2 && c.y1 <= bandBottom + 2)) keep[c.id] = true;
+    });
+    for (let i = 0; i < ink.length; i++) if (ink[i] && !keep[label[i]]) ink[i] = 0;
   }
 
   /*
@@ -465,7 +619,37 @@
     const close = long.length - short.length <= 1 && (short.slice(i) === long.slice(i + 1) || short.slice(i + 1) === long.slice(i + 1));
     return { score: close && street ? 0.5 : -2, exact: false };
   }
+  /*
+   * The same strip photographed again later (not right after: the person goes back to it): the whole
+   * new photo lines up with a piece anywhere in what was read before. It counts only if at least 3
+   * house numbers read for sure are the same, and they are almost all (4 out of 5) of the sure ones of
+   * the new photo: a photo that also shows new pigeonholes is not a repeat.
+   */
+  function repeatsEarlier(before, after) {
+    const n = before.length, m = after.length, GAP = -1.5;
+    const sure = after.filter(function (it) { return hasNumber(overlapKey(it)) && !/\?/.test(it.tok); }).length;
+    if (sure < 3 || !n) return false;
+    // best[i][j]: the best line-up of the first j new ones with a piece of the old ones ending at i (free start)
+    let prev = new Float64Array(m + 1), prevE = new Int16Array(m + 1);
+    for (let j = 1; j <= m; j++) prev[j] = GAP * j;
+    let top = -Infinity, topE = 0;
+    for (let i = 1; i <= n; i++) {
+      const cur = new Float64Array(m + 1), curE = new Int16Array(m + 1);
+      for (let j = 1; j <= m; j++) {
+        const l = likeness(before[i - 1], after[j - 1]);
+        let s = prev[j - 1] + l.score, e = prevE[j - 1] + (l.exact ? 1 : 0);
+        if (prev[j] + GAP > s) { s = prev[j] + GAP; e = prevE[j]; }
+        if (cur[j - 1] + GAP > s) { s = cur[j - 1] + GAP; e = curE[j - 1]; }
+        cur[j] = s; curE[j] = e;
+      }
+      if (cur[m] > top) { top = cur[m]; topE = curE[m]; }
+      prev = cur; prevE = curE;
+    }
+    return topE >= 3 && topE >= sure * 0.8 && top > 0;
+  }
+
   function withoutOverlap(before, after) {
+    if (repeatsEarlier(before, after)) return [];
     const old = before.slice(-OVERLAP_MAX), neu = after.slice(0, OVERLAP_MAX);
     const n = old.length, m = neu.length, GAP = -1.5;
     // best[i][j]: the best line-up of a piece of old ending at i with the first j of the new ones
@@ -681,6 +865,8 @@
     return found;
   }
 
+  // each pigeonhole is read as it is and brought to letters 32 points high, as one word and as one line
+  const SIZES = [0, 32], MODES = ['8', '7'], GAPK = 0.15, QUICK = 80;
   const NUMBER_CHARS = '0123456789ABCDEFGHILMNOPQRSTUVZ/\\-';
 
   /*
@@ -810,6 +996,29 @@
     return { width: W, height: H, data: img.data.slice(y0 * W * 4, (y0 + H) * W * 4) };
   }
 
+  /*
+   * One pigeonhole read in more ways (as it is, and at the size the reader likes; one line or one word):
+   * the answer given most surely wins. Returns { t, top: best sureness, n: how many ways gave it }.
+   */
+  async function readNumber(bw, recognize) {
+    const votes = {};
+    let best = { t: '', conf: -1, top: 0, n: 0 };
+    for (const size of SIZES) {
+      const picture = size ? fitInk(bw, size) : bw;
+      for (const mode of MODES) {
+        const r = await recognize(picture, mode, NUMBER_CHARS);
+        const t = cleanNumber(r.text);
+        if (!t) continue;
+        const v = votes[t] = votes[t] || { t: t, conf: 0, n: 0, top: 0 };
+        v.conf += r.confidence; v.n++; v.top = Math.max(v.top, r.confidence);
+        if (v.conf > best.conf) best = v;
+        if (r.confidence >= 60) break;   // sure enough: no second try in this size
+      }
+      if (best.top >= QUICK) break;   // read very surely: the other size is not needed
+    }
+    return best;
+  }
+
   async function readStrip(photo, recognize, progress) {
     // a rectangle much taller than a strip (frame above, papers below; a strip is many times wider than
     // tall): only the strip is kept
@@ -830,7 +1039,14 @@
       const pieces = [];
       seg.cells.forEach(function (c) {
         // as wide as more pigeonholes: the numbers inside it one by one (lines lost in a shadow), or one wide pigeonhole
-        const inside = c.span > 1 ? ink.filter(function (k) { return k.x0 / S >= c.x0 - 2 && k.x1 / S <= c.x1 + 2; }) : [];
+        const found = c.span > 1 ? ink.filter(function (k) { return k.x0 / S >= c.x0 - 2 && k.x1 / S <= c.x1 + 2; }) : [];
+        // the numbers of two pigeonholes are far apart; the letters of one number ("35 A") are close
+        const inside = [];
+        found.forEach(function (k) {
+          const last = inside[inside.length - 1];
+          if (last && (k.x0 - last.x1) / S < seg.typical * GAPK) inside[inside.length - 1] = { x0: last.x0, x1: k.x1 };
+          else inside.push(k);
+        });
         if (inside.length > 1) {
           const pad = Math.round(seg.typical * 0.12);
           inside.forEach(function (k) { pieces.push({ x0: Math.max(c.x0, Math.round(k.x0 / S) - pad), x1: Math.min(c.x1, Math.round(k.x1 / S) + pad), span: 1 }); });
@@ -839,16 +1055,22 @@
       for (let i = 0; i < pieces.length; i++) {
         if (progress) progress(i, pieces.length);
         const c = pieces[i];
-        const picture = blackWhite(cellImage(img, c.x0, c.x1, seg.top, seg.split));
-        if (picture.ink < 0.004) continue;   // an empty pigeonhole
-        let best = { t: '', conf: -1 };
-        for (const mode of ['8', '7']) {
-          const r = await recognize(picture, mode, NUMBER_CHARS);
-          const t = cleanNumber(r.text);
-          if (t && r.confidence > best.conf) best = { t: t, conf: r.confidence };
-          if (best.conf >= 60) break;   // sure enough: no second try
+        // a little taller than the row found: the top of the numbers is never cut (what comes in from the line above goes away)
+        const cut = cellImage(img, c.x0, c.x1, Math.max(0, seg.top - Math.round((seg.split - seg.top) * 0.3)), seg.split);
+        cut.keepInside = 12;
+        const bw = blackWhite(cut);
+        if (bw.ink < 0.004) continue;   // an empty pigeonhole
+        let best = await readNumber(bw, recognize);
+        // two numbers with a slanted stroke between them: each read on its own (the stroke is often lost)
+        const slash = findSlash(bw);
+        if (slash) {
+          const pad = 12;
+          const left = await readNumber(columnsOf(bw, 0, Math.max(0, slash.x0 - 1), pad), recognize);
+          const right = await readNumber(columnsOf(bw, Math.min(bw.width - 1, slash.x1 + 1), bw.width - 1, pad), recognize);
+          const one = /^\d{1,4}[A-Z]?$/;
+          if (one.test(left.t) && one.test(right.t)) best = { t: left.t + '/' + right.t, top: Math.min(left.top, right.top), n: Math.min(left.n, right.n) };
         }
-        if (best.t) cells.push({ x0: c.x0, x1: c.x1, top: best.t, unsure: best.conf < 70, span: c.span });
+        if (best.t) cells.push({ x0: c.x0, x1: c.x1, top: best.t, unsure: best.top < 70 && best.n < 2, span: c.span });
       }
       const rn = await recognize(low, '11', '');
       return { cells: cells, phrases: streetPhrases(rn.words).map(function (p) { return { text: p.text, x0: p.x0 / S, x1: p.x1 / S }; }) };
@@ -866,6 +1088,6 @@
   }
 
   return { toGray: toGray, threshold: threshold, segmentStrip: segmentStrip, cleanBand: cleanBand, inkClusters: inkClusters, cropBand: cropBand, cleanNumber: cleanNumber,
-    streetPhrases: streetPhrases, routeLines: routeLines, routeItems: routeItems, itemLines: itemLines, withoutOverlap: withoutOverlap, sheetStreets: sheetStreets, snapStreet: snapStreet, signBoxes: signBoxes, signInk: signInk, signText: signText, repeatedItems: repeatedItems,
+    streetPhrases: streetPhrases, routeLines: routeLines, routeItems: routeItems, itemLines: itemLines, withoutOverlap: withoutOverlap, repeatsEarlier: repeatsEarlier, sheetStreets: sheetStreets, snapStreet: snapStreet, signBoxes: signBoxes, signInk: signInk, signText: signText, repeatedItems: repeatedItems,
     zoneSign: zoneSign, readStrip: readStrip, findStrip: findStrip };
 });
