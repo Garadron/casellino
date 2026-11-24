@@ -1,5 +1,12 @@
 # Registro delle versioni
 
+## Strumenti · 2026-11-24 · Skill nuove per tutti i progetti
+
+- Da Archivista (24 novembre 2026), già installate sul PC per tutti: watch, ponytail, verification-before-completion,
+  systematic-debugging, webapp-testing (prova l'app e fa le schermate di giorno e di notte), MarkItDown (documenti in
+  testo) e SkillSpector (controllo prima di installare una skill). Che cosa fa ognuna: `ASSEGNAZIONI.md` di Archivista,
+  sezione «Le skill». Nessun cambiamento al programma.
+
 ## v0.39.0 · 2026-11-23 · La cartina del giro tiene i punti corretti a mano; l'ottimizzazione solo per sapere
 
 Garadron (23 novembre 2026): sulla cartina della sua sottozona alcune tappe erano state messe in posti sbagliati (una
