@@ -5,9 +5,6 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
-0. **Prova delle skill in corso** (Archivista, sì di Garadron del 24 novembre 2026: «Sì, alla prova su Casellino»):
-   due copie in `H:\Prova skill Casellino` lavorano su lettura delle foto, ripetizioni, debug, velocità, foto e account.
-   Finché non arriva il risultato, **non si cambia `app/src/foto.js`**; poi si valuta e si unisce.
 0. **Pubblicare il server** (v0.36.0 e v0.37.0: email obbligatoria, si entra anche con l'email, niente codice di
    recupero, password più usate, Supporto): serve il «sì, pubblica il server» di Garadron; non c'è niente da cambiare
    nel database. Poi Garadron aggiorna il programmino di Google, perché le risposte del Supporto tornino a chi ha
@@ -21,7 +18,7 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
    (la conferma arriva da sola, gratis) e salvare.
 3. **Guida privata con le foto vere** pronta: `dati/Guida foto - zona 2 (privata).pdf`, da mandare ai colleghi (non
    pubblicarla: logo, indirizzo del centro, targa). Garadron dice se la guida pubblica resta con i disegni.
-4. **Proposta per l'azienda pronta** (17 novembre 2026), nella cartella privata `Proposta per l'azienda/` (mai su
+4. **Proposta per l'azienda pronta** (17 novembre 2026, aggiornata il 24 con le novità della v0.40.0), nella cartella privata `Proposta per l'azienda/` (mai su
    GitHub; elenco in `Leggimi.txt`): documentazione (PDF e Word), slide (PowerPoint e PDF), mappa concettuale, tutte
    firmate, e l'anteprima dell'app. Garadron la rilegge, poi la presenta a PCL; decide che cosa del nome dell'azienda
    va nel programma pubblico.

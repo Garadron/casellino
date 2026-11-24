@@ -59,6 +59,8 @@ tutti i postini, non solo alla zona di Garadron.
   il nome ufficiale del programma scelti per l'azienda (`python tools/build.py --anteprima`, tutto in
   nella cartella `Proposta per l'azienda/`, mai su GitHub). Il programma pubblico resta Casellino, senza nome né logo dell'azienda, finché
   l'azienda non dà il suo sì per iscritto.
+  Garadron, 24 novembre 2026: Casellino diventerà l'app ufficiale che presenta all'azienda come suo progetto; a ogni
+  novità importante si aggiornano anche documentazione, slide, mappa concettuale e anteprima della proposta.
 - La mappa per ora mostra un indirizzo alla volta su Google Maps; il percorso intero verrà dopo (gratis, OpenStreetMap).
 
 ## Come si lavora
