@@ -5,6 +5,9 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
+0. **Prova delle skill in corso** (Archivista, sì di Garadron del 24 novembre 2026: «Sì, alla prova su Casellino»):
+   due copie in `H:\Prova skill Casellino` lavorano su lettura delle foto, ripetizioni, debug, velocità, foto e account.
+   Finché non arriva il risultato, **non si cambia `app/src/foto.js`**; poi si valuta e si unisce.
 0. **Pubblicare il server** (v0.36.0 e v0.37.0: email obbligatoria, si entra anche con l'email, niente codice di
    recupero, password più usate, Supporto): serve il «sì, pubblica il server» di Garadron; non c'è niente da cambiare
    nel database. Poi Garadron aggiorna il programmino di Google, perché le risposte del Supporto tornino a chi ha
