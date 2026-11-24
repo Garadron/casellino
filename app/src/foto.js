@@ -213,7 +213,6 @@
     const g = new Uint8Array(b.width * b.height);
     for (let i = 0; i < g.length; i++) g[i] = b.data[i * 4];
     if (b.keepInside) evenLight(g, b.width, b.height, b.keepInside);
-    if (ENV.DBG) b.dbgGray = g;
     const t = threshold(g);
     let dark = 0;
     for (let i = 0; i < g.length; i++) if (g[i] <= t) dark++;
@@ -270,7 +269,7 @@
   }
 
   /*
-   * The slanted stroke between two house numbers in one pigeonhole ("8", "27/25"), in a black-and-white
+   * The slanted stroke between two house numbers in one pigeonhole ("8\10", "27/25"), in a black-and-white
    * picture: a piece as tall as the numbers, thin on every row, that moves steadily left or right going
    * down (a "1" stands straight, a "7" or a "4" has a wide bar). Returns { x0, x1 } or null.
    */
@@ -866,9 +865,8 @@
     return found;
   }
 
-  const ENV = typeof process !== 'undefined' ? process.env : {};
-  const GAPK = 0.15;
-  const SIZES = (ENV.SIZES || '0,32').split(',').map(Number), MODES = (ENV.MODES || '8,7').split(','), SLASH = !ENV.NOSLASH;
+  // each pigeonhole is read as it is and brought to letters 32 points high, as one word and as one line
+  const SIZES = [0, 32], MODES = ['8', '7'], GAPK = 0.15, QUICK = 80;
   const NUMBER_CHARS = '0123456789ABCDEFGHILMNOPQRSTUVZ/\\-';
 
   /*
@@ -1016,6 +1014,7 @@
         if (v.conf > best.conf) best = v;
         if (r.confidence >= 60) break;   // sure enough: no second try in this size
       }
+      if (best.top >= QUICK) break;   // read very surely: the other size is not needed
     }
     return best;
   }
@@ -1063,7 +1062,7 @@
         if (bw.ink < 0.004) continue;   // an empty pigeonhole
         let best = await readNumber(bw, recognize);
         // two numbers with a slanted stroke between them: each read on its own (the stroke is often lost)
-        const slash = SLASH && findSlash(bw);
+        const slash = findSlash(bw);
         if (slash) {
           const pad = 12;
           const left = await readNumber(columnsOf(bw, 0, Math.max(0, slash.x0 - 1), pad), recognize);
@@ -1090,5 +1089,5 @@
 
   return { toGray: toGray, threshold: threshold, segmentStrip: segmentStrip, cleanBand: cleanBand, inkClusters: inkClusters, cropBand: cropBand, cleanNumber: cleanNumber,
     streetPhrases: streetPhrases, routeLines: routeLines, routeItems: routeItems, itemLines: itemLines, withoutOverlap: withoutOverlap, repeatsEarlier: repeatsEarlier, sheetStreets: sheetStreets, snapStreet: snapStreet, signBoxes: signBoxes, signInk: signInk, signText: signText, repeatedItems: repeatedItems,
-    zoneSign: zoneSign, readStrip: readStrip, findStrip: findStrip, _cellImage: cellImage, _blackWhite: blackWhite, _straighten: straighten };
+    zoneSign: zoneSign, readStrip: readStrip, findStrip: findStrip };
 });

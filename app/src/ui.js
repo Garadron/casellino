@@ -1995,11 +1995,13 @@
     const add = function (text) { out.value += (out.value && !/\n$/.test(out.value) ? '\n' : '') + text + '\n'; out.scrollTop = out.scrollHeight; };
     const known = knownStreets();
     const items = F.routeItems(res.cells, res.phrases).map(function (it) { return { street: F.snapStreet(it.street, known), tok: it.tok }; });
+    const repeat = F.repeatsEarlier(photo.items, items);
     const fresh = F.withoutOverlap(photo.items, items);
     const again = F.repeatedItems(photo.items, fresh);
     photo.items = photo.items.concat(fresh);
     const same = items.length - fresh.length;
-    add('# foto ' + (i + 1) + ' (letta in automatico: da controllare)' + (same ? ' · ' + same + (same === 1 ? ' casella uguale' : ' caselle uguali') + ' alla foto prima, non ripetute' : ''));
+    add('# foto ' + (i + 1) + (repeat ? ': questa striscia c\'era già in una foto prima, non la riscrivo'
+      : ' (letta in automatico: da controllare)' + (same ? ' · ' + same + (same === 1 ? ' casella uguale' : ' caselle uguali') + ' alla foto prima, non ripetute' : '')));
     // two numbers in one pigeonhole follow the way of the street (read "7/5" between 4 and 6: it is 5/7)
     if (fresh.length) add(C.fixPairOrder(F.itemLines(fresh).join('\n'), sz().town).text);
     // the same number further on: maybe the same pigeonhole seen twice, maybe a number read wrong
