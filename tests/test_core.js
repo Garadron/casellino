@@ -499,6 +499,47 @@ test('photos one after the other: the pigeonholes they have in common are writte
   assert.deepStrictEqual(toks(F.repeatedItems(before, items('VIA DEI TIGLI', [21, 23, 5]).concat(items('VIA DELLE ROSE', [3])))), ['5']);
 });
 
+test('a whole route read from many photos: no pigeonhole twice, none lost', function () {
+  const F = require('../app/src/foto.js');
+  const items = function (street, toks) { return toks.map(function (t) { return { street: street, tok: String(t) }; }); };
+  // the right route: three rows, each photographed in pieces
+  // (the first row longer than the pieces compared one after the other, as in a casello of 91 pigeonholes)
+  const odd = [];
+  for (let n = 1; n <= 129; n += 2) odd.push(n === 21 ? '21/23' : n === 23 ? '' : n);
+  const row1 = items('VIA DEI TIGLI', odd.filter(String));
+  const row2 = items('VIA DELLE ROSE', [2, 4, 6, 8, 10, 12, 14]).concat(items('VIA ALTA', [1, 3, 5, '7A', '7B', 9]));
+  const row3 = items('CASCINA BASSA', [2, 4, 6, 8, 10, 12]);
+  const truth = row1.concat(row2, row3);
+  const piece = function (list, a, b) { return list.slice(a, b).map(function (it) { return { street: it.street, tok: it.tok }; }); };
+  const photos = [];
+  for (let a = 0; a < row1.length; a += 8) photos.push(piece(row1, Math.max(0, a - 2), a + 8));   // 2 pigeonholes again in each photo
+  photos.splice(3, 0, piece(row1, 0, 6));                    // the first strip again, soon after: all of it already there
+  photos.push(piece(row1, 3, 11));                           // the start of the row again, at its end (more than 40 pigeonholes back)
+  photos.push(piece(row1, 56, 64));                          // the same photo twice in a row
+  photos.push(piece(row2, 0, 7));                            // a new row: the same numbers (2, 4...) are other pigeonholes
+  photos.push(piece(row2, 5, 13));                           // 12 14 overlap, then another street
+  photos.push(piece(row3, 0, 4));
+  photos.push(piece(row3, 2, 6));                            // 6 8 overlap
+  // the second time a number may be read a little differently, or unsure
+  photos[1][0].tok = photos[1][0].tok + '?';
+  photos[photos.length - 6][2].tok = '18';                   // 11 read as 18 in the repeated start of the row
+  photos[photos.length - 3][1].tok = '14';
+  let got = [];
+  photos.forEach(function (p) { got = got.concat(F.withoutOverlap(got, p)); });
+  const key = function (list) { return list.map(function (it) { return it.street + ' ' + it.tok.replace('?', ''); }); };
+  assert.deepStrictEqual(key(got), key(truth));
+  // no street and number twice
+  const seen = {};
+  key(got).forEach(function (k) { assert.ok(!seen[k], k + ' twice'); seen[k] = true; });
+  // a photo that repeats an earlier strip but also goes on is not thrown away: only the new part is kept
+  const more = F.withoutOverlap(piece(row1, 0, 12), piece(row1, 8, 12).concat(items('VIA DEI TIGLI', [27, 29])));
+  assert.deepStrictEqual(more.map(function (it) { return it.tok; }), ['27', '29']);
+  // a repeat is told only by numbers read for sure: unsure ones alone never remove a photo
+  assert.strictEqual(F.repeatsEarlier(row1, items('VIA DEI TIGLI', ['1?', '3?', '5?', '7?'])), false);
+  assert.strictEqual(F.repeatsEarlier(row1, items('VIA DEI TIGLI', [5, 7, 9, 11])), true);
+  assert.strictEqual(F.repeatsEarlier(row1, items('VIA DEI TIGLI', [5, 7, 9, 31, 33, 35])), false);
+});
+
 test('printing: pieces of 22 slots packed on full A4 sheets, one shelf row per line', function () {
   const p = Core.textToProject(EXAMPLE);
   const pieces = Core.printPieces(p);

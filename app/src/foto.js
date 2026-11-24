@@ -620,7 +620,37 @@
     const close = long.length - short.length <= 1 && (short.slice(i) === long.slice(i + 1) || short.slice(i + 1) === long.slice(i + 1));
     return { score: close && street ? 0.5 : -2, exact: false };
   }
+  /*
+   * The same strip photographed again later (not right after: the person goes back to it): the whole
+   * new photo lines up with a piece anywhere in what was read before. It counts only if at least 3
+   * house numbers read for sure are the same, and they are almost all (4 out of 5) of the sure ones of
+   * the new photo: a photo that also shows new pigeonholes is not a repeat.
+   */
+  function repeatsEarlier(before, after) {
+    const n = before.length, m = after.length, GAP = -1.5;
+    const sure = after.filter(function (it) { return hasNumber(overlapKey(it)) && !/\?/.test(it.tok); }).length;
+    if (sure < 3 || !n) return false;
+    // best[i][j]: the best line-up of the first j new ones with a piece of the old ones ending at i (free start)
+    let prev = new Float64Array(m + 1), prevE = new Int16Array(m + 1);
+    for (let j = 1; j <= m; j++) prev[j] = GAP * j;
+    let top = -Infinity, topE = 0;
+    for (let i = 1; i <= n; i++) {
+      const cur = new Float64Array(m + 1), curE = new Int16Array(m + 1);
+      for (let j = 1; j <= m; j++) {
+        const l = likeness(before[i - 1], after[j - 1]);
+        let s = prev[j - 1] + l.score, e = prevE[j - 1] + (l.exact ? 1 : 0);
+        if (prev[j] + GAP > s) { s = prev[j] + GAP; e = prevE[j]; }
+        if (cur[j - 1] + GAP > s) { s = cur[j - 1] + GAP; e = curE[j - 1]; }
+        cur[j] = s; curE[j] = e;
+      }
+      if (cur[m] > top) { top = cur[m]; topE = curE[m]; }
+      prev = cur; prevE = curE;
+    }
+    return topE >= 3 && topE >= sure * 0.8 && top > 0;
+  }
+
   function withoutOverlap(before, after) {
+    if (repeatsEarlier(before, after)) return [];
     const old = before.slice(-OVERLAP_MAX), neu = after.slice(0, OVERLAP_MAX);
     const n = old.length, m = neu.length, GAP = -1.5;
     // best[i][j]: the best line-up of a piece of old ending at i with the first j of the new ones
@@ -1059,6 +1089,6 @@
   }
 
   return { toGray: toGray, threshold: threshold, segmentStrip: segmentStrip, cleanBand: cleanBand, inkClusters: inkClusters, cropBand: cropBand, cleanNumber: cleanNumber,
-    streetPhrases: streetPhrases, routeLines: routeLines, routeItems: routeItems, itemLines: itemLines, withoutOverlap: withoutOverlap, sheetStreets: sheetStreets, snapStreet: snapStreet, signBoxes: signBoxes, signInk: signInk, signText: signText, repeatedItems: repeatedItems,
+    streetPhrases: streetPhrases, routeLines: routeLines, routeItems: routeItems, itemLines: itemLines, withoutOverlap: withoutOverlap, repeatsEarlier: repeatsEarlier, sheetStreets: sheetStreets, snapStreet: snapStreet, signBoxes: signBoxes, signInk: signInk, signText: signText, repeatedItems: repeatedItems,
     zoneSign: zoneSign, readStrip: readStrip, findStrip: findStrip, _cellImage: cellImage, _blackWhite: blackWhite, _straighten: straighten };
 });
