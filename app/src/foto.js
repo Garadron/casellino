@@ -837,6 +837,7 @@
   }
 
   const ENV = typeof process !== 'undefined' ? process.env : {};
+  const GAPK = 0.15;
   const SIZES = (ENV.SIZES || '0,32').split(',').map(Number), MODES = (ENV.MODES || '8,7').split(','), SLASH = !ENV.NOSLASH;
   const NUMBER_CHARS = '0123456789ABCDEFGHILMNOPQRSTUVZ/\\-';
 
@@ -1009,7 +1010,14 @@
       const pieces = [];
       seg.cells.forEach(function (c) {
         // as wide as more pigeonholes: the numbers inside it one by one (lines lost in a shadow), or one wide pigeonhole
-        const inside = c.span > 1 ? ink.filter(function (k) { return k.x0 / S >= c.x0 - 2 && k.x1 / S <= c.x1 + 2; }) : [];
+        const found = c.span > 1 ? ink.filter(function (k) { return k.x0 / S >= c.x0 - 2 && k.x1 / S <= c.x1 + 2; }) : [];
+        // the numbers of two pigeonholes are far apart; the letters of one number ("35 A") are close
+        const inside = [];
+        found.forEach(function (k) {
+          const last = inside[inside.length - 1];
+          if (last && (k.x0 - last.x1) / S < seg.typical * GAPK) inside[inside.length - 1] = { x0: last.x0, x1: k.x1 };
+          else inside.push(k);
+        });
         if (inside.length > 1) {
           const pad = Math.round(seg.typical * 0.12);
           inside.forEach(function (k) { pieces.push({ x0: Math.max(c.x0, Math.round(k.x0 / S) - pad), x1: Math.min(c.x1, Math.round(k.x1 / S) + pad), span: 1 }); });
@@ -1026,7 +1034,7 @@
         let best = await readNumber(bw, recognize);
         // two numbers with a slanted stroke between them: each read on its own (the stroke is often lost)
         const slash = SLASH && findSlash(bw);
-        if (slash && !/\//.test(best.t)) {
+        if (slash) {
           const pad = 12;
           const left = await readNumber(columnsOf(bw, 0, Math.max(0, slash.x0 - 1), pad), recognize);
           const right = await readNumber(columnsOf(bw, Math.min(bw.width - 1, slash.x1 + 1), bw.width - 1, pad), recognize);
