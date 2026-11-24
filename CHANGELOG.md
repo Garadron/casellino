@@ -20,7 +20,13 @@ la trascrizione dalle foto, senza mettere due volte le strisce o i civici fotogr
   fila e numeri letti un po' diversi: il giro esce uguale a quello vero, senza civici doppi (`tests/test_core.js`).
 - **Foto salvate sul dispositivo** (`app/src/ui.js`): la memoria di ogni foto si libera subito (con tante foto il
   telefono poteva bloccarsi); una foto che il browser non apre (HEIC) si tiene com'è e non ferma le altre; il browser
-  viene pregato di non cancellare le foto da solo quando manca spazio.
+  viene pregato di non cancellare le foto da solo quando manca spazio. In più (dalla copia senza skill): **la stessa foto
+  con un altro nome** (mandata su WhatsApp, copiata) si tiene una volta sola, perché si guarda il contenuto; due scelte
+  di foto ravvicinate non fanno doppioni; **se il telefono è pieno, la pagina lo dice** invece di tacere.
+- Da dove viene: la prova delle skill di Archivista su due copie di Casellino (`H:\Prova skill Casellino`), con il sì
+  di Garadron detto nella chat di Archivista il 24 novembre 2026: «Se è un miglioramento notevole, porta la prova, sì,
+  porta la prova, senza dubbio. Sia chiaro che deve essere ovviamente proficua». Il resoconto è in
+  `docs/prova-skill-24-novembre.md`.
 - Prove: tutte superate (`test_core`, pagina, anteprima, account nella pagina, server in locale, foto in Edge, misure
   del modello bianco).
 

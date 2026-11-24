@@ -2435,7 +2435,12 @@
       $('foto-first-whole').checked = false;
       if (photo.files.length) { showPhoto(0); checkFirst(true); }
       offerTimeOrder();
-      if (photo.files.length && window.indexedDB) keepPhotos(photo.files).then(renderPhotoButton).catch(function () { /* only a convenience */ });
+      // kept on the device to look at later; if it is full, said (the reading goes on anyway)
+      if (photo.files.length && window.indexedDB) {
+        keepPhotos(photo.files).then(renderPhotoButton).catch(function (err) {
+          toast('Le foto si leggono, ma non riesco a tenerle sul dispositivo' + (err && err.name === 'QuotaExceededError' ? ': lo spazio è pieno.' : '.'));
+        });
+      }
     });
     $('foto-rot').addEventListener('input', function (e) { photo.angles[photo.index] = +e.target.value; drawPhoto(); });
     // the red rectangle: drag a handle to make it bigger or smaller, drag inside to move it, elsewhere to draw a new one
@@ -2593,8 +2598,23 @@
     c.width = c.height = 0;
     return blob;
   }
-  // Keeps the photos of the open sub-zone (the same photo twice is kept once).
-  async function keepPhotos(files) {
+  // The fingerprint of what is in the photo: the same photo with another name (sent by WhatsApp, copied) is the same.
+  async function photoPrint(file) {
+    try {
+      if (!window.crypto || !crypto.subtle) return '';
+      const d = new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()));
+      return Array.prototype.map.call(d.slice(0, 16), function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join('');
+    } catch (e) { return ''; }
+  }
+  // Keeps the photos of the open sub-zone (the same photo twice is kept once, also with another name). One keeping at
+  // a time: two choices of photos one right after the other do not both see the photos as new.
+  let keeping = Promise.resolve();
+  function keepPhotos(files) {
+    const run = keeping.then(function () { return keepPhotosNow(files); });
+    keeping = run.catch(function () { /* the next one goes on */ });
+    return run;
+  }
+  async function keepPhotosNow(files) {
     const szId = sz().id;
     // the browser is asked not to clear the photos by itself when the device is short of space
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* only a wish */ }
@@ -2602,9 +2622,12 @@
     let order = have.length ? have[have.length - 1].order + 1 : 0, added = 0;
     for (const f of files) {
       const sign = f.name + '|' + f.size + '|' + f.lastModified;
-      if (have.some(function (x) { return x.sign === sign; })) continue;
+      const print = await photoPrint(f);
+      if (have.some(function (x) { return x.sign === sign || (print && x.print === print); })) continue;
       const blob = await smallCopy(f);
-      await ask((await photoStore('readwrite')).add({ sz: szId, sign: sign, name: f.name, blob: blob, order: order++, added: Date.now() }));
+      const item = { sz: szId, sign: sign, print: print, name: f.name, blob: blob, order: order++, added: Date.now() };
+      await ask((await photoStore('readwrite')).add(item));
+      have.push(item);   // the same photo twice in one choice: kept once
       added++;
     }
     return added;
