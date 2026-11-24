@@ -5,6 +5,10 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
+0. **Prima di proporre Casellino all'azienda: un parere sul contratto** (Archivista per Garadron, 24 novembre 2026).
+   Un programma fatto da un dipendente può essere del datore di lavoro (art. 12-bis legge 633/1941): le domande da
+   fare a un avvocato o all'ufficio legale del sindacato sono nella cartella privata della proposta («Prima di
+   proporlo - il contratto e i diritti.md»). Fino alla risposta si mostra, non si consegna.
 0. **Pubblicare il server** (v0.36.0 e v0.37.0: email obbligatoria, si entra anche con l'email, niente codice di
    recupero, password più usate, Supporto): serve il «sì, pubblica il server» di Garadron; non c'è niente da cambiare
    nel database. Poi Garadron aggiorna il programmino di Google, perché le risposte del Supporto tornino a chi ha
