@@ -213,6 +213,7 @@
     const g = new Uint8Array(b.width * b.height);
     for (let i = 0; i < g.length; i++) g[i] = b.data[i * 4];
     if (b.keepInside) evenLight(g, b.width, b.height, b.keepInside);
+    if (ENV.DBG) b.dbgGray = g;
     const t = threshold(g);
     let dark = 0;
     for (let i = 0; i < g.length; i++) if (g[i] <= t) dark++;
@@ -232,7 +233,12 @@
       for (let y = 0; y < H; y++) n += ink[y * W + x];
       if (n > H * 0.8) for (let y = 0; y < H; y++) ink[y * W + x] = 0;
     }
-    if (b.keepInside) keepInside(ink, W, H, b.keepInside);
+    if (b.keepInside) {
+      keepInside(ink, W, H, b.keepInside);
+      let n = 0;
+      for (let i = 0; i < ink.length; i++) n += ink[i];
+      out.ink = n / g.length;
+    }
     for (let i = 0; i < g.length; i++) {
       const v = ink[i] ? 0 : 255;
       out.data[i * 4] = out.data[i * 4 + 1] = out.data[i * 4 + 2] = v;
@@ -377,7 +383,14 @@
     });
     const tall = inside.reduce(function (a, c) { return Math.max(a, c.y1 - c.y0 + 1); }, 0);
     const keep = {};
-    inside.forEach(function (c) { if (c.y1 - c.y0 + 1 >= tall * 0.45) keep[c.id] = true; });
+    // only specks left (an empty pigeonhole, dirt): nothing to read
+    const most = inside.reduce(function (a, c) { return Math.max(a, c.n); }, 0);
+    const band = inside.filter(function (c) { return c.y1 - c.y0 + 1 >= tall * 0.45; });
+    const bandTop = band.reduce(function (a, c) { return Math.min(a, c.y0); }, H), bandBottom = band.reduce(function (a, c) { return Math.max(a, c.y1); }, 0);
+    // a broken stroke (the foot of a "2" seen thin) is kept when it is big enough and lies among the numbers
+    if (tall >= (H - 2 * pad) * 0.25) inside.forEach(function (c) {
+      if (c.y1 - c.y0 + 1 >= tall * 0.45 || (c.n >= most * 0.12 && c.y0 >= bandTop - 2 && c.y1 <= bandBottom + 2)) keep[c.id] = true;
+    });
     for (let i = 0; i < ink.length; i++) if (ink[i] && !keep[label[i]]) ink[i] = 0;
   }
 
