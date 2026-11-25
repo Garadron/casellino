@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.40.0';</script>
+<script>window.CASELLINO_VERSION = '0.41.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -286,6 +286,16 @@ textarea.route-text {
 .now-title { font-size: 14px; font-weight: 600; }
 .now .strip-wrap { margin-top: 6px; }
 .cell.here-cell { outline: 3px solid #d93025; outline-offset: -3px; z-index: 3; }
+/* the segnacasella: where the work stopped, in the strips and in the text of the route */
+.cell.marked { box-shadow: inset 0 0 0 3px #f08c00; z-index: 2; }
+.cell.mark-first::before { content: '🔖'; position: absolute; top: 1px; right: 1px; font-size: 11px; line-height: 1; z-index: 4;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); pointer-events: none; }
+.cell.top.mark-first { position: relative; }
+.route-frame { position: relative; }
+.mark-band { position: absolute; left: 0; right: 0; pointer-events: none; background: rgba(240, 140, 0, .16);
+  border-left: 4px solid #f08c00; }
+.mark-band span { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 15px; }
+.mark-btn { margin: 0 0 6px; border-color: #f08c00; }
 
 /* all strips, row by row */
 .fila { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
@@ -811,6 +821,7 @@ input[type="file"]::file-selector-button {
     <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Nella stessa sottozona <b>nessun colore si ripete</b>: ogni via ha il suo. Due vie vicine non hanno mai colori simili. Nell'elenco delle vie i colori già usati nella sottozona e quelli troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
     <p><b>Un Excel già fatto</b> (fatto con il modello, anche vecchio): «Apri» o «Altro → Apri un Excel già fatto». Ogni foglio scritto diventa una sottozona, con il suo giro letto striscia per striscia: poi si corregge e si ristampa.</p>
     <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. Lì si dice anche com'è fatto il mobile: i moduli da sinistra a destra (casello o ala) e di quale sottozona è ognuno, in qualsiasi ordine (ala, casello, ala, casello… oppure ala, ala, casello, casello…). Con la <b>matita</b> del colore di una sottozona si tocca la casella da cui comincia: da lì verso destra quella fila è sua (per esempio la B che prende metà dell'ultima fila della A). La gomma toglie il segno. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate. Una tappa nel posto sbagliato si trascina dove va. <b>Ottimizzazione gita</b> cerca l'ordine delle vie con meno chilometri, partendo e tornando al centro di partenza scritto in alto (nome e indirizzo; se l'indirizzo non si trova, il punto si sceglie sulla mappa o con la posizione del telefono); è solo per sapere: mostra i chilometri della gita di adesso e di quella più corta, con il suo ordine, e il giro del casello non cambia. Un punto spostato a mano resta per quella via e quel civico, anche se il giro cambia o il programma si aggiorna. Una tappa che la mappa trova solo in un altro comune resta rossa: la metti tu.</p>
+    <p><b>Il segnacasella 🔖</b> segna dove hai lavorato per ultimo: la riga del giro cambiata per ultima ha una fascia arancione, e le sue caselle nelle strisce un bordo arancione con il 🔖. Il tasto «🔖 Segnacasella» sopra il giro ti riporta lì. Resta salvato per ogni sottozona, anche chiudendo l'app.</p>
     <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie. Nello stesso elenco, toccando un nome (o la matita ✏️) lo <b>correggi in tutto il giro</b>: cambia in ogni riga e in ogni sottozona dello stesso comune, i civici restano. Così, dopo la lettura delle foto, i nomi si sistemano da lì e nel giro si pensa solo ai numeri.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>
@@ -1873,6 +1884,8 @@ input[type="file"]::file-selector-button {
         else if (s && s.rows) sz.route = rowsToRoute(renameBigModule(s.rows), sz.modules, sz.town);
         sz.locked = s && Number(s.locked) > 0 ? Number(s.locked) : 0;
         if (s && typeof s.routeBefore === 'string' && s.routeBefore) sz.routeBefore = s.routeBefore; // before the last optimization
+        // the segnacasella: the line of the route changed last (Garadron, 25 November 2026)
+        if (s && s.mark && Number(s.mark.line) >= 0) sz.mark = { line: Math.floor(Number(s.mark.line)), at: Number(s.mark.at) || 0 };
         return sz;
       });
     }
@@ -5719,14 +5732,20 @@ input[type="file"]::file-selector-button {
     state.els = els;
 
     const onType = debounce(function () { refreshRoute(); refreshSide(); }, 150);
+    els.band = h('div', { class: 'mark-band', 'aria-hidden': 'true' }, h('span', null, '🔖'));
+    els.markBtn = h('button', { type: 'button', class: 'mark-btn', onclick: goToMark,
+      title: 'Ti riporta alla riga cambiata per ultima, nel giro e nelle strisce' });
     ta.addEventListener('input', function () {
       s.route = ta.value;
+      s.mark = { line: ta.value.slice(0, ta.selectionStart).split('\n').length - 1, at: Date.now() };   // the segnacasella moves here
       fitTextarea(ta);
       changed();
       onType();
       caretChangedLater();
+      showMark();
     });
     ['click', 'keyup', 'focus'].forEach(function (ev) { ta.addEventListener(ev, caretChangedLater); });
+    ta.addEventListener('scroll', showMark);
 
     const empty = !state.project.subzones.some(function (x) { return x.route.trim(); });
     box.append(
@@ -5756,12 +5775,67 @@ input[type="file"]::file-selector-button {
         h('button', { type: 'button', class: 'link', onclick: function () { $('dlg-help').showModal(); } }, 'Come si scrive'),
         empty ? ' · ' : null,
         empty ? h('button', { type: 'button', class: 'link', onclick: loadExample }, 'Guarda un esempio') : null),
-      ta, els.suggest, els.here, els.warnings,
+      els.markBtn,
+      h('div', { class: 'route-frame' }, ta, els.band), els.suggest, els.here, els.warnings,
       h('div', { class: 'now' }, els.nowTitle, els.nowWrap));
     fitTextarea(ta);
     refreshRoute();
+    showMark();
     renderPhotoButton();
     if ($('dlg-photos').open) openViewer(0);   // another sub-zone: its photos
+  }
+
+  /*
+   * The segnacasella (Garadron, 25 November 2026): where the work stopped. It follows the line of the route changed
+   * last, is kept in the work for each sub-zone, and shows in the text (a band with 🔖) and in the strips (the
+   * pigeonholes of that line, with 🔖); its button brings back there.
+   */
+  // Where a place of the text box is drawn: { top, height } of the given line, wrapped pieces included.
+  function linePlace(ta, line) {
+    const css = getComputedStyle(ta);
+    const copy = document.createElement('div');
+    ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paddingTop', 'paddingLeft', 'paddingRight',
+      'borderLeftWidth', 'borderRightWidth', 'boxSizing', 'tabSize'].forEach(function (k) { copy.style[k] = css[k]; });
+    Object.assign(copy.style, { position: 'absolute', visibility: 'hidden', whiteSpace: 'pre-wrap', overflowWrap: 'break-word',
+      wordBreak: css.wordBreak, width: ta.clientWidth + 'px', top: '0', left: '-9999px' });
+    const lines = ta.value.split('\n');
+    const mark = document.createElement('span');
+    mark.textContent = (lines[line] || '') || ' ';
+    copy.append(lines.slice(0, line).join('\n') + (line ? '\n' : ''), mark);
+    document.body.append(copy);
+    const place = { top: mark.offsetTop, height: mark.offsetHeight || parseFloat(css.lineHeight) || 20 };
+    copy.remove();
+    return place;
+  }
+  function markOf(s) {
+    const lines = String(s.route || '').split('\n').length;
+    return s.mark && s.mark.line < lines ? s.mark : null;
+  }
+  function showMark() {
+    const els = state.els;
+    if (!els || !els.ta || !els.band) return;
+    const m = markOf(sz());
+    els.markBtn.hidden = !m;
+    els.band.hidden = !m;
+    if (!m) return;
+    els.markBtn.textContent = '🔖 Segnacasella · riga ' + (m.line + 1);
+    const place = linePlace(els.ta, m.line);
+    const top = place.top - els.ta.scrollTop;
+    els.band.style.top = (els.ta.offsetTop + top) + 'px';
+    els.band.style.height = place.height + 'px';
+    els.band.style.visibility = top + place.height < 0 || top > els.ta.clientHeight ? 'hidden' : 'visible';
+  }
+  // Back to the segnacasella: the cursor on its line, and the strips on its pigeonholes.
+  function goToMark() {
+    const m = markOf(sz());
+    if (!m) return;
+    goToLine(m.line);
+    setTimeout(function () {
+      document.querySelectorAll('.cell.marked.mark-first').forEach(function (cell) {
+        const wrap = cell.closest('.strip-wrap');
+        if (wrap) wrap.scrollLeft = Math.max(0, cell.offsetLeft - wrap.clientWidth / 3);
+      });
+    }, 80);
   }
 
   // Grows with the text, wrapped lines included, up to most of the screen, then scrolls.
@@ -5885,6 +5959,8 @@ input[type="file"]::file-selector-button {
     const slot = slotPx();
     el.textContent = '';
     const sel = state.selected && state.selected.p === p ? state.selected.idx : -1;
+    const mk = markOf(sz());
+    let firstMark = true;
     s.cells.forEach(function (c, idx) {
       const bg = '#' + C.colorOf(proj, c.key);
       const ink = '#' + C.textColorOf(proj, c.key);
@@ -5893,7 +5969,10 @@ input[type="file"]::file-selector-button {
         (c.second ? ' / ' + c.second : '') + ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') +
         ' · riga ' + (c.line + 1) + ' del giro' + (c.other ? ' · per un\'altra linea' : '');
       const pick = function () { select(p, idx); };
-      const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '');
+      const marked = mk && !c.foreign && c.line === mk.line;
+      const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '') +
+        (marked ? ' marked' + (firstMark ? ' mark-first' : '') : '');
+      if (marked) firstMark = false;
       const width = c.span * slot;
       let inside, size, cls = '', paint = 'background-color:' + bg;
       const two = C.twoStreets(proj, c);
@@ -6258,8 +6337,7 @@ input[type="file"]::file-selector-button {
     ta.focus();
     ta.setSelectionRange(start, start + (lines[line] || '').length);
     // put the line in view inside the text box
-    const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 21;
-    ta.scrollTop = Math.max(0, line * lineHeight - ta.clientHeight / 3);
+    ta.scrollTop = Math.max(0, linePlace(ta, line).top - ta.clientHeight / 3);
     ta.scrollIntoView({ block: 'center', behavior: 'smooth' });
     caretChanged();
   }
@@ -8912,7 +8990,7 @@ input[type="file"]::file-selector-button {
     document.querySelectorAll('dialog').forEach(function (dlg) {
       new MutationObserver(function () { if (dlg.open) dlg.scrollTop = 0; }).observe(dlg, { attributes: true, attributeFilter: ['open'] });
     });
-    window.addEventListener('resize', debounce(function () { if (state.els.ta) fitTextarea(state.els.ta); }, 200));
+    window.addEventListener('resize', debounce(function () { if (state.els.ta) { fitTextarea(state.els.ta); showMark(); } }, 200));
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'hidden') saveBeforeLeaving();
       else syncFromAccount();   // back on screen: maybe another device saved meanwhile

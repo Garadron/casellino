@@ -247,14 +247,20 @@
     state.els = els;
 
     const onType = debounce(function () { refreshRoute(); refreshSide(); }, 150);
+    els.band = h('div', { class: 'mark-band', 'aria-hidden': 'true' }, h('span', null, '🔖'));
+    els.markBtn = h('button', { type: 'button', class: 'mark-btn', onclick: goToMark,
+      title: 'Ti riporta alla riga cambiata per ultima, nel giro e nelle strisce' });
     ta.addEventListener('input', function () {
       s.route = ta.value;
+      s.mark = { line: ta.value.slice(0, ta.selectionStart).split('\n').length - 1, at: Date.now() };   // the segnacasella moves here
       fitTextarea(ta);
       changed();
       onType();
       caretChangedLater();
+      showMark();
     });
     ['click', 'keyup', 'focus'].forEach(function (ev) { ta.addEventListener(ev, caretChangedLater); });
+    ta.addEventListener('scroll', showMark);
 
     const empty = !state.project.subzones.some(function (x) { return x.route.trim(); });
     box.append(
@@ -284,12 +290,67 @@
         h('button', { type: 'button', class: 'link', onclick: function () { $('dlg-help').showModal(); } }, 'Come si scrive'),
         empty ? ' · ' : null,
         empty ? h('button', { type: 'button', class: 'link', onclick: loadExample }, 'Guarda un esempio') : null),
-      ta, els.suggest, els.here, els.warnings,
+      els.markBtn,
+      h('div', { class: 'route-frame' }, ta, els.band), els.suggest, els.here, els.warnings,
       h('div', { class: 'now' }, els.nowTitle, els.nowWrap));
     fitTextarea(ta);
     refreshRoute();
+    showMark();
     renderPhotoButton();
     if ($('dlg-photos').open) openViewer(0);   // another sub-zone: its photos
+  }
+
+  /*
+   * The segnacasella (Garadron, 25 November 2026): where the work stopped. It follows the line of the route changed
+   * last, is kept in the work for each sub-zone, and shows in the text (a band with 🔖) and in the strips (the
+   * pigeonholes of that line, with 🔖); its button brings back there.
+   */
+  // Where a place of the text box is drawn: { top, height } of the given line, wrapped pieces included.
+  function linePlace(ta, line) {
+    const css = getComputedStyle(ta);
+    const copy = document.createElement('div');
+    ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paddingTop', 'paddingLeft', 'paddingRight',
+      'borderLeftWidth', 'borderRightWidth', 'boxSizing', 'tabSize'].forEach(function (k) { copy.style[k] = css[k]; });
+    Object.assign(copy.style, { position: 'absolute', visibility: 'hidden', whiteSpace: 'pre-wrap', overflowWrap: 'break-word',
+      wordBreak: css.wordBreak, width: ta.clientWidth + 'px', top: '0', left: '-9999px' });
+    const lines = ta.value.split('\n');
+    const mark = document.createElement('span');
+    mark.textContent = (lines[line] || '') || ' ';
+    copy.append(lines.slice(0, line).join('\n') + (line ? '\n' : ''), mark);
+    document.body.append(copy);
+    const place = { top: mark.offsetTop, height: mark.offsetHeight || parseFloat(css.lineHeight) || 20 };
+    copy.remove();
+    return place;
+  }
+  function markOf(s) {
+    const lines = String(s.route || '').split('\n').length;
+    return s.mark && s.mark.line < lines ? s.mark : null;
+  }
+  function showMark() {
+    const els = state.els;
+    if (!els || !els.ta || !els.band) return;
+    const m = markOf(sz());
+    els.markBtn.hidden = !m;
+    els.band.hidden = !m;
+    if (!m) return;
+    els.markBtn.textContent = '🔖 Segnacasella · riga ' + (m.line + 1);
+    const place = linePlace(els.ta, m.line);
+    const top = place.top - els.ta.scrollTop;
+    els.band.style.top = (els.ta.offsetTop + top) + 'px';
+    els.band.style.height = place.height + 'px';
+    els.band.style.visibility = top + place.height < 0 || top > els.ta.clientHeight ? 'hidden' : 'visible';
+  }
+  // Back to the segnacasella: the cursor on its line, and the strips on its pigeonholes.
+  function goToMark() {
+    const m = markOf(sz());
+    if (!m) return;
+    goToLine(m.line);
+    setTimeout(function () {
+      document.querySelectorAll('.cell.marked.mark-first').forEach(function (cell) {
+        const wrap = cell.closest('.strip-wrap');
+        if (wrap) wrap.scrollLeft = Math.max(0, cell.offsetLeft - wrap.clientWidth / 3);
+      });
+    }, 80);
   }
 
   // Grows with the text, wrapped lines included, up to most of the screen, then scrolls.
@@ -413,6 +474,8 @@
     const slot = slotPx();
     el.textContent = '';
     const sel = state.selected && state.selected.p === p ? state.selected.idx : -1;
+    const mk = markOf(sz());
+    let firstMark = true;
     s.cells.forEach(function (c, idx) {
       const bg = '#' + C.colorOf(proj, c.key);
       const ink = '#' + C.textColorOf(proj, c.key);
@@ -421,7 +484,10 @@
         (c.second ? ' / ' + c.second : '') + ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') +
         ' · riga ' + (c.line + 1) + ' del giro' + (c.other ? ' · per un\'altra linea' : '');
       const pick = function () { select(p, idx); };
-      const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '');
+      const marked = mk && !c.foreign && c.line === mk.line;
+      const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '') +
+        (marked ? ' marked' + (firstMark ? ' mark-first' : '') : '');
+      if (marked) firstMark = false;
       const width = c.span * slot;
       let inside, size, cls = '', paint = 'background-color:' + bg;
       const two = C.twoStreets(proj, c);
@@ -786,8 +852,7 @@
     ta.focus();
     ta.setSelectionRange(start, start + (lines[line] || '').length);
     // put the line in view inside the text box
-    const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 21;
-    ta.scrollTop = Math.max(0, line * lineHeight - ta.clientHeight / 3);
+    ta.scrollTop = Math.max(0, linePlace(ta, line).top - ta.clientHeight / 3);
     ta.scrollIntoView({ block: 'center', behavior: 'smooth' });
     caretChanged();
   }
@@ -3440,7 +3505,7 @@
     document.querySelectorAll('dialog').forEach(function (dlg) {
       new MutationObserver(function () { if (dlg.open) dlg.scrollTop = 0; }).observe(dlg, { attributes: true, attributeFilter: ['open'] });
     });
-    window.addEventListener('resize', debounce(function () { if (state.els.ta) fitTextarea(state.els.ta); }, 200));
+    window.addEventListener('resize', debounce(function () { if (state.els.ta) { fitTextarea(state.els.ta); showMark(); } }, 200));
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'hidden') saveBeforeLeaving();
       else syncFromAccount();   // back on screen: maybe another device saved meanwhile

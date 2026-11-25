@@ -312,6 +312,13 @@ test('optimizing the round: shortest order from the office and back', function (
   }
 });
 
+test('the segnacasella is kept in the file, for each sub-zone', function () {
+  const p = Core.sanitizeProject({ subzones: [{ name: 'A', route: 'VIA A: 1\nVIA B: 2', mark: { line: 1, at: 5 } }, { name: 'B', route: 'VIA C: 3' }] });
+  assert.deepStrictEqual(p.subzones[0].mark, { line: 1, at: 5 });
+  assert.strictEqual(p.subzones[1].mark, undefined, 'senza segnacasella');
+  assert.strictEqual(Core.sanitizeProject({ subzones: [{ route: 'X', mark: { line: -3 } }] }).subzones[0].mark, undefined, 'una riga che non esiste');
+});
+
 test('points put right by hand stay: by street and number, however they are written', function () {
   const p = Core.newProject();
   const sz = p.subzones[0];

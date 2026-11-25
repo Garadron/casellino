@@ -1,5 +1,26 @@
 # Registro delle versioni
 
+## v0.41.0 · 2026-11-25 · Il segnacasella 🔖: dove hai lavorato per ultimo
+
+Idea di Garadron (25 novembre 2026): lavorando sul giro si perde il punto dell'ultima modifica, e a forza di guardare
+le scritte su e giù «ti va via la vista». Serve un segnalibro, il **segnacasella**, visibile nel testo del giro e sulle
+strisce, anche sul telefono.
+
+- **Si mette da solo** sulla riga del giro cambiata per ultima; è uno per ogni sottozona e resta salvato nel lavoro
+  (sul dispositivo e nell'account), anche chiudendo l'app.
+- **Nel testo del giro** quella riga ha una fascia arancione con il 🔖, che segue il testo quando scorre (anche con le
+  righe lunghe che vanno a capo sul telefono).
+- **Sulle strisce** (e in «Sei qui») le caselle di quella riga hanno un bordo arancione, e la prima il 🔖.
+- **Il tasto «🔖 Segnacasella · riga N»** sopra il giro riporta lì: il cursore sulla riga, e le strisce scorrono fino
+  alle sue caselle. «Come si scrive» lo spiega.
+- Sistemato insieme: «vai alla riga» (dal tocco su una casella) ora porta la riga giusta in vista anche quando le
+  righe sopra vanno a capo.
+- Prove: `tests/test_core.js` (il segnacasella resta nel file), `tests/test_pagina.js`, e la nuova prova in Edge
+  `tools/prova_segnacasella.py` (computer e telefono: si sposta, si vede nel testo e nelle strisce, resta dopo il
+  ricaricamento, il tasto riporta lì). Controllo della pagina in Edge: nessun errore.
+- File: `app/src/ui.js`, `app/src/style.css`, `app/src/core.js`, `app/index.src.html`, `tests/test_core.js`,
+  `tests/test_pagina.js`, `tools/prova_segnacasella.py`, `README.md`, `Casellino.html`, `sito/`.
+
 ## v0.40.0 · 2026-11-24 · Lettura delle foto più precisa, niente strisce ripetute, foto salvate più sicure
 
 Garadron (24 novembre 2026): migliorare l'uso, fare un debug, controllare velocità, foto salvate e account; soprattutto

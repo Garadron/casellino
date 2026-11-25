@@ -269,6 +269,20 @@ function caretAt(ta, needle, offset) {
 
   assert.ok(!doc.querySelector('.theme-switch') && !doc.documentElement.dataset.palette, 'il programma resta con i suoi colori: il giallo e blu è solo nell\'anteprima');
 
+  // the segnacasella: a change on a line moves it there, and the pigeonholes of that line are marked
+  const taMark = doc.querySelector('textarea.route-text');
+  const lineMark = taMark.value.split('\n').findIndex(function (l) { return /^VIA [A-Z ]+: \d/.test(l); });
+  const atMark = taMark.value.split('\n').slice(0, lineMark + 1).join('\n').length;
+  taMark.value = taMark.value.slice(0, atMark) + ', 99' + taMark.value.slice(atMark);
+  taMark.setSelectionRange(atMark + 4, atMark + 4);
+  taMark.dispatchEvent(new win.Event('input'));
+  await wait(400);
+  assert.ok(new RegExp('riga ' + (lineMark + 1) + '$').test(text('.mark-btn')) && doc.querySelectorAll('#strips .cell.marked').length > 0,
+    'segnacasella sulla riga cambiata, nel testo e nelle strisce');
+  taMark.value = taMark.value.slice(0, atMark) + taMark.value.slice(atMark + 4);
+  taMark.dispatchEvent(new win.Event('input'));
+  await wait(300);
+
   // the keyboard: Esc closes a menu, Ctrl+S saves the work as a file (not the page)
   const altro = doc.querySelector('.actions details:not(.print-menu)');
   altro.open = true;

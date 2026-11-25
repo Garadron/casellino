@@ -251,6 +251,8 @@
         else if (s && s.rows) sz.route = rowsToRoute(renameBigModule(s.rows), sz.modules, sz.town);
         sz.locked = s && Number(s.locked) > 0 ? Number(s.locked) : 0;
         if (s && typeof s.routeBefore === 'string' && s.routeBefore) sz.routeBefore = s.routeBefore; // before the last optimization
+        // the segnacasella: the line of the route changed last (Garadron, 25 November 2026)
+        if (s && s.mark && Number(s.mark.line) >= 0) sz.mark = { line: Math.floor(Number(s.mark.line)), at: Number(s.mark.at) || 0 };
         return sz;
       });
     }
