@@ -398,6 +398,7 @@
     if (!els.ta) return;
     const a = C.analyseProject(state.project)[state.current];
     state.analysis = a;
+    state.links = state.project.subzones.some(function (x) { return /@\s*\d/.test(x.route); }) ? C.linkGroups(state.project) : {};
     const over = a.overflow.length > 0;
     const ownUsed = a.used - a.spillUsed;
     els.used.textContent = ownUsed + ' / ' + a.capacity + ' caselle' +
@@ -517,8 +518,10 @@
       const unsure = /\?/.test(c.top + c.second + c.street);
       const tip = (c.foreign ? 'Della ' + c.foreign + ' · ' : '') + (c.street || 'senza via') + (c.top ? ' · ' + c.top : '') +
         (c.second ? ' / ' + c.second : '') + ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') +
-        ' · riga ' + (c.line + 1) + ' del giro' + (c.other ? ' · per un\'altra linea' : '');
-      const pick = function () { select(p, idx); };
+        ' · riga ' + (c.line + 1) + ' del giro' + (c.other ? ' · per un\'altra linea' : '') +
+        (c.link ? ' · simbolino ' + c.link : '');
+      const pick = function () { tap(p, idx); };
+      const g = c.link && state.links && state.links[c.link];
       const marked = mk && !c.foreign && c.line === mk.line;
       const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '') +
         (marked ? ' marked' + (firstMark ? ' mark-first' : '') : '');
@@ -547,11 +550,11 @@
         cls = long ? ' long' : '';
       }
       el.append(h.apply(null, ['div', {
-        class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + mark,
+        class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + (g ? ' linked' : '') + mark,
         style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink + outline(ink, two && c.second ? two.color : bg) +
           ';--ink:' + ink + ';font-size:' + size + 'px',
         title: tip, onclick: pick, 'data-idx': idx,
-      }].concat(inside)));
+      }].concat(inside, g ? [linkSymbol(g)] : [])));
     });
     s.runs.forEach(function (r) {
       const idx = s.cells.findIndex(function (c) { return c.start === r.start; });
@@ -562,7 +565,7 @@
         el.append(h('div', {
           class: 'cell run two halves', title: r.street + ' / ' + r.street2 + (r.town ? ' · ' + r.town : ''),
           style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';font-size:' + px + 'px',
-          onclick: function () { select(p, idx); },
+          onclick: function () { tap(p, idx); },
         }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key), C.colorOf(proj, r.key)) },
           h('span', { class: 'run-name' }, r.street)),
         h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) + outline(C.textColorOf(proj, r.key2), C.colorOf(proj, r.key2)) },
@@ -574,7 +577,7 @@
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
           ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key), C.colorOf(proj, r.key)) + ';font-size:' +
           (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
-        onclick: function () { select(p, idx); },
+        onclick: function () { tap(p, idx); },
       }, h('span', { class: 'run-name' }, r.street, two ? h('br') : null, two ? r.street2 : null)));
     });
     // over the strip, in the free space (no number covered): 🔖 where the line starts, 👇 on the pigeonhole written last
@@ -800,9 +803,13 @@
           (c.span > 1 ? ' – ' + (c.end + 1) + ' (larga ' + c.span + ')' : '') + ' · foglio ' +
           (Math.floor(c.start / C.SLOTS_PER_PAGE) + 1) + ' · riga ' + (c.line + 1) + ' del giro'),
         c.other ? h('p', { class: 'small' }, '👥 La posta di questa casella la consegna un collega: nelle strisce il numero è sottolineato.') : null,
+        linkInfo(c),
         h('p', { class: 'actions-inline' },
           c.top || c.street ? h('button', { type: 'button', class: 'colleague-btn' + (c.other ? ' on' : ''), 'aria-pressed': c.other ? 'true' : 'false',
             onclick: function () { toggleColleague(c); } }, c.other ? '👥 La consegna un collega ✓' : '👥 Lo consegna un collega') : null,
+          c.top || c.street ? h('button', { type: 'button', class: 'tie-btn', onclick: function () { startLink(c); } },
+            c.link ? '🔗 Lega anche un\'altra casella' : '🔗 Lega a un\'altra casella') : null,
+          c.link ? h('button', { type: 'button', class: 'unlink-btn', onclick: function () { unlink(c); } }, '✖ Togli il simbolino') : null,
           h('button', { type: 'button', onclick: function () { goToLine(c.line); } }, 'Vai alla riga del giro'),
           q ? h('a', { class: 'btn', href: mapsLink(q), target: '_blank', rel: 'noopener' }, 'Apri in Google Maps') : null)));
     if (q) setMap(q);
@@ -854,39 +861,100 @@
   // The same for the pigeonhole tapped on a strip (easy from the phone): "*" on its number in the text.
   // A series like "7..15" is written out ("7, 9, 11*, 13, 15") so that only that pigeonhole is marked.
   function toggleColleague(c) {
-    const s = sz();
-    if (s.locked) { toast('Il giro è bloccato: sbloccalo per cambiarlo.'); return; }
-    const lines = s.route.split('\n');
-    const line = lines[c.line];
-    if (line === undefined) return;
-    const colon = line.indexOf(':');
-    const mark = function (text, on) { const t = text.replace(/\s*\*/g, ''); return on ? t + '*' : t; };
-    if (colon < 0) {
-      lines[c.line] = mark(line.replace(/\s+$/, ''), !c.other);
-    } else {
-      const toks = line.slice(colon + 1).split(',');
-      const tok = toks[c.tok];
-      if (tok === undefined) return;
-      const lead = /^\s*/.exec(tok)[0];
-      const many = C.parseRoute('X:' + tok, '').items;
-      if (many.length > 1) {
-        toks[c.tok] = lead + many.map(function (x) {
-          const mine = x.top === c.top && x.second === c.second;
-          return x.top + (x.second ? '/' + x.second : '') + (x.span > 1 ? ' (' + x.span + ')' : '') + ((mine ? !c.other : x.other) ? '*' : '');
-        }).join(', ');
-      } else {
-        toks[c.tok] = lead + mark(tok.trim(), !c.other) + (/\s*$/.exec(tok)[0]);
-      }
-      lines[c.line] = line.slice(0, colon + 1) + toks.join(',');
-    }
-    s.route = lines.join('\n');
+    if (!applyMarks([{ zone: state.current, cell: c, marks: { other: !c.other } }])) return;
+    toast(c.other ? 'Tolto: la consegni tu.' : 'Segnata: la consegna un collega (casella sottolineata).');
+  }
+
+  /*
+   * Changes pigeonholes in the text of their sub-zones: [{ zone, cell, marks }] (see Core.setCellMarks). The ones
+   * further down a text are changed first, so that writing out a series does not move the others. False if locked.
+   */
+  function applyMarks(edits) {
+    const locked = edits.find(function (e) { return state.project.subzones[e.zone].locked; });
+    if (locked) { toast('Il giro della ' + (state.project.subzones[locked.zone].name || 'sottozona') + ' è bloccato: sbloccalo per cambiarlo.'); return false; }
+    edits.slice().sort(function (a, b) { return b.zone - a.zone || b.cell.line - a.cell.line || b.cell.tok - a.cell.tok; })
+      .forEach(function (e) {
+        const s = state.project.subzones[e.zone];
+        s.route = C.setCellMarks(s.route, e.cell, e.marks);
+      });
     const ta = state.els.ta;
-    if (ta) { const top = ta.scrollTop; ta.value = s.route; ta.scrollTop = top; }
+    if (ta) { const top = ta.scrollTop; ta.value = sz().route; ta.scrollTop = top; }
     changed();
     const keep = state.selected;
     refreshRoute();
     if (keep) select(keep.p, keep.idx);
-    toast(c.other ? 'Tolto: la consegni tu.' : 'Segnata: la consegna un collega (casella sottolineata).');
+    return true;
+  }
+
+  /*
+   * The link symbols (Garadron, 25 November 2026): two or more pigeonholes, even of different streets, get the same
+   * symbol, because the mail of one goes to the other (the owners of a bar get theirs at the bar).
+   */
+  function linkSymbol(g, size) {
+    const pts = C.linkShapePoints(g.shape, 0, 0, 5).map(function (p) { return p[0].toFixed(2) + ',' + p[1].toFixed(2); }).join(' ');
+    const el = h('span', { class: 'link-sym', 'aria-hidden': 'true' });
+    el.innerHTML = '<svg viewBox="-6.5 -6.5 13 13"><polygon points="' + pts + '" fill="#' + g.color + '" stroke="#' + g.edge +
+      '" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+    return el;
+  }
+  function cellName(c) {
+    return (c.street || 'senza via') + (c.top ? ' ' + c.top : '') + (c.second ? '/' + c.second : '');
+  }
+  function linkInfo(c) {
+    const g = c.link && state.links && state.links[c.link];
+    if (!g) return null;
+    const others = g.cells.filter(function (x) { return !(x.zone === state.current && x.cell.line === c.line && x.cell.tok === c.tok && x.cell.top === c.top && x.cell.second === c.second); });
+    return h('p', { class: 'small' }, linkSymbol(g), 'Simbolino ' + g.n + ' (' + g.shape + ', colore ' + g.colorName + '): ',
+      others.length ? 'legata a ' + others.map(function (x) {
+        return cellName(x.cell) + (x.zone !== state.current ? ' (' + (state.project.subzones[x.zone].name || 'altra sottozona') + ')' : '');
+      }).join(', ') + '.' : 'è da sola. Premi «🔗 Lega a un\'altra casella» e tocca l\'altra.');
+  }
+  function startLink(c) {
+    if (sz().locked) { toast('Il giro è bloccato: sbloccalo per cambiarlo.'); return; }
+    state.linking = { zone: state.current, cell: c };
+    const old = document.querySelector('.link-bar');
+    if (old) old.remove();
+    document.body.append(h('div', { class: 'link-bar', role: 'status' },
+      h('p', null, '🔗 Ora tocca nella striscia la casella dove porti la posta di ', h('b', null, cellName(c)), ' (anche di un\'altra via o sottozona).'),
+      h('button', { type: 'button', onclick: stopLink }, 'Annulla')));
+  }
+  function stopLink() {
+    state.linking = null;
+    const bar = document.querySelector('.link-bar');
+    if (bar) bar.remove();
+  }
+  // A tap on a strip: it picks the pigeonhole, or finishes the link started from another one.
+  function tap(p, idx) {
+    const L = state.linking;
+    if (!L) { select(p, idx); return; }
+    const c = (stripsOf(state.analysis)[p] || { cells: [] }).cells[idx];
+    if (!c || c.foreign || !(c.top || c.street)) { toast('Tocca una casella con un civico o un nome, di questa sottozona.'); return; }
+    if (L.zone === state.current && c.line === L.cell.line && c.tok === L.cell.tok && c.top === L.cell.top && c.second === L.cell.second) {
+      toast('È la stessa casella: tocca l\'altra.');
+      return;
+    }
+    const n = L.cell.link || c.link || C.nextLink(state.project);
+    const edits = [];
+    if (L.cell.link !== n) edits.push({ zone: L.zone, cell: L.cell, marks: { link: n } });
+    if (c.link !== n) edits.push({ zone: state.current, cell: c, marks: { link: n } });
+    stopLink();
+    state.selected = { p: p, idx: idx };
+    if (edits.length && !applyMarks(edits)) return;
+    if (!edits.length) select(p, idx);
+    const g = state.links[n];
+    toast('🔗 Legate: ' + cellName(L.cell) + ' e ' + cellName(c) + ' hanno lo stesso simbolino' + (g ? ' (' + g.shape + ', colore ' + g.colorName + ')' : '') + '.');
+  }
+  // Takes the symbol away; when only one pigeonhole would keep it, from that one too.
+  function unlink(c) {
+    const g = state.links[c.link];
+    const edits = [{ zone: state.current, cell: c, marks: { link: 0 } }];
+    if (g && g.cells.length === 2) {
+      g.cells.forEach(function (x) {
+        const same = x.zone === state.current && x.cell.line === c.line && x.cell.tok === c.tok && x.cell.top === c.top && x.cell.second === c.second;
+        if (!same) edits.push({ zone: x.zone, cell: x.cell, marks: { link: 0 } });
+      });
+    }
+    if (applyMarks(edits)) toast(edits.length > 1 ? 'Simbolino tolto da tutte e due le caselle.' : 'Simbolino tolto da questa casella.');
   }
 
   function goToLine(line) {
@@ -3444,12 +3512,117 @@
         download(fileBaseName() + ' - come il modello.xlsx', X.buildXlsx(state.project), xlsxType);
       }
       changed();
+      const apart = state.project.linkPrint === 'adesivi' && hasLinks() ? downloadStickers(true) : 0;
       toast((sheets ? sheets + (sheets === 1 ? ' foglio' : ' fogli') + ' A4. ' : '') +
-        'Stampa su A4 orizzontale a dimensioni reali (100%), senza «adatta alla pagina».');
+        'Stampa su A4 orizzontale a dimensioni reali (100%), senza «adatta alla pagina».' +
+        (apart ? ' In più il PDF dei simbolini adesivi (A4 verticale): se il browser chiede, consenti i due file.' : ''));
     } catch (e) {
       toast('Non sono riuscito a crearlo: ' + e.message);
       note('stampa ' + kind + ': ' + e.message);
     }
+  }
+
+  function hasLinks() { return state.project.subzones.some(function (x) { return /@\s*\d/.test(x.route); }); }
+  // The PDF of the link symbols to stick on: one sticker per pigeonhole, as wide as the pigeonhole.
+  function downloadStickers(quiet) {
+    const r = window.CasellinoPdf.buildStickers(state.project, fileBaseName());
+    if (!r) { if (!quiet) toast('Nessuna casella ha un simbolino: tocca una casella nella striscia e premi «🔗 Lega a un\'altra casella».'); return 0; }
+    download(fileBaseName() + ' - simbolini adesivi.pdf', r.bytes, 'application/pdf');
+    if (!quiet) toast(r.stickers + ' simbolini su ' + r.pages + (r.pages === 1 ? ' foglio' : ' fogli') + ' A4 verticale: stampa a dimensioni reali (100%) sulla carta adesiva e ritaglia lungo il tratteggio.');
+    return r.stickers;
+  }
+  function wireLinkPrint() {
+    const box = $('link-print');
+    const show = function () {
+      box.hidden = !hasLinks();
+      const on = box.querySelector('input[value="' + (state.project.linkPrint === 'adesivi' ? 'adesivi' : 'strisce') + '"]');
+      if (on) on.checked = true;
+    };
+    document.querySelector('.print-menu').addEventListener('toggle', show);
+    box.addEventListener('change', function (e) {
+      if (e.target.name !== 'link-print') return;
+      state.project.linkPrint = e.target.value === 'adesivi' ? 'adesivi' : 'strisce';
+      changed();
+    });
+    $('btn-stickers').addEventListener('click', function () {
+      document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
+      downloadStickers(false);
+    });
+  }
+
+  /*
+   * Long press (Garadron, 25 November 2026): holding a button, a menu or a pigeonhole opens a little window that says
+   * what it is, what it is for and how it works. Each entry: [what it is on, title, what, why, how]; "what it is on"
+   * is a selector or the start of the button's text. Without an entry, the button's own explanation (title).
+   */
+  const HINTS = [
+    ['#btn-theme', '☀️/🌙 Giorno e notte', 'L\'interruttore tra pagina chiara e pagina scura.', 'Di sera o al buio la pagina scura stanca meno gli occhi.', 'All\'inizio segue il telefono o il computer. Toccalo per scegliere tu: la scelta resta, anche quando riapri.'],
+    ['#btn-share, #btn-share-menu', '📤 Condividi', 'Il link di Casellino da mandare ai colleghi.', 'Così anche loro scrivono il giro e stampano le strisce, gratis.', 'Sul telefono si apre la condivisione (WhatsApp, email…). Sul computer il link si copia e compare il codice QR da inquadrare.'],
+    ['#btn-tutorial', '📖 Tutorial', 'Il giro guidato di Casellino, a fumetti.', 'Per imparare a fare le foto del casello e a usare i tasti.', 'Si sfoglia con «Continua» e ◀; «Salta» lo chiude. Si riapre quando vuoi da qui.'],
+    ['#btn-account', '👤 Accedi', 'Il tuo account di Casellino.', 'Per ritrovare il tuo giro su un altro telefono o computer.', 'Ti registri con nome, email e password. Senza account Casellino funziona lo stesso, solo su questo dispositivo.'],
+    ['#btn-open', 'Apri', 'Apre un file di Casellino salvato prima (o un Excel o un testo).', 'Per riprendere un giro salvato in un file o arrivato da un collega.', 'Scegli il file: il giro che c\'era sullo schermo viene sostituito.'],
+    ['#btn-save', 'Salva file', 'Salva tutto il lavoro in un file sul dispositivo.', 'È la copia di sicurezza: si riapre con «Apri», anche su un altro dispositivo.', 'Il file finisce nei download. Dal computer anche con Ctrl+S.'],
+    ['.print-menu > summary', 'Stampa', 'Il menu per stampare le strisce.', 'Per avere le strisce di carta da mettere sotto le file del casello.', 'Scegli come mettere le strisce sul foglio, poi il PDF (consigliato) o l\'Excel. Stampa sempre a dimensioni reali (100%).'],
+    ['#btn-pdf', '📄 PDF da stampare', 'Il file delle strisce pronto per la stampante.', 'Le caselle escono della misura giusta, uguali al modello.', 'Si apre e si stampa su A4 orizzontale, a dimensioni reali (100%), senza «adatta alla pagina».'],
+    ['#btn-excel', '📊 Excel', 'Le strisce in un file Excel, tante per foglio.', 'Se vuoi ritoccarle a mano prima di stamparle.', 'Aprilo con Excel e stampa a dimensioni reali (100%).'],
+    ['#btn-excel-model', '📊 Excel come il modello', 'Le strisce nell\'Excel uguale al modello: un modulo per foglio.', 'Per chi è abituato al modello di sempre.', 'Ogni foglio dell\'Excel è un modulo (casello o ala) con le sue 4 file.'],
+    ['#link-print', '🔗 I simbolini', 'Dove stampare i simbolini delle caselle legate.', '«Dentro le strisce» restano per sempre; «a parte» sono adesivi che si staccano quando qualcuno cambia casa.', 'Scegli una delle due: con «a parte», insieme alle strisce arriva un PDF in più da stampare su carta adesiva e ritagliare.'],
+    ['#btn-stickers', '🔗 PDF dei simbolini adesivi', 'Solo i simbolini da attaccare, senza le strisce.', 'Per ristampare gli adesivi senza rifare tutto.', 'Ogni adesivo è largo come la sua casella. Stampa a dimensioni reali (100%) sulla carta adesiva e ritaglia lungo il tratteggio; sotto c\'è scritto dove va.'],
+    ['.menu:not(.print-menu) > summary', 'Altro', 'Gli altri comandi di Casellino.', 'Per le cose che si fanno ogni tanto.', 'Ricominciare, leggere le foto, aprire un Excel, «Come si scrive», segnalare un problema, il Supporto, condividere.'],
+    ['#btn-new', 'Comincia da capo', 'Un giro nuovo, vuoto.', 'Per scrivere un\'altra zona.', 'Prima chiede se sei sicuro: salva il file se vuoi tenere quello di adesso.'],
+    ['#btn-photos, .photo-btn', '📷 Le foto delle strisce', 'Casellino legge le foto del casello e scrive il giro da solo.', 'Per non ricopiare a mano centinaia di civici.', 'Scegli le foto nell\'ordine in cui le hai scattate, conferma il cartello, controlla i «?» e premi «Aggiungi al giro».'],
+    ['#btn-open-excel', '📥 Apri un Excel già fatto', 'Prende il giro da un Excel delle strisce.', 'Se le strisce le hai già fatte in Excel.', 'Scegli il file: Casellino legge vie e civici.'],
+    [/^(📝 )?Come si scrive/, 'Come si scrive', 'La spiegazione di come si scrive il giro a mano.', 'Per scrivere vie, civici, caselle larghe, numeri con la lettera o con la barra.', 'Si apre una pagina con gli esempi.'],
+    ['#btn-bug', '🐞 Segnala un problema', 'Manda a chi fa Casellino una segnalazione.', 'Se qualcosa non va, così si sistema.', 'Scrivi che cosa è successo; puoi aggiungere una foto dello schermo.'],
+    ['#btn-support', '✉️ Supporto', 'Scrivi a chi fa Casellino.', 'Per una domanda o un consiglio.', 'Scrivi il messaggio e la tua email: la risposta arriva lì.'],
+    [/^👥/, '👥 Lo consegna un collega', 'Segna le caselle che porta un collega di un\'altra linea.', 'Chi smista vede subito che quella posta non è tua.', 'Tocca la casella nella striscia e premi il tasto: sotto il numero compare una riga spessa, anche nella stampa. Premi di nuovo per toglierla. Dal computer anche con il cursore sul civico nel giro.'],
+    [/^🔗 Lega/, '🔗 Lega a un\'altra casella', 'Dà lo stesso simbolino (cerchio, stella, luna…) a due o più caselle, anche di vie diverse.', 'Quando la posta di chi abita lì la porti in un altro posto: per esempio i padroni di un bar, a cui la porti al bar.', 'Premi il tasto e poi tocca l\'altra casella nella striscia. Il simbolino ha un colore che si vede bene sulle vie di tutte e due. In «Stampa» scegli se averli dentro le strisce o su carta adesiva.'],
+    [/^✖ Togli il simbolino/, '✖ Togli il simbolino', 'Toglie il simbolino da questa casella.', 'Quando qualcuno cambia casa e la posta torna a casa sua.', 'Se restava una casella sola con quel simbolino, lo toglie anche da lì.'],
+    [/^🔒 Blocca/, '🔒 Blocca il giro controllato', 'Blocca vie e civici di questa sottozona.', 'Così non si cambiano per sbaglio dopo averli controllati.', 'Si sblocca quando vuoi con «Sblocca».'],
+    ['.cell.top', 'Una casella', 'Una casella del casello, con il suo civico.', 'Qui vedi come uscirà la striscia stampata.', 'Toccala per vedere via e civico e per i tasti: collega 👥, simbolino 🔗, mappa. Riga spessa sotto il numero: la porta un collega. Simbolino nell\'angolo: è legata ad altre caselle con lo stesso simbolino.'],
+    ['.cell.run', 'Il nome della via', 'La riga di sotto della striscia, con il nome della via.', 'Il nome sta sotto tutte le caselle della sua via, nel suo colore.', 'Toccala per vedere la prima casella della via. Il colore si cambia nell\'elenco delle vie.'],
+  ];
+  function hintFor(el) {
+    const target = el.closest('button, summary, a, .cell, fieldset, .mark-start, .mark-finger');
+    if (!target) return null;
+    const text = target.textContent.trim();
+    const hit = HINTS.find(function (x) { return typeof x[0] === 'string' ? target.matches(x[0]) : x[0].test(text); });
+    if (hit) return { title: hit[1], parts: [['Che cos\'è', hit[2]], ['A che serve', hit[3]], ['Come funziona', hit[4]]] };
+    const own = target.getAttribute('title') || target.getAttribute('aria-label');
+    return own ? { title: text.slice(0, 40) || 'Che cos\'è', parts: [['', own]] } : null;
+  }
+  function showHint(hint) {
+    $('hint-title').textContent = hint.title;
+    const box = $('hint-text');
+    box.textContent = '';
+    hint.parts.forEach(function (x) {
+      if (x[0]) box.append(h('h3', null, x[0]));
+      box.append(h('p', null, x[1]));
+    });
+    $('dlg-hint').showModal();
+  }
+  function wireHints() {
+    let timer = null, start = null, shownAt = 0;
+    const cancel = function () { clearTimeout(timer); timer = null; };
+    document.addEventListener('pointerdown', function (e) {
+      if (e.button > 0 || $('dlg-hint').open) return;
+      const hint = hintFor(e.target);
+      if (!hint) return;
+      start = { x: e.clientX, y: e.clientY };
+      cancel();
+      timer = setTimeout(function () { timer = null; shownAt = Date.now(); showHint(hint); }, 550);
+    }, true);
+    document.addEventListener('pointermove', function (e) {
+      if (timer && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel();
+    }, true);
+    ['pointerup', 'pointercancel', 'scroll'].forEach(function (ev) { document.addEventListener(ev, cancel, true); });
+    // the tap that ends a long press does not also press the button
+    document.addEventListener('click', function (e) {
+      if (Date.now() - shownAt < 900 && !e.target.closest('#dlg-hint')) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+    document.addEventListener('contextmenu', function (e) {
+      if (timer || Date.now() - shownAt < 900) e.preventDefault();
+    }, true);
   }
 
   function saveFile() {
@@ -3554,6 +3727,8 @@
     $('btn-photos').addEventListener('click', function () { closeMenu(); openPhotos(); });
     $('btn-bug').addEventListener('click', openReport);
     $('btn-support').addEventListener('click', function () { closeMenu(); openSupport(); });
+    wireLinkPrint();
+    wireHints();
     $('btn-share').addEventListener('click', share);
     $('btn-share-menu').addEventListener('click', share);
     $('share-copy').addEventListener('click', copyShareLink);

@@ -119,15 +119,23 @@
   };
 
   function StringTable() { this.list = []; this.map = {}; }
+  // s is a text, or { rich: [{ t, size, color, font }] }: parts of the text in different colours (the link symbol).
   StringTable.prototype.id = function (s) {
-    if (!(s in this.map)) { this.map[s] = this.list.length; this.list.push(s); }
-    return this.map[s];
+    const k = typeof s === 'string' ? s : '\u0000' + JSON.stringify(s);
+    if (!(k in this.map)) { this.map[k] = this.list.length; this.list.push(s); }
+    return this.map[k];
   };
   StringTable.prototype.xml = function () {
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + this.list.length +
       '" uniqueCount="' + this.list.length + '">' +
-      this.list.map(function (s) { return '<si><t xml:space="preserve">' + esc(s) + '</t></si>'; }).join('') + '</sst>';
+      this.list.map(function (s) {
+        if (typeof s === 'string') return '<si><t xml:space="preserve">' + esc(s) + '</t></si>';
+        return '<si>' + s.rich.map(function (r) {
+          return '<r><rPr><b/><sz val="' + r.size + '"/><color rgb="FF' + r.color + '"/><rFont val="' + (r.font || 'Arial') +
+            '"/><family val="2"/></rPr><t xml:space="preserve">' + esc(r.t) + '</t></r>';
+        }).join('') + '</si>';
+      }).join('') + '</sst>';
   };
 
   // ------------------------------------------------------------------ one sheet
@@ -190,7 +198,8 @@
   SheetBuilder.prototype.put = function (row, col, value, style) {
     if (!this.cells[row]) this.cells[row] = {};
     const c = { s: this.styles.xf(style) };
-    if (value !== '' && value !== null && value !== undefined) {
+    if (value && typeof value === 'object') { c.t = 's'; c.v = this.strings.id(value); }
+    else if (value !== '' && value !== null && value !== undefined) {
       const v = String(value);
       if (/^[1-9]\d{0,8}$/.test(v)) { c.t = 'n'; c.v = v; }
       else { c.t = 's'; c.v = this.strings.id(v); }
@@ -353,6 +362,21 @@
     };
   }
 
+  /*
+   * The link symbol after the number, in its colour (Excel cannot draw it in the corner): the text becomes
+   * { rich } with the number in the colour of the writing and the symbol in its own.
+   */
+  let LINKS = null;
+  function withLink(text, c, ink, size) {
+    const g = LINKS && c.link && LINKS[c.link];
+    if (!g) return text;
+    const ch = Core.LINK_SHAPES.find(function (x) { return x.id === g.shape; }).ch;
+    const lines = String(text).split('\n');
+    const rich = [{ t: lines[0] + ' ', size: size, color: ink }, { t: ch, size: Math.max(8, Math.round(size * 0.6)), color: g.color, font: 'Segoe UI Symbol' }];
+    if (lines.length > 1) rich.push({ t: '\n' + lines.slice(1).join('\n'), size: size, color: ink });
+    return { rich: rich };
+  }
+
   // One piece of strip (slots piece.from..piece.to): house numbers on row `top`, street names under it.
   function drawPiece(sb, project, piece, top, col0) {
     const bottom = top + 1;
@@ -373,14 +397,14 @@
         const mid = a + Math.ceil((b - a + 1) / 2) - 1;
         sb.block(top, col(a), top, col(mid), two.left,
           Object.assign({ bold: true, text: true, fill: two.color, color: two.ink, border: Object.assign({ l: e.l, r: 'thin', t: 'medium' }, under) }, topTextStyle(two.left)));
-        sb.block(top, col(mid + 1), top, col(b), two.right,
+        sb.block(top, col(mid + 1), top, col(b), withLink(two.right, c, two.ink2, topTextStyle(two.right).size),
           Object.assign({ bold: true, text: true, fill: two.color2, color: two.ink2, border: Object.assign({ l: 'thin', r: e.r, t: 'medium' }, under) }, topTextStyle(two.right)));
       } else if (c.second) {
         const d = diagonalText(c.top, c.second, b - a + 1);
-        sb.block(top, col(a), top, col(b), d.text,
+        sb.block(top, col(a), top, col(b), withLink(d.text, c, ink, d.size),
           { bold: true, text: true, fill: color, color: ink, size: d.size, wrap: true, h: 'left', border: Object.assign({ l: e.l, r: e.r, t: 'medium', d: ink }, under) });
       } else {
-        sb.block(top, col(a), top, col(b), c.top,
+        sb.block(top, col(a), top, col(b), withLink(c.top, c, ink, topTextStyle(c.top).size),
           Object.assign({ bold: true, text: true, fill: color, color: ink, border: Object.assign({ l: e.l, r: e.r, t: 'medium' }, under) }, topTextStyle(c.top)));
       }
       for (let k = a; k <= b; k++) usedTop[k] = true;
@@ -406,6 +430,7 @@
 
   function buildCompactFiles(project, layout) {
     Core.assignColors(project);
+    LINKS = project.linkPrint === 'adesivi' ? null : Core.linkGroups(project);
     const byFloor = layout === 'piani';
     const shape = byFloor ? COMPACT : BLOCKS;
     const first = byFloor ? 1 : 2;   // column of the first slot
@@ -469,6 +494,7 @@
 
   function buildWorkbookFiles(project) {
     Core.assignColors(project);
+    LINKS = project.linkPrint === 'adesivi' ? null : Core.linkGroups(project);
     const styles = new StyleBook();
     const strings = new StringTable();
     const all = Core.analyseProject(project);

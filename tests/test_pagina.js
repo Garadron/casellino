@@ -126,6 +126,44 @@ function caretAt(ta, needle, offset) {
   assert.ok(/La consegna un collega/.test(text('#selection .colleague-btn')), 'il pulsante dice che è segnata');
   doc.querySelector('#selection .colleague-btn').dispatchEvent(new win.Event('click'));
   assert.ok(/^VIA DEI TIGLI: 1, 3, 5, 7, 9, 11, 13, 15, 14\.\.2$/m.test(rb.value), 'tolto');
+  // the link symbols: tap a pigeonhole, «Lega», tap another one (another street): the same symbol on both
+  const cellOf = function (num, street) {
+    return [...doc.querySelectorAll('#strips .cell.top')].find(function (el) { return el.textContent === num && new RegExp(street).test(el.title); });
+  };
+  cellOf('5', 'VIA DEI TIGLI').dispatchEvent(new win.Event('click'));
+  doc.querySelector('#selection .tie-btn').dispatchEvent(new win.Event('click'));
+  assert.ok(doc.querySelector('.link-bar'), "la barra dice di toccare l'altra casella");
+  cellOf('9', 'VIA DELLE ROSE').dispatchEvent(new win.Event('click'));
+  assert.ok(/^VIA DEI TIGLI: 1, 3, 5@1, 7, 9, 11, 13, 15, 14\.\.2$/m.test(rb.value) && /VIA DELLE ROSE: 1\/3, 5\/7, 9@1,/.test(rb.value), 'stesso numero nel testo: ' + rb.value);
+  assert.ok(!doc.querySelector('.link-bar'), 'la barra se ne va');
+  assert.strictEqual(doc.querySelectorAll('#strips .cell.top.linked .link-sym').length, 2, 'il simbolino su tutte e due');
+  assert.ok(/Simbolino 1 .*legata a VIA DEI TIGLI 5/.test(text('#selection')), text('#selection'));
+  // the stickers: the choice in «Stampa» is kept in the work, and the PDF of the stickers is made
+  const printMenu = doc.querySelector('.print-menu');
+  printMenu.open = true;
+  printMenu.dispatchEvent(new win.Event('toggle'));
+  assert.ok(!doc.getElementById('link-print').hidden, 'in Stampa la scelta dei simbolini');
+  const sticky = doc.querySelector('input[name="link-print"][value="adesivi"]');
+  sticky.checked = true;
+  sticky.dispatchEvent(new win.Event('change', { bubbles: true }));
+  const blobsSticker = blobs.length;
+  doc.getElementById('btn-stickers').dispatchEvent(new win.Event('click'));
+  assert.ok(blobs.length === blobsSticker + 1 && blobs[blobsSticker].type === 'application/pdf', 'il PDF degli adesivi');
+  doc.querySelector('input[name="link-print"][value="strisce"]').checked = true;
+  doc.querySelector('input[name="link-print"][value="strisce"]').dispatchEvent(new win.Event('change', { bubbles: true }));
+  doc.querySelector('#selection .unlink-btn').dispatchEvent(new win.Event('click'));
+  assert.ok(!/@/.test(rb.value) && doc.querySelectorAll('#strips .link-sym').length === 0, 'tolto da tutte e due');
+  // long press on a button: the little window that explains it, and the button is not pressed
+  const pdfButton = doc.getElementById('btn-pdf');
+  const blobsHold = blobs.length;
+  pdfButton.dispatchEvent(new win.Event('pointerdown', { bubbles: true }));
+  await wait(700);
+  assert.ok(doc.getElementById('dlg-hint').open && /PDF/.test(text('#hint-title')) && /A che serve/.test(text('#hint-text')), 'tieni premuto: la spiegazione');
+  pdfButton.dispatchEvent(new win.Event('pointerup', { bubbles: true }));
+  pdfButton.dispatchEvent(new win.Event('click', { bubbles: true, cancelable: true }));
+  assert.strictEqual(blobs.length, blobsHold, 'il tasto tenuto premuto non parte');
+  doc.getElementById('dlg-hint').close();
+  await wait(1000);
   rb.value = rb.value.replace('VIA DEI TIGLI: 1, 3, 5, 7, 9, 11, 13, 15, 14..2', 'VIA DEI TIGLI: 1..15, 14..2');
   rb.dispatchEvent(new win.Event('input'));
 
@@ -196,16 +234,16 @@ function caretAt(ta, needle, offset) {
   assert.ok(doc.getElementById('dlg-foto').open, 'finestra delle foto dal pulsante');
   const tut = doc.getElementById('dlg-tutorial');
   assert.ok(tut.open, 'il tutorial si apre da solo la prima volta');
-  assert.strictEqual(text('#tut-count'), '1 di 10');
+  assert.strictEqual(text('#tut-count'), '1 di 13');
   assert.ok(doc.getElementById('tut-back').hidden, 'sulla prima pagina niente «indietro»');
   doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
-  assert.strictEqual(text('#tut-count'), '2 di 10', 'Continua va avanti');
+  assert.strictEqual(text('#tut-count'), '2 di 13', 'Continua va avanti');
   assert.strictEqual(doc.querySelectorAll('#dlg-tutorial .tut-page:not([hidden])').length, 1, 'una pagina alla volta');
   doc.getElementById('tut-skip').dispatchEvent(new win.Event('click'));
   assert.ok(!tut.open, 'Salta lo chiude');
   doc.getElementById('btn-tutorial').dispatchEvent(new win.Event('click'));
-  assert.ok(tut.open && text('#tut-count') === '1 di 10', 'il tasto in alto lo riapre dall\'inizio');
-  for (let k = 0; k < 9; k++) doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
+  assert.ok(tut.open && text('#tut-count') === '1 di 13', 'il tasto in alto lo riapre dall\'inizio');
+  for (let k = 0; k < 12; k++) doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
   assert.strictEqual(text('#tut-next'), 'Ho capito ✓', 'sull\'ultima pagina');
   assert.ok(/Come si scrive/.test(text('#dlg-tutorial .tut-page:not([hidden])')), 'alla fine il rimando a «Come si scrive»');
   doc.getElementById('tut-help').dispatchEvent(new win.Event('click'));

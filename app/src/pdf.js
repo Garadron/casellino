@@ -51,27 +51,38 @@
   const n = function (v) { return Number(v).toFixed(2); };
 
   // Drawing commands, with y measured from the top of the page.
-  function Canvas() { this.ops = []; }
+  function Canvas() { this.ops = []; this.h = PAGE.h; }
   Canvas.prototype.fill = function (x, y, w, h, hex) {
-    this.ops.push(rgb(hex) + ' rg ' + n(x) + ' ' + n(PAGE.h - y - h) + ' ' + n(w) + ' ' + n(h) + ' re f');
+    this.ops.push(rgb(hex) + ' rg ' + n(x) + ' ' + n(this.h - y - h) + ' ' + n(w) + ' ' + n(h) + ' re f');
   };
   // A filled shape through the points [[x, y], ...] (the triangles of a pigeonhole with two streets).
   Canvas.prototype.poly = function (points, hex) {
-    this.ops.push(rgb(hex) + ' rg ' + points.map(function (p, i) { return n(p[0]) + ' ' + n(PAGE.h - p[1]) + (i ? ' l' : ' m'); }).join(' ') + ' h f');
+    const H = this.h;
+    this.ops.push(rgb(hex) + ' rg ' + points.map(function (p, i) { return n(p[0]) + ' ' + n(H - p[1]) + (i ? ' l' : ' m'); }).join(' ') + ' h f');
   };
   Canvas.prototype.line = function (x1, y1, x2, y2, width, hex) {
-    this.ops.push(rgb(hex || '111111') + ' RG ' + n(width) + ' w ' + n(x1) + ' ' + n(PAGE.h - y1) + ' m ' + n(x2) + ' ' + n(PAGE.h - y2) + ' l S');
+    this.ops.push(rgb(hex || '111111') + ' RG ' + n(width) + ' w ' + n(x1) + ' ' + n(this.h - y1) + ' m ' + n(x2) + ' ' + n(this.h - y2) + ' l S');
+  };
+  // A link symbol: filled with its colour, with a black or white edge so that it stands out on any colour.
+  Canvas.prototype.symbol = function (g, cx, cy, r) {
+    const pts = Core.linkShapePoints(g.shape, cx, cy, r), H = this.h;
+    this.ops.push(rgb(g.color) + ' rg ' + rgb(g.edge) + ' RG ' + n(Math.max(0.6, r * 0.2)) + ' w 1 j ' +
+      pts.map(function (p, i) { return n(p[0]) + ' ' + n(H - p[1]) + (i ? ' l' : ' m'); }).join(' ') + ' h B');
+  };
+  // A dashed rectangle: where to cut a sticker.
+  Canvas.prototype.cut = function (x, y, w, h) {
+    this.ops.push('0.55 0.55 0.55 RG 0.5 w [2 2] 0 d ' + n(x) + ' ' + n(this.h - y - h) + ' ' + n(w) + ' ' + n(h) + ' re S [] 0 d');
   };
   // Light writing gets a thin black outline only where it stands out too little on its colour (bg).
   Canvas.prototype.text = function (x, baseline, size, s, hex, bg) {
     const edge = Core.needsOutline(hex, bg) ? ' 0.07 0.07 0.07 RG ' + n(Math.max(0.4, size * 0.06)) + ' w 2 Tr' : ' 0 Tr';
-    this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg' + edge + ' ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
+    this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg' + edge + ' ' + n(x) + ' ' + n(this.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
   };
   // Text turned 90 degrees (read from bottom to top), centred in a box: the "1 Fila" labels.
   Canvas.prototype.upText = function (x, y, w, h, s, size, hex) {
     const tw = textWidth(s, size);
     this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg 0 1 -1 0 ' + n(x + w / 2 + size * 0.36) + ' ' +
-      n(PAGE.h - (y + h / 2 + tw / 2)) + ' Tm ' + pdfString(s) + ' Tj ET');
+      n(this.h - (y + h / 2 + tw / 2)) + ' Tm ' + pdfString(s) + ' Tj ET');
   };
   // Text centred in a box, made smaller until it fits (never cut).
   Canvas.prototype.centered = function (x, y, w, h, s, max, hex, bg) {
@@ -134,8 +145,16 @@
         two.lines.forEach(function (l, k) {
           cv.text(x + (w - textWidth(l, two.size)) / 2, yTop + TOP / 2 + (k ? two.size * 1.0 : -two.size * 0.15), two.size, l, ink, bg);
         });
-      } else if (c.top) cv.centered(x, yTop, w, TOP, c.top, two ? 11 : 20, ink, bg);
+      } else if (c.top) cv.centered(x, yTop, w - (cv.links && cv.links[c.link] ? 10 : 0), TOP, c.top, two ? 11 : 20, ink, bg);
     });
+    // the link symbols, in the upper right corner of the pigeonhole (room is left for them by the number)
+    if (cv.links) {
+      piece.cells.forEach(function (c) {
+        const g = c.link && cv.links[c.link];
+        if (!g || c.end > piece.to) return;
+        cv.symbol(g, xOf(c.end) + SLOT - 6.2, yTop + 6.2, 5);
+      });
+    }
     piece.runs.forEach(function (r) {
       const a = Math.max(r.start, piece.from), b = Math.min(r.end, piece.to);
       cv.fill(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, Core.colorOf(project, r.key));
@@ -182,6 +201,7 @@
    */
   function buildPdf(project, title, layout) {
     Core.assignColors(project);
+    const links = project.linkPrint === 'adesivi' ? null : Core.linkGroups(project);
     const byFloor = layout === 'piani';
     const pages = byFloor ? Core.packPages(Core.printPieces(project), PER_PAGE) : Core.packPages(Core.printBlocks(project), BLOCKS_PER_PAGE);
     const lineH = byFloor ? LABEL + TOP + BOTTOM : LABEL + 4 * (TOP + BOTTOM) + BLOCK_GAP;
@@ -191,6 +211,7 @@
     const y0 = (PAGE.h - perPage * lineH + (byFloor ? 0 : BLOCK_GAP)) / 2;
     const streams = pages.map(function (page, k) {
       const cv = new Canvas();
+      cv.links = links;
       page.forEach(function (line, j) {
         line.pieces.forEach(function (x) {
           const at = x0 + x.start * SLOT;
@@ -202,6 +223,74 @@
         ' · stampa a dimensioni reali (100%), A4 orizzontale', '777777');
       return cv.ops.join('\n');
     });
+    return { bytes: pdfFile(streams, PAGE.w, PAGE.h), pages: pages.length };
+  }
+
+  /*
+   * The stickers of the link symbols (Garadron, 25 November 2026): one for every pigeonhole with a symbol, as wide as
+   * its pigeonhole and as tall as the number line (1 cm), in its street's colour, with a dashed line where to cut it.
+   * Under each one, outside the line, where it goes. A4 portrait, to print on sticky paper.
+   * Returns { bytes, pages, stickers } or null when there is no symbol.
+   */
+  function buildStickers(project, title) {
+    const groups = Core.linkGroups(project);
+    const list = Object.keys(groups).map(Number).sort(function (a, b) { return a - b; }).map(function (k) { return groups[k]; });
+    if (!list.length) return null;
+    const W = PAGE.h, H = PAGE.w, M = 36, GAP = 14, NOTE = 20, HEAD = 14;
+    const names = { casello: 'Casello', ala: 'Ala' };
+    const pages = [];
+    let cv = null, y = 0, count = 0;
+    const newPage = function () {
+      cv = new Canvas();
+      cv.h = H;
+      pages.push(cv);
+      cv.text(M, M - 12, 7, (title || 'Casellino') + ' · simbolini da ritagliare · foglio ' + pages.length + ' · stampa a dimensioni reali (100%)', '777777');
+      y = M;
+    };
+    newPage();
+    list.forEach(function (g) {
+      const items = g.cells.map(function (x) {
+        const c = x.cell, w = c.span * SLOT;
+        const what = (c.street || '') + (c.top ? ' ' + c.top : '') + (c.second ? '/' + c.second : '');
+        const where = (x.target ? x.target + ' · ' : '') + (Core.MODULE_NAMES[x.m] || names[x.m] || x.m) + ' · fila ' + (x.i + 1) +
+          ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '');
+        const room = Math.max(w, textWidth(what, 6), textWidth(where, 5.5));
+        return { c: c, w: w, what: what, where: where, room: room };
+      });
+      // the rows of stickers of this symbol, as many as needed
+      const rows = [[]];
+      let used = 0;
+      items.forEach(function (it) {
+        if (used && used + it.room > W - 2 * M) { rows.push([]); used = 0; }
+        rows[rows.length - 1].push(it);
+        used += it.room + GAP;
+      });
+      const need = HEAD + rows.length * (TOP + NOTE + 6);
+      if (y + need > H - M && y > M) newPage();
+      const one = g.cells.length === 1 ? ' · è da solo: dagli lo stesso simbolo anche nell\'altra casella' : '';
+      cv.text(M, y + 9, 8, 'Simbolino ' + g.n + ' · ' + g.shape + ', colore ' + g.colorName + one, '333333');
+      y += HEAD;
+      rows.forEach(function (row) {
+        let x = M;
+        row.forEach(function (it) {
+          const c = it.c;
+          cv.fill(x, y, it.w, TOP, Core.colorOf(project, c.key));
+          cv.symbol(g, x + it.w / 2, y + TOP / 2, Math.min(9.5, TOP * 0.34));
+          cv.cut(x, y, it.w, TOP);
+          cv.text(x, y + TOP + 8, 6, it.what, '333333');
+          cv.text(x, y + TOP + 15, 5.5, it.where, '777777');
+          x += it.room + GAP;
+          count++;
+        });
+        y += TOP + NOTE + 6;
+      });
+      y += 4;
+    });
+    return { bytes: pdfFile(pages.map(function (p) { return p.ops.join('\n'); }), W, H), pages: pages.length, stickers: count };
+  }
+
+  // The PDF file from the drawing of each page (all pages of the same size).
+  function pdfFile(streams, w, h) {
     // objects: 1 catalog, 2 pages, 3 font, then a page and its content for each sheet
     const objs = [];
     objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
@@ -209,7 +298,7 @@
       '] /Count ' + streams.length + ' >>';
     objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
     streams.forEach(function (s, k) {
-      objs[4 + 2 * k] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PAGE.w + ' ' + PAGE.h + '] ' +
+      objs[4 + 2 * k] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + w + ' ' + h + '] ' +
         '/Resources << /Font << /F1 3 0 R >> >> /Contents ' + (5 + 2 * k) + ' 0 R >>';
       objs[5 + 2 * k] = '<< /Length ' + s.length + ' >>\nstream\n' + s + '\nendstream';
     });
@@ -226,8 +315,8 @@
     // all ASCII (other characters are written as octal codes), so one byte per character
     const bytes = new Uint8Array(out.length);
     for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i);
-    return { bytes: bytes, pages: pages.length };
+    return bytes;
   }
 
-  return { buildPdf: buildPdf, textWidth: textWidth, diagonalSize: diagonalSize };
+  return { buildPdf: buildPdf, buildStickers: buildStickers, textWidth: textWidth, diagonalSize: diagonalSize };
 });

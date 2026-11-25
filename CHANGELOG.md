@@ -1,5 +1,42 @@
 # Registro delle versioni
 
+## v0.45.0 · 2026-11-25 · I simbolini delle caselle legate e il «tieni premuto»
+
+Idea di Garadron (25 novembre 2026): dare lo stesso simbolino a civici anche di vie diverse, quando la posta di chi
+abita in un posto la porta in un altro (per esempio i padroni di un bar: la posta la porta al bar). Si sceglie se
+stamparli dentro le strisce o su un foglio a parte di carta adesiva, che si stacca quando qualcuno cambia casa. Ogni
+cosa dell'app si spiega tenendola premuta, e il tutorial spiega «Lo consegna un collega» e i simbolini.
+
+- **🔗 Lega a un'altra casella.** Tocca una casella nella striscia, premi «🔗 Lega a un'altra casella» e poi tocca
+  l'altra (anche di un'altra via o sottozona): tutte e due prendono lo stesso simbolino nell'angolo in alto a destra.
+  - Le forme sono cerchio, stella, quadrato, triangolo, rombo e luna.
+  - Il colore è scelto perché si veda bene sui colori delle vie di tutte quelle caselle, con un bordo bianco o nero.
+  - Nella scheda della casella si vede a chi è legata. «✖ Togli il simbolino» lo toglie (anche dall'altra, se
+    restava da sola).
+  - Nel testo del giro il simbolino è `@1`, `@2`… dopo il civico (`38@1`, `BAR CENTRALE (2)@1`), e si può scrivere
+    anche a mano.
+- **In «Stampa» si sceglie dove vanno i simbolini**, e la scelta resta nel file:
+  - **dentro le strisce**: nel PDF il simbolino sta nell'angolo e il numero gli lascia posto; nell'Excel sta dopo il
+    numero, nel suo colore;
+  - **a parte, su carta adesiva**: le strisce escono senza simbolini e arriva un PDF in più (A4 verticale). Ogni
+    adesivo è largo come la sua casella (una, due o più) e alto come la riga del civico, nel colore della via, con il
+    tratteggio dove ritagliare. Sotto, fuori dal tratteggio, c'è scritto dove va. C'è anche il tasto «🔗 Solo il PDF
+    dei simbolini adesivi».
+- **Tieni premuto = spiegazione.** Tenendo premuto un tasto, un menu o una casella si apre una finestrina con «Che
+  cos'è», «A che serve», «Come funziona», e il tasto non parte. Per i tasti senza una spiegazione scritta si vede la
+  loro descrizione.
+- **Il tutorial ha tre pagine nuove** (ora sono 13): «Lo consegna un collega», «I simbolini», «Tieni premuto».
+  «Come si scrive» spiega `@1`.
+- Un Excel di Casellino con i simbolini si riapre senza i simbolini nei numeri.
+- Prove:
+  - `tests/test_core.js`: lettura, modifica, gruppi, colori, adesivi, scelta salvata, Excel;
+  - `tests/test_pagina.js`: legare, togliere, PDF degli adesivi, tieni premuto, tutorial di 13 pagine;
+  - in Edge, giorno e notte, telefono e computer, nessun errore;
+  - Excel vero: misure uguali al modello, simbolini visibili.
+- File: `app/src/core.js`, `app/src/pdf.js`, `app/src/xlsx.js`, `app/src/importa.js`, `app/src/ui.js`,
+  `app/src/style.css`, `app/index.src.html`, `tools/tutorial.py`, `tests/test_core.js`, `tests/test_pagina.js`,
+  `Casellino.html`, `sito/`.
+
 ## v0.44.0 · 2026-11-25 · Il tasto giorno e notte e il tasto Condividi
 
 Regole Mondiali del 16 novembre 2026 («Ogni app ha la modalità giorno e notte», «Ogni app ha il tasto Condividi»);

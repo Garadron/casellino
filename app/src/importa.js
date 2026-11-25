@@ -56,7 +56,7 @@
   const texts = function (xml) {
     let s = '';
     xml.replace(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g, function (_, t) { s += unescape(t); });
-    return s;
+    return s.replace(/\s*[●★■▲◆☾]/g, '');   // the link symbols of Casellino's own Excel are not part of the number
   };
 
   function colNumber(letters) {

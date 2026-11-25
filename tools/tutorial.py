@@ -263,6 +263,71 @@ def the_end():
     return svg(176, "\n".join(out), "Il postino saluta: senza foto si scrive a mano, con «Come si scrive»")
 
 
+# ---------------------------------------------------------------- after the photos: the marks on the strips
+def mini_strip(x, y, street, numbers, colour, w=40, marks=None):
+    """A short strip (numbers above, the street under them). marks: {index: 'under' | 'star'}."""
+    marks = marks or {}
+    n = len(numbers)
+    out = [f'<rect x="{x}" y="{y}" width="{w * n}" height="56" fill="{colour}" stroke="{INK}" stroke-width="3"/>',
+           f'<path d="M{x} {y + 32}H{x + w * n}" stroke="{INK}" stroke-width="2"/>']
+    for k, num in enumerate(numbers):
+        cx = x + k * w
+        if k:
+            out.append(f'<path d="M{cx} {y}V{y + 32}" stroke="{INK}" stroke-width="1.6"/>')
+        out.append(label(cx + w / 2 - (5 if marks.get(k) == 'star' else 0), y + 23, str(num), 14 if len(str(num)) < 4 else 9, weight=900))
+        if marks.get(k) == 'under':
+            out.append(f'<path d="M{cx + 5} {y + 28}H{cx + w - 5}" stroke="{INK}" stroke-width="4"/>')
+        if marks.get(k) == 'star':
+            out.append(star(cx + w - 8, y + 8, 6.5))
+    out.append(label(x + w * n / 2, y + 50, street, 11))
+    return "\n".join(out)
+
+
+def star(cx, cy, r):
+    import math
+    pts = []
+    for k in range(10):
+        a = -math.pi / 2 + k * math.pi / 5
+        rad = r if k % 2 == 0 else r * 0.45
+        pts.append(f"{cx + rad * math.cos(a):.1f},{cy + rad * math.sin(a):.1f}")
+    return f'<polygon points="{" ".join(pts)}" fill="#aa00ff" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>'
+
+
+def colleague():
+    out = [mini_strip(20, 30, "VIA DEI TIGLI", (1, 3, 5, 7, 9, 11, 13), "#bfe6ff", marks={3: "under"}),
+           f'<path d="M160 112 C160 130 150 140 132 146" fill="none" stroke="{RED}" stroke-width="3" stroke-linecap="round"/>',
+           f'<rect x="150" y="96" width="200" height="30" rx="15" fill="#fff" stroke="{INK}" stroke-width="1.5"/>',
+           label(250, 116, "👥 Lo consegna un collega", 11.5),
+           label(180, 166, "il 7 lo porta un collega: riga spessa sotto il numero", 11, "#9a5200")]
+    return svg(180, "\n".join(out), "Una striscia con il 7 sottolineato: lo consegna un collega")
+
+
+def linked():
+    out = [mini_strip(14, 22, "VIA DEI TIGLI", (1, 3, 5, 7), "#bfe6ff", marks={2: "star"}),
+           mini_strip(196, 22, "BAR DEL PONTE", ("BAR", ), "#c9f0b4", w=80, marks={0: "star"}),
+           f'<path d="M108 82 C130 122 220 122 236 82" fill="none" stroke="#aa00ff" stroke-width="2.5" stroke-dasharray="5 4"/>',
+           label(172, 136, "stessa stella: la posta del 5 la porti al bar", 11, "#6a00a0"),
+           f'<rect x="60" y="150" width="40" height="20" fill="#bfe6ff" stroke="#999" stroke-dasharray="3 3"/>{star(80, 160, 7)}',
+           f'<rect x="110" y="150" width="80" height="20" fill="#c9f0b4" stroke="#999" stroke-dasharray="3 3"/>{star(150, 160, 7)}',
+           label(200, 166, "o da ritagliare, su carta adesiva", 10.5, INK, anchor="start", weight=400)]
+    return svg(182, "\n".join(out), "Il 5 di via dei Tigli e il bar hanno la stessa stella; sotto, gli adesivi da ritagliare")
+
+
+def hold():
+    out = [phone(20, 150, f"""<rect x="42" y="70" width="106" height="30" rx="8" fill="#2c6db3" stroke="{INK}" stroke-width="1.5"/>
+{label(95, 89, "📄 PDF", 11, "#fff")}
+<circle cx="112" cy="96" r="16" fill="none" stroke="{RED}" stroke-width="2.5" stroke-dasharray="4 3"/>
+<path d="M110 100 l0 -6 q0 -5 5 -5 q5 0 5 5 l0 14 q8 -3 10 3 l-4 22 h-20 l-8 -18 q-2 -6 4 -6 z" fill="#f3c9a4" stroke="{INK}" stroke-width="1.5"/>
+{label(95, 178, "tieni premuto…", 11, RED)}"""),
+           f'<rect x="190" y="40" width="156" height="120" rx="10" fill="#fff" stroke="{INK}" stroke-width="2"/>',
+           label(268, 62, "❓ Che cos'è", 12),
+           label(200, 86, "Il PDF da stampare:", 10.5, anchor="start", weight=400),
+           label(200, 104, "a che serve, come", 10.5, anchor="start", weight=400),
+           label(200, 122, "funziona…", 10.5, anchor="start", weight=400),
+           f'<rect x="236" y="132" width="64" height="20" rx="10" fill="{GREEN}"/>{label(268, 146, "Ho capito", 10, "#fff")}']
+    return svg(226, "\n".join(out), "Tieni premuto un tasto: si apre la finestrina che lo spiega")
+
+
 # ---------------------------------------------------------------- the pages: drawing + what the postman says
 PAGES = [
     (whole_mobile(), "1 · Tutto il mobile",
@@ -289,7 +354,20 @@ PAGES = [
      "Tocca <b>«📷 Carica e leggi le foto delle strisce»</b> e scegli le foto <b>nell'ordine in cui le hai scattate</b>. "
      "Conferma il cartello (spunta «tutto il mobile» e l'itinerario), poi <b>«📚 Leggi tutte le foto»</b>. Controlla i «?» "
      "e premi <b>«Aggiungi al giro»</b>."),
-    (the_end(), "10 · Fatto!",
+    (colleague(), "10 · Lo consegna un collega",
+     "Una casella la porta <b>un collega</b> di un'altra linea? Toccala nella striscia e premi <b>«👥 Lo consegna un "
+     "collega»</b>: sotto il numero compare una <b>riga spessa</b>, anche nella stampa. Così chi smista lo vede subito. "
+     "Premi di nuovo per toglierla."),
+    (linked(), "11 · I simbolini",
+     "La posta di una casella la porti <b>in un altro posto</b>, anche in un'altra via? Per esempio i padroni di un bar: "
+     "a casa loro no, la porti al bar. Tocca la casella, premi <b>«🔗 Lega a un'altra casella»</b> e poi tocca l'altra: "
+     "tutte e due prendono <b>lo stesso simbolino</b> (stella, cerchio, luna…), di un colore che si vede bene. "
+     "In «Stampa» scegli se averli <b>dentro le strisce</b> o <b>a parte, su carta adesiva</b>, da attaccare e staccare "
+     "quando qualcuno cambia casa."),
+    (hold(), "12 · Tieni premuto",
+     "Non sai a che serve un tasto o una casella? <b>Tienilo premuto</b>: si apre una finestrina che ti dice che cos'è, "
+     "a che serve e come funziona."),
+    (the_end(), "13 · Fatto!",
      "Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: "
      "ti spiega come scrivere il giro a mano."),
 ]

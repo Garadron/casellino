@@ -220,6 +220,7 @@
       depotPoint: null, // its point when put on the map by hand or with the device position: { lat, lon, found: 'mano' | 'gps' }
       wall: null,       // the frame drawn by the user (modules left to right, pencil marks), optional
       cloud: null,      // where it is saved in the account: { id, versione, aggiornato_il }, optional
+      linkPrint: 'strisce', // the link symbols: printed in the strips ('strisce') or on a sheet of stickers ('adesivi')
     };
   }
 
@@ -239,6 +240,7 @@
     if (!p || typeof p !== 'object') return out;
     out.zone = String(p.zone || '');
     out.owner = String(p.owner || '');
+    if (p.linkPrint === 'adesivi') out.linkPrint = 'adesivi';
     if (Array.isArray(p.subzones) && p.subzones.length) {
       out.subzones = p.subzones.map(function (s) {
         const sz = newSubzone(String(s && s.name || ''), String(s && s.town || ''));
@@ -328,8 +330,20 @@
     return m ? [text.slice(0, m.index), true] : [text, false];
   }
 
+  /*
+   * "38@1": a link symbol (Garadron, 25 November 2026). Pigeonholes with the same number get the same symbol, even in
+   * different streets: the mail of the people of one goes to the other (the owners of a bar get it at the bar).
+   * Returns [text without it, number or 0].
+   */
+  function linkMark(text) {
+    const m = /\s*@\s*(\d{1,2})(?!\d)/.exec(text);
+    return m ? [text.slice(0, m.index) + text.slice(m.index + m[0].length), parseInt(m[1], 10) || 0] : [text, 0];
+  }
+
   function parseToken(token) {
-    let t = token.trim();
+    const lm = linkMark(token);
+    let t = lm[0].trim();
+    const link = lm[1];
     let span = 1;
     // a "*" anywhere ("17*", "13A* (2)", "9C*/9B*"): the pigeonhole's mail goes to another line
     const other = /\*/.test(t);
@@ -341,7 +355,7 @@
       t = t.slice(0, spanMatch.index).trim();
     }
     // second: a second number in the same pigeonhole, split by a diagonal line ("2/4")
-    const cell = function (top, second) { return { top: top, second: second || '', span: span, other: other }; };
+    const cell = function (top, second) { return { top: top, second: second || '', span: span, other: other, link: link }; };
 
     if (t === '' || /^(vuota|vuoto|_)$/i.test(t)) return { cells: [cell('')] };
 
@@ -413,14 +427,15 @@
       const colon = line.indexOf(':');
       if (colon < 0) {
         // A name alone takes one pigeonhole with the name on the street line (e.g. a farmhouse).
-        let [name, other] = otherLine(line), span = 1;
+        const [plain, link] = linkMark(line);
+        let [name, other] = otherLine(plain), span = 1;
         const sm = /\(\s*(\d{1,2})\s*\)\s*$/.exec(name);
         if (sm) { span = Math.max(1, parseInt(sm[1], 10)); name = name.slice(0, sm.index).trim(); }
         if (!other) [name, other] = otherLine(name);
         name = name.trim();
         // "C.NA ALTA / C.NA BASSA": two names in the same pigeonhole, one above the other (the colour is the first one's)
         const two = name.split('/').map(function (x) { return x.trim(); });
-        const item = { kind: 'cell', street: name, town: town, key: streetKey(name, town), top: '', second: '', span: span, line: lineIndex, tok: 0, other: other };
+        const item = { kind: 'cell', street: name, town: town, key: streetKey(name, town), top: '', second: '', span: span, line: lineIndex, tok: 0, other: other, link: link };
         if (two.length === 2 && two[0] && two[1]) Object.assign(item, { street: two[0], key: streetKey(two[0], town), street2: two[1], key2: streetKey(two[1], town) });
         items.push(item);
         return;
@@ -439,7 +454,7 @@
           return;
         }
         r.cells.forEach(function (c) {
-          const item = { kind: 'cell', street: street, town: town, key: street ? streetKey(street, town) : '', top: c.top, second: c.second, span: c.span, line: lineIndex, tok: tokIndex, other: c.other };
+          const item = { kind: 'cell', street: street, town: town, key: street ? streetKey(street, town) : '', top: c.top, second: c.second, span: c.span, line: lineIndex, tok: tokIndex, other: c.other, link: c.link };
           if (street2) Object.assign(item, { street2: street2, key2: streetKey(street2, town) });
           items.push(item);
         });
@@ -466,7 +481,7 @@
         const m = /^comune\s*:(.*)$/i.exec(line);
         if (m) { town = m[1].trim() || baseTown || ''; return raw; }
         const colon = line.indexOf(':');
-        const whole = (colon < 0 ? otherLine(otherLine(line)[0].replace(/\(\s*\d{1,2}\s*\)\s*$/, ''))[0] : line.slice(0, colon)).trim();
+        const whole = (colon < 0 ? otherLine(otherLine(linkMark(line)[0])[0].replace(/\(\s*\d{1,2}\s*\)\s*$/, ''))[0] : line.slice(0, colon)).trim();
         // a pigeonhole with two names ("C.NA ALTA / C.NA BASSA"): each name is its own street
         const names = whole.split('/').length === 2 ? whole.split('/').map(function (x) { return x.trim(); }) : [whole];
         const street = names.find(function (x) { return x && streetKey(x, town) === key; });
@@ -540,10 +555,41 @@
       const toks = line.slice(colon + 1).split(',');
       const tok = toks[f.tok];
       const c = f.cell;
-      toks[f.tok] = /^\s*/.exec(tok)[0] + c.second + '/' + c.top + (c.span > 1 ? ' (' + c.span + ')' : '') + (c.other ? '*' : '') + /\s*$/.exec(tok)[0];
+      toks[f.tok] = /^\s*/.exec(tok)[0] + c.second + '/' + c.top + (c.span > 1 ? ' (' + c.span + ')' : '') + (c.other ? '*' : '') + (c.link ? '@' + c.link : '') + /\s*$/.exec(tok)[0];
       lines[f.line] = line.slice(0, colon + 1) + toks.join(',');
     });
     return { text: lines.join('\n'), fixes: fixes };
+  }
+
+  /*
+   * The route with pigeonhole c changed: marks = { other: true|false, link: number|0 } (what is not given stays).
+   * A series like "7..15" is written out ("7, 9, 11*, 13, 15") so that only that pigeonhole changes.
+   */
+  function setCellMarks(route, c, marks) {
+    const lines = String(route).split('\n');
+    const line = lines[c.line];
+    if (line === undefined) return String(route);
+    const want = { other: 'other' in marks ? !!marks.other : !!c.other, link: 'link' in marks ? marks.link || 0 : c.link || 0 };
+    const tail = function (m) { return (m.other ? '*' : '') + (m.link ? '@' + m.link : ''); };
+    const clean = function (t) { return linkMark(t)[0].replace(/\s*\*/g, '').replace(/\s+$/, ''); };
+    const colon = line.indexOf(':');
+    if (colon < 0) {
+      lines[c.line] = clean(line) + tail(want);
+      return lines.join('\n');
+    }
+    const toks = line.slice(colon + 1).split(',');
+    const tok = toks[c.tok];
+    if (tok === undefined) return String(route);
+    const lead = /^\s*/.exec(tok)[0], end = /\s*$/.exec(tok)[0];
+    const many = parseRoute('X:' + tok, '').items;
+    if (many.length > 1) {
+      toks[c.tok] = lead + many.map(function (x) {
+        const mine = x.top === c.top && x.second === c.second;
+        return x.top + (x.second ? '/' + x.second : '') + (x.span > 1 ? ' (' + x.span + ')' : '') + tail(mine ? want : x);
+      }).join(', ') + end;
+    } else toks[c.tok] = lead + clean(tok.trim()) + tail(want) + end;
+    lines[c.line] = line.slice(0, colon + 1) + toks.join(',');
+    return lines.join('\n');
   }
 
   // The strips of a sub-zone in reading order: row 1 left to right, then row 2...
@@ -1182,6 +1228,110 @@
     return light && !!bg && contrast(ink, bg) < 4.5;
   }
 
+  /*
+   * The link symbols. Each number has a shape (circle, star, square, triangle, diamond, moon) and a colour chosen
+   * to stand out on the colours of all its pigeonholes, with an edge in black or white around it.
+   */
+  const LINK_SHAPES = [
+    { id: 'cerchio', ch: '●' }, { id: 'stella', ch: '★' }, { id: 'quadrato', ch: '■' },
+    { id: 'triangolo', ch: '▲' }, { id: 'rombo', ch: '◆' }, { id: 'luna', ch: '☾' },
+  ];
+  const LINK_COLORS = [
+    { hex: 'E53935', name: 'rosso' }, { hex: 'FFD600', name: 'giallo' }, { hex: '00C853', name: 'verde' },
+    { hex: '2962FF', name: 'blu' }, { hex: 'AA00FF', name: 'viola' }, { hex: 'FF6D00', name: 'arancione' },
+    { hex: '00B8D4', name: 'azzurro' }, { hex: 'F50057', name: 'fucsia' }, { hex: '111111', name: 'nero' },
+    { hex: 'FFFFFF', name: 'bianco' },
+  ];
+  function lightHex(hex) {
+    const v = parseInt(String(hex).replace('#', ''), 16);
+    return ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
+  }
+
+  // number -> { n, shape, color, colorName, edge, cells: [{ cell, zone, m, i, target }] }, for every sub-zone.
+  function linkGroups(project) {
+    assignColors(project);
+    const groups = {};
+    analyseProject(project).forEach(function (a, zone) {
+      a.strips.concat(a.spill || []).forEach(function (s) {
+        s.cells.forEach(function (c) {
+          if (!c.link || c.foreign) return;
+          const g = groups[c.link] = groups[c.link] || { n: c.link, cells: [] };
+          g.cells.push({ cell: c, zone: zone, m: s.m, i: s.i, target: s.target || '' });
+        });
+      });
+    });
+    const used = {};
+    Object.keys(groups).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n) {
+      const g = groups[n];
+      g.shape = LINK_SHAPES[(n - 1) % LINK_SHAPES.length].id;
+      const under = [];
+      g.cells.forEach(function (x) {
+        under.push(colorOf(project, x.cell.key));
+        if (x.cell.key2) under.push(colorOf(project, x.cell.key2));
+      });
+      // a real colour not used by another symbol, the one that stands out most on all its pigeonholes; black or white
+      // (or a colour used already) only when no other one stands out enough
+      const pick = function (list) {
+        let best = null;
+        list.forEach(function (col) {
+          const score = Math.min.apply(null, under.map(function (b) { return contrast(col.hex, b); }));
+          if (!best || score > best.score) best = { col: col, score: score };
+        });
+        return best;
+      };
+      let best = pick(LINK_COLORS.filter(function (col) { return !used[col.hex] && col.hex !== '111111' && col.hex !== 'FFFFFF'; }));
+      if (!best || best.score < 2.5) best = pick(LINK_COLORS);
+      g.color = best.col.hex;
+      g.colorName = best.col.name;
+      g.edge = lightHex(g.color) ? '111111' : 'FFFFFF';
+      used[g.color] = true;
+    });
+    return groups;
+  }
+
+  // The first symbol number not used in any sub-zone.
+  function nextLink(project) {
+    let max = 0;
+    project.subzones.forEach(function (sz) {
+      parseRoute(sz.route, sz.town).items.forEach(function (it) { if (it.link > max) max = it.link; });
+    });
+    return max + 1;
+  }
+
+  // The outline of a symbol as points [[x, y], ...] around (cx, cy), radius r, y going down (screen and PDF alike).
+  function linkShapePoints(shape, cx, cy, r) {
+    const pts = [];
+    const ring = function (n, rad, turn) {
+      for (let k = 0; k < n; k++) {
+        const a = turn + k * 2 * Math.PI / n;
+        pts.push([cx + rad * Math.cos(a), cy + rad * Math.sin(a)]);
+      }
+    };
+    if (shape === 'stella') {
+      for (let k = 0; k < 10; k++) {
+        const a = -Math.PI / 2 + k * Math.PI / 5, rad = k % 2 ? r * 0.45 : r;
+        pts.push([cx + rad * Math.cos(a), cy + rad * Math.sin(a)]);
+      }
+    } else if (shape === 'quadrato') ring(4, r * 1.05, Math.PI / 4);
+    else if (shape === 'triangolo') { ring(3, r * 1.1, -Math.PI / 2); pts.forEach(function (p) { p[1] += r * 0.15; }); }
+    else if (shape === 'rombo') ring(4, r * 1.1, -Math.PI / 2);
+    else if (shape === 'luna') {
+      // a crescent: the outer circle on the left, cut by a second circle a little to the right
+      const ox = cx + r * 0.55, R = Math.hypot(r * 0.05, r * 0.866);
+      for (let k = 0; k <= 16; k++) {
+        const a = Math.PI / 3 + k * (4 * Math.PI / 3) / 16;
+        pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+      }
+      const a0 = Math.atan2(-r * 0.866, cx + r * 0.5 - ox), a1 = Math.atan2(r * 0.866, cx + r * 0.5 - ox);
+      const from = a0 + 2 * Math.PI, to = a1;   // from the lower end back to the upper one, through the left
+      for (let k = 1; k < 16; k++) {
+        const a = from - k * (from - to) / 16;
+        pts.push([ox + R * Math.cos(a), cy + R * Math.sin(a)]);
+      }
+    } else ring(20, r, 0);
+    return pts;
+  }
+
   function textColorOf(project, key) {
     const p = paletteEntry(colorOf(project, key));
     return p ? p.text : '111111';
@@ -1567,6 +1717,8 @@
     SLOTS_PER_PAGE: SLOTS_PER_PAGE,
     PALETTE: PALETTE,
     contrast: contrast, needsOutline: needsOutline,
+    LINK_SHAPES: LINK_SHAPES, linkMark: linkMark, setCellMarks: setCellMarks, linkGroups: linkGroups, nextLink: nextLink,
+    linkShapePoints: linkShapePoints,
     norm: norm,
     streetKey: streetKey, renameStreet: renameStreet, splitAddress: splitAddress, addressText: addressText,
     provinceName: provinceName, parseCoordinates: parseCoordinates, pairOrderFixes: pairOrderFixes, fixPairOrder: fixPairOrder,

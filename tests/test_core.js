@@ -852,6 +852,41 @@ async function asyncTests() {
   } catch (e) { console.error('FAIL Excel import\n  ' + e.message); process.exitCode = 1; }
 }
 
+test('link symbols: written, changed, grouped, printed', function () {
+  const Pdf = require('../app/src/pdf.js');
+  const p = Core.newProject();
+  p.subzones[0].modules = { alaA: false, casello: true, alaB: true };
+  p.subzones[0].route = 'VIA ROSSI: 1, 3, 5..9@1, 11 (2)*@2\nBAR CENTRALE (2)@1\nVIA VERDI: 2/4@2';
+  const items = Core.parseRoute(p.subzones[0].route).items;
+  assert.deepStrictEqual(items.map(function (i) { return i.link; }), [0, 0, 1, 1, 1, 2, 1, 2]);
+  assert.strictEqual(items[5].other, true, 'collega e simbolino insieme');
+  assert.strictEqual(items[6].street, 'BAR CENTRALE', 'il nome da solo senza il segno');
+  assert.strictEqual(items[6].span, 2);
+  // only that pigeonhole changes; a series is written out
+  assert.strictEqual(Core.setCellMarks(p.subzones[0].route, items[3], { link: 0 }).split('\n')[0], 'VIA ROSSI: 1, 3, 5@1, 7, 9@1, 11 (2)*@2');
+  assert.strictEqual(Core.setCellMarks(p.subzones[0].route, items[6], { link: 5 }).split('\n')[1], 'BAR CENTRALE (2)@5');
+  assert.strictEqual(Core.setCellMarks(p.subzones[0].route, items[0], { other: true }).split('\n')[0], 'VIA ROSSI: 1*, 3, 5..9@1, 11 (2)*@2');
+  assert.strictEqual(Core.nextLink(p), 3);
+  const g = Core.linkGroups(p);
+  assert.deepStrictEqual(Object.keys(g), ['1', '2']);
+  assert.strictEqual(g[1].cells.length, 4);
+  assert.notStrictEqual(g[1].shape, g[2].shape, 'forme diverse');
+  assert.ok(Core.LINK_SHAPES.every(function (s) { return Core.linkShapePoints(s.id, 0, 0, 5).length >= 3; }));
+  // the stickers: one per pigeonhole, as wide as it; none in the strips when they go apart
+  const st = Pdf.buildStickers(p, 'Prova');
+  assert.strictEqual(st.stickers, 6);
+  const inStrips = Buffer.from(Pdf.buildPdf(p, 'Prova').bytes).toString('latin1');
+  p.linkPrint = 'adesivi';
+  const apart = Buffer.from(Pdf.buildPdf(p, 'Prova').bytes).toString('latin1');
+  assert.ok(/ h B/.test(inStrips) && !/ h B/.test(apart), 'i simbolini nelle strisce solo se scelto');
+  assert.strictEqual(Core.sanitizeProject(JSON.parse(JSON.stringify(p))).linkPrint, 'adesivi', 'la scelta resta nel file');
+  p.linkPrint = 'strisce';
+  // Excel: the symbol after the number, in its colour
+  const shared = Xlsx.buildCompactFiles(p, 'moduli').files.find(function (f) { return f.name === 'xl/sharedStrings.xml'; }).data;
+  assert.ok(/<rFont val="Segoe UI Symbol"\/><family val="2"\/><\/rPr><t xml:space="preserve">★<\/t>/.test(shared), "il simbolino nell'Excel");
+  assert.strictEqual(Pdf.buildStickers(Core.newProject(), 'x'), null, 'senza simbolini niente adesivi');
+});
+
 asyncTests().then(function () {
   console.log(passed + ' prove superate' + (process.exitCode ? ', ALCUNE FALLITE' : ''));
 });
