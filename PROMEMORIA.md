@@ -9,12 +9,9 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
    Un programma fatto da un dipendente può essere del datore di lavoro (art. 12-bis legge 633/1941): le domande da
    fare a un avvocato o all'ufficio legale del sindacato sono nella cartella privata della proposta («Prima di
    proporlo - il contratto e i diritti.md»). Fino alla risposta si mostra, non si consegna.
-0. **Pubblicare il server** (v0.36.0 e v0.37.0: email obbligatoria, si entra anche con l'email, niente codice di
-   recupero, password più usate, Supporto): serve il «sì, pubblica il server» di Garadron; non c'è niente da cambiare
-   nel database. Poi Garadron aggiorna il programmino di Google, perché le risposte del Supporto tornino a chi ha
-   scritto: su script.google.com (con il Gmail di Casellino, in una finestra privata) incolla di nuovo
-   `dati/posta-google.gs`, salva, «Esegui il deployment → Gestisci deployment → ✏️ → Versione: Nuova versione →
-   Esegui il deployment». L'indirizzo resta lo stesso.
+0. **Il programmino di Google** (il server è pubblicato dal 25 novembre 2026): Garadron lo aggiorna con
+   `dati/posta-google.gs` come nuova versione, perché le risposte del Supporto tornino a chi ha scritto, e lo
+   rinomina «Posta di Casellino». I passi sono nella chat del 25 novembre 2026.
 1. **Prova di stampa** del PDF (A4 orizzontale, «dimensioni reali / 100%») appoggiata alle caselle del mobile vero:
    larghezza delle caselle, caselle oblique, colori scuri. Se non combacia, si aggiunge una regolazione della larghezza
    nel PDF (proposta, non fatta).
@@ -26,9 +23,8 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
    GitHub; elenco in `Leggimi.txt`): documentazione (PDF e Word), slide (PowerPoint e PDF), mappa concettuale, tutte
    firmate, e l'anteprima dell'app. Garadron la rilegge, poi la presenta a PCL; decide che cosa del nome dell'azienda
    va nel programma pubblico.
-5. **Regole Mondiali nuove da applicare** (16 novembre 2026): tasto sole/luna per tutti (oggi il tema segue solo il
-   telefono), tasto **Condividi** con il link e il codice QR, tutorial che indica i tasti veri con una prova
-   automatica, il progetto di Google rinominato «Posta di Casellino».
+5. **Regola Mondiale da applicare**: il tutorial che indica i tasti veri sullo schermo, con una prova automatica
+   (sole/luna e Condividi fatti nella v0.44.0).
 
 ## Più avanti (solo cose gratuite)
 
