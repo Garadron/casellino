@@ -465,6 +465,12 @@
     }
     return 5;
   }
+  // Light writing (on a dark colour) gets a black outline, so it always stands out (Garadron, 25 November 2026).
+  function outline(ink) {
+    const v = parseInt(String(ink).replace('#', ''), 16);
+    const light = ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
+    return light ? ';text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 2px #000' : '';
+  }
   function slotPx() {
     return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot')) || 30;
   }
@@ -493,12 +499,12 @@
       const two = C.twoStreets(proj, c);
       if (two && two.side) {   // two streets, two numbers side by side: each half with its street's colour
         size = Math.min(fitPx(two.left, width / 2, 13), fitPx(two.right, width / 2, 13));
-        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink }, two.left),
-          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 }, two.right)];
+        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink + outline(two.ink) }, two.left),
+          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 + outline(two.ink2) }, two.right)];
         cls = ' halves';
       } else if (c.second) {
         size = diagPx(c.top, c.second, width, 32);
-        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 } : { class: 'd2' }, c.second)];
+        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 + outline(two.ink2) } : { class: 'd2' }, c.second)];
         cls = ' diag';
         // two streets: the upper-left triangle has the first street's colour, the lower-right one the second's
         if (two) paint += ';background-image:linear-gradient(to bottom right, transparent calc(50% - 0.75px), ' + ink + ' 50%, transparent calc(50% + 0.75px)),' +
@@ -511,7 +517,7 @@
       }
       el.append(h.apply(null, ['div', {
         class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + mark,
-        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink +
+        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink + outline(ink) +
           ';--ink:' + ink + ';font-size:' + size + 'px',
         title: tip, onclick: pick, 'data-idx': idx,
       }].concat(inside)));
@@ -526,16 +532,16 @@
           class: 'cell run two halves', title: r.street + ' / ' + r.street2 + (r.town ? ' · ' + r.town : ''),
           style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';font-size:' + px + 'px',
           onclick: function () { select(p, idx); },
-        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) },
+        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key)) },
           h('span', { class: 'run-name' }, r.street)),
-        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) },
+        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) + outline(C.textColorOf(proj, r.key2)) },
           h('span', { class: 'run-name' }, r.street2))));
         return;
       }
       el.append(h('div', {
         class: 'cell run' + (two ? ' two' : ''), title: r.street + (two ? ' / ' + r.street2 : '') + (r.town ? ' · ' + r.town : ''),
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
-          ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' +
+          ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key)) + ';font-size:' +
           (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
         onclick: function () { select(p, idx); },
       }, h('span', { class: 'run-name' }, r.street, two ? h('br') : null, two ? r.street2 : null)));

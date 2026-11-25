@@ -62,8 +62,14 @@
   Canvas.prototype.line = function (x1, y1, x2, y2, width, hex) {
     this.ops.push(rgb(hex || '111111') + ' RG ' + n(width) + ' w ' + n(x1) + ' ' + n(PAGE.h - y1) + ' m ' + n(x2) + ' ' + n(PAGE.h - y2) + ' l S');
   };
+  // Light writing (on a dark colour) is drawn with a thin black outline, so it always stands out.
+  const lightInk = function (hex) {
+    const v = parseInt(String(hex || '111111'), 16);
+    return ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
+  };
   Canvas.prototype.text = function (x, baseline, size, s, hex) {
-    this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
+    const edge = lightInk(hex) ? ' 0.07 0.07 0.07 RG ' + n(Math.max(0.4, size * 0.06)) + ' w 2 Tr' : ' 0 Tr';
+    this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg' + edge + ' ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
   };
   // Text turned 90 degrees (read from bottom to top), centred in a box: the "1 Fila" labels.
   Canvas.prototype.upText = function (x, y, w, h, s, size, hex) {

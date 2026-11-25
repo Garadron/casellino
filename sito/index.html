@@ -7,6 +7,10 @@
 <title>Casellino</title>
 <meta name="description" content="Scrivi il giro con vie e civici e crea il file Excel delle strisce da stampare per le caselle.">
 <meta name="theme-color" content="#2c6db3">
+<!-- the page has its own light and dark themes: browsers must not darken it by themselves (Chrome, Brave's night mode),
+     or the colours of the strips change and the writing cannot be read -->
+<meta name="color-scheme" content="light dark">
+<meta name="darkreader-lock">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Casellino">
@@ -14,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.41.0';</script>
+<script>window.CASELLINO_VERSION = '0.42.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -363,6 +367,8 @@ a.btn, label.btn {
 .cell.run { grid-row: 2; letter-spacing: .02em; overflow: hidden; overflow: clip; }
 /* the street name stays in sight while the strip scrolls sideways (the strip is wider than the screen) */
 .cell.run .run-name { position: sticky; left: 4px; right: 4px; }
+/* the strips keep their colours: no high-contrast or forced dark colours of the system on them */
+.strip, .strip * { forced-color-adjust: none; }
 /* a pigeonhole with two streets: two halves, each with its street's colour */
 .cell.top.halves { padding: 0; display: flex; align-items: stretch; }
 .cell.top.halves .h1, .cell.top.halves .h2 { flex: 1 1 50%; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; }
@@ -3894,8 +3900,14 @@ input[type="file"]::file-selector-button {
   Canvas.prototype.line = function (x1, y1, x2, y2, width, hex) {
     this.ops.push(rgb(hex || '111111') + ' RG ' + n(width) + ' w ' + n(x1) + ' ' + n(PAGE.h - y1) + ' m ' + n(x2) + ' ' + n(PAGE.h - y2) + ' l S');
   };
+  // Light writing (on a dark colour) is drawn with a thin black outline, so it always stands out.
+  const lightInk = function (hex) {
+    const v = parseInt(String(hex || '111111'), 16);
+    return ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
+  };
   Canvas.prototype.text = function (x, baseline, size, s, hex) {
-    this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
+    const edge = lightInk(hex) ? ' 0.07 0.07 0.07 RG ' + n(Math.max(0.4, size * 0.06)) + ' w 2 Tr' : ' 0 Tr';
+    this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg' + edge + ' ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
   };
   // Text turned 90 degrees (read from bottom to top), centred in a box: the "1 Fila" labels.
   Canvas.prototype.upText = function (x, y, w, h, s, size, hex) {
@@ -5950,6 +5962,12 @@ input[type="file"]::file-selector-button {
     }
     return 5;
   }
+  // Light writing (on a dark colour) gets a black outline, so it always stands out (Garadron, 25 November 2026).
+  function outline(ink) {
+    const v = parseInt(String(ink).replace('#', ''), 16);
+    const light = ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
+    return light ? ';text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 2px #000' : '';
+  }
   function slotPx() {
     return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot')) || 30;
   }
@@ -5978,12 +5996,12 @@ input[type="file"]::file-selector-button {
       const two = C.twoStreets(proj, c);
       if (two && two.side) {   // two streets, two numbers side by side: each half with its street's colour
         size = Math.min(fitPx(two.left, width / 2, 13), fitPx(two.right, width / 2, 13));
-        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink }, two.left),
-          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 }, two.right)];
+        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink + outline(two.ink) }, two.left),
+          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 + outline(two.ink2) }, two.right)];
         cls = ' halves';
       } else if (c.second) {
         size = diagPx(c.top, c.second, width, 32);
-        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 } : { class: 'd2' }, c.second)];
+        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 + outline(two.ink2) } : { class: 'd2' }, c.second)];
         cls = ' diag';
         // two streets: the upper-left triangle has the first street's colour, the lower-right one the second's
         if (two) paint += ';background-image:linear-gradient(to bottom right, transparent calc(50% - 0.75px), ' + ink + ' 50%, transparent calc(50% + 0.75px)),' +
@@ -5996,7 +6014,7 @@ input[type="file"]::file-selector-button {
       }
       el.append(h.apply(null, ['div', {
         class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + mark,
-        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink +
+        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink + outline(ink) +
           ';--ink:' + ink + ';font-size:' + size + 'px',
         title: tip, onclick: pick, 'data-idx': idx,
       }].concat(inside)));
@@ -6011,16 +6029,16 @@ input[type="file"]::file-selector-button {
           class: 'cell run two halves', title: r.street + ' / ' + r.street2 + (r.town ? ' · ' + r.town : ''),
           style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';font-size:' + px + 'px',
           onclick: function () { select(p, idx); },
-        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) },
+        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key)) },
           h('span', { class: 'run-name' }, r.street)),
-        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) },
+        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) + outline(C.textColorOf(proj, r.key2)) },
           h('span', { class: 'run-name' }, r.street2))));
         return;
       }
       el.append(h('div', {
         class: 'cell run' + (two ? ' two' : ''), title: r.street + (two ? ' / ' + r.street2 : '') + (r.town ? ' · ' + r.town : ''),
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
-          ';color:#' + C.textColorOf(proj, r.key) + ';font-size:' +
+          ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key)) + ';font-size:' +
           (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
         onclick: function () { select(p, idx); },
       }, h('span', { class: 'run-name' }, r.street, two ? h('br') : null, two ? r.street2 : null)));

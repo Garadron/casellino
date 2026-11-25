@@ -345,6 +345,8 @@ a.btn, label.btn {
 .cell.run { grid-row: 2; letter-spacing: .02em; overflow: hidden; overflow: clip; }
 /* the street name stays in sight while the strip scrolls sideways (the strip is wider than the screen) */
 .cell.run .run-name { position: sticky; left: 4px; right: 4px; }
+/* the strips keep their colours: no high-contrast or forced dark colours of the system on them */
+.strip, .strip * { forced-color-adjust: none; }
 /* a pigeonhole with two streets: two halves, each with its street's colour */
 .cell.top.halves { padding: 0; display: flex; align-items: stretch; }
 .cell.top.halves .h1, .cell.top.halves .h2 { flex: 1 1 50%; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; }

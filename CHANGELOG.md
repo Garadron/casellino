@@ -1,5 +1,21 @@
 # Registro delle versioni
 
+## v0.42.0 · 2026-11-25 · Le scritte delle strisce si leggono sempre
+
+Garadron (25 novembre 2026), dal telefono: una via verde chiaro con la scritta bianca non si leggeva. La visibilità
+delle scritte delle strisce è importantissima.
+
+- **Il motivo**: non era il programma. Quella via ha il colore «lime» con la scritta **nera**; era la modalità notte del
+  browser del telefono (come quella di Brave) a scurire gli sfondi e a schiarire le scritte. Ora la pagina dice ai browser
+  di non cambiarle i colori (ha già i suoi temi chiaro e scuro): `color-scheme` e il blocco che la modalità notte di Brave
+  (Dark Reader) rispetta; le strisce ignorano anche i colori forzati del sistema.
+- **Contorno nero sulle scritte chiare**: sullo schermo e nel PDF ogni scritta chiara (bianca o crema, sui colori scuri)
+  ha un contorno nero, così si stacca sempre, anche se un browser cambiasse i colori. Le scritte nere sui colori chiari
+  restano come sono. Nell'Excel non si può (Excel non sa fare il contorno alle lettere su Windows): lì i colori sono
+  quelli del programma, sempre con la scritta in contrasto.
+- Controllato in Edge (schermo, anche con lo scurimento forzato dei siti acceso) e nel PDF.
+- File: `app/index.src.html`, `app/src/ui.js`, `app/src/style.css`, `app/src/pdf.js`, `Casellino.html`, `sito/`.
+
 ## v0.41.0 · 2026-11-25 · Il segnacasella 🔖: dove hai lavorato per ultimo
 
 Idea di Garadron (25 novembre 2026): lavorando sul giro si perde il punto dell'ultima modifica, e a forza di guardare
