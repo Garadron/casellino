@@ -18,7 +18,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '__VERSIONE__';</script>
+<script>window.CASELLINO_VERSION = '__VERSIONE__';
+// day or night chosen with the sun / moon button (kept on the device), before the page is drawn; otherwise it follows the device
+(function () { var t = ''; try { t = localStorage.getItem('casellino.tema') || ''; } catch (e) {}
+  if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); })();</script>
 <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
@@ -29,6 +32,8 @@
       <h1>Casellino</h1>
       <p class="saved" id="saved">Non ancora salvato</p>
     </div>
+    <button type="button" id="btn-theme" class="theme-switch"><span aria-hidden="true">☀️</span><span aria-hidden="true">🌙</span><span class="ts-knob"></span></button>
+    <button type="button" id="btn-share" class="share-btn" title="Condividi Casellino: il link da mandare ai colleghi" aria-label="Condividi">📤<span class="share-word"> Condividi</span></button>
     <button type="button" id="btn-tutorial" class="tut-open">📖 Tutorial</button>
   </div>
   <nav class="actions">
@@ -61,6 +66,7 @@
         <button type="button" id="btn-help">Come si scrive</button>
         <button type="button" id="btn-bug">🐞 Segnala un problema</button>
         <button type="button" id="btn-support">✉️ Supporto</button>
+        <button type="button" id="btn-share-menu">📤 Condividi Casellino</button>
         <a class="menu-link" href="https://garadron.github.io/casellino/privacy.html" target="_blank" rel="noopener">🔒 Privacy</a>
         <p class="small muted version" id="version"></p>
         <p class="small muted version">© 2026 Emmanuel Surace · uso gratuito non commerciale</p>
@@ -868,7 +874,7 @@
 <circle cx="160" cy="20" r="4" fill="#ff8a8a"/><circle cx="20" cy="40" r="5" fill="#8fd3ff"/><circle cx="150" cy="160" r="4" fill="#a6e28a"/><circle cx="345" cy="30" r="5" fill="#ffe37a"/>
 </svg>
       <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
-        <p class="tut-bubble"><b class="tut-title">10 · Fatto!</b>Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: ti spiega come scrivere il giro a mano.</p></div>
+        <p class="tut-bubble"><b class="tut-title">10 · Fatto!</b>Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: ti spiega come scrivere il giro a mano. In alto, <b>☀️/🌙</b> sceglie chiaro o scuro e <b>«📤 Condividi»</b> dà il link da mandare ai colleghi.</p></div>
       <p class="tut-more"><button type="button" id="tut-help">📝 Come si scrive</button></p>
     </section>
     </div>
@@ -946,6 +952,22 @@
   </div>
 </dialog>
 
+<dialog id="dlg-share">
+  <form method="dialog" class="dlg">
+    <h2>📤 Condividi Casellino</h2>
+    <p>Manda questo link ai colleghi: si apre dal telefono e dal computer, è sempre l'ultima versione ed è gratis.
+      Dal telefono si può mettere sulla schermata Home, come un'app.</p>
+    <p class="share-row"><input type="text" id="share-link" readonly aria-label="Il link di Casellino">
+      <button type="button" class="primary" id="share-copy">📋 Copia il link</button></p>
+    <p class="small good" id="share-msg" aria-live="polite"></p>
+    <p class="small muted">Oppure fallo inquadrare con la fotocamera del telefono:</p>
+    <div class="share-qr" id="share-qr"></div>
+    <menu>
+      <button value="cancel">Chiudi</button>
+    </menu>
+  </form>
+</dialog>
+
 <dialog id="dlg-support">
   <form method="dialog" class="dlg">
     <h2>✉️ Supporto</h2>
@@ -1016,6 +1038,7 @@
 <script src="src/importa.js"></script>
 <script src="src/foto.js"></script>
 <script src="src/example.js"></script>
+<script src="src/qrcode.js"></script>
 <script src="src/ui.js"></script>
 </body>
 </html>

@@ -1,5 +1,25 @@
 # Registro delle versioni
 
+## v0.44.0 · 2026-11-25 · Il tasto giorno e notte e il tasto Condividi
+
+Regole Mondiali del 16 novembre 2026 («Ogni app ha la modalità giorno e notte», «Ogni app ha il tasto Condividi»);
+Garadron, 25 novembre 2026: «il 2 fallo».
+
+- **☀️/🌙 in alto**: all'inizio la pagina segue il telefono o il computer (chiaro di giorno, scuro di sera); toccando
+  l'interruttore si fissa la scelta, che resta sul dispositivo (anche riaprendo, senza lampi di colore all'avvio).
+  Prima c'era solo nell'anteprima per l'azienda: ora è di tutti, nella prima riga accanto a «Tutorial».
+- **📤 Condividi**, in alto e nel menu «Altro» («Condividi Casellino»): un link sempre uguale,
+  https://garadron.github.io/casellino/. Sul telefono apre la condivisione del sistema (WhatsApp, email…); sul
+  computer copia il link e mostra il **codice QR** da inquadrare col telefono. Il QR si disegna senza internet, con la
+  libreria libera qrcode-generator di Kazuhiko Arase (licenza MIT, `app/src/qrcode.js`, così com'è).
+- Il tutorial, all'ultima pagina, dice dove sono i due tasti nuovi.
+- **Il server degli account è pubblicato** (sì di Garadron, 25 novembre 2026): email obbligatoria, si entra anche con
+  l'email, password dimenticata con il codice per email, Supporto. Nessuna modifica al database.
+- Prove: `tests/test_pagina.js` (l'interruttore cambia e ricorda; Condividi dà il link e il QR). In Edge, giorno e
+  notte, telefono e computer: la prima riga resta su una riga, nessun errore.
+- File: `app/index.src.html`, `app/src/ui.js`, `app/src/style.css`, `app/src/qrcode.js` (nuovo),
+  `tests/test_pagina.js`, `Casellino.html`, `sito/`.
+
 ## v0.43.0 · 2026-11-25 · Il segnacasella indica il civico preciso; il contorno solo dove serve
 
 Garadron (25 novembre 2026): il segnacasella piace, ma dice solo la riga, non quale civico; e il contorno nero sulle

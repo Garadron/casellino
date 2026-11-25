@@ -2427,27 +2427,72 @@
    * switch, fixed on screen. The theme follows the phone; on a computer it starts light (set before the page is
    * drawn, in the preview's head). The choice made with the switch is kept on the device.
    */
-  function wirePreview() {
-    const preview = window.CASELLINO_ANTEPRIMA;
-    if (!preview) return;
+  /*
+   * Day and night (World Rule, 16 November 2026): at first the page follows the device; the sun / moon button fixes
+   * a choice, kept on the device (read again in the page's head before it is drawn).
+   */
+  function wireTheme() {
     const root = document.documentElement;
     const darkSystem = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
     const isDark = function () { return root.dataset.theme ? root.dataset.theme === 'dark' : !!(darkSystem && darkSystem.matches); };
-    const knob = h('span', { class: 'ts-knob' });
-    const sw = h('button', { type: 'button', class: 'theme-switch', onclick: function () {
+    const sw = $('btn-theme');
+    const show = function () {
+      sw.classList.toggle('dark', isDark());
+      sw.setAttribute('aria-label', isDark() ? 'Modalità notte: tocca per il giorno' : 'Modalità giorno: tocca per la notte');
+      sw.title = sw.getAttribute('aria-label');
+    };
+    sw.addEventListener('click', function () {
       const next = isDark() ? 'light' : 'dark';
       root.dataset.theme = next;
       try { localStorage.setItem('casellino.tema', next); } catch (e) { /* only for this time */ }
       show();
-    } }, h('span', { 'aria-hidden': 'true' }, '☀️'), h('span', { 'aria-hidden': 'true' }, '🌙'), knob);
-    const show = function () {
-      sw.classList.toggle('dark', isDark());
-      sw.setAttribute('aria-label', isDark() ? 'Tema scuro: tocca per il chiaro' : 'Tema chiaro: tocca per lo scuro');
-      sw.title = sw.getAttribute('aria-label');
-    };
+    });
     if (darkSystem && darkSystem.addEventListener) darkSystem.addEventListener('change', show);
-    document.body.append(sw);
     show();
+  }
+
+  /*
+   * Condividi (World Rule, 16 November 2026): one link, always the same. On a phone the system's share (WhatsApp,
+   * e-mail…); on a computer the link is copied and its QR code shown, to frame with the phone.
+   */
+  const SITE_URL = 'https://garadron.github.io/casellino/';
+  function share() {
+    document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
+    const phone = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (phone && navigator.share) {
+      navigator.share({ title: 'Casellino', text: 'Casellino: scrivi il giro e stampa le strisce del casello. Gratis, anche dal telefono.', url: SITE_URL })
+        .catch(function (e) { if (!e || e.name !== 'AbortError') openShare(); });
+      return;
+    }
+    openShare();
+  }
+  function openShare() {
+    const box = $('share-qr');
+    const qr = window.qrcode(0, 'M');
+    qr.addData(SITE_URL);
+    qr.make();
+    box.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 3, scalable: true, alt: 'Codice QR del link di Casellino' });
+    $('share-link').value = SITE_URL;
+    $('share-msg').textContent = '';
+    $('dlg-share').showModal();
+    copyShareLink();
+  }
+  function copyShareLink() {
+    const done = function () { $('share-msg').textContent = '✅ Link copiato: incollalo dove vuoi (WhatsApp, email…).'; };
+    const byHand = function () {
+      const input = $('share-link');
+      input.focus(); input.select();
+      try { if (document.execCommand('copy')) return done(); } catch (e) { /* below */ }
+      $('share-msg').textContent = window.matchMedia && window.matchMedia('(pointer: coarse)').matches
+        ? 'Tieni premuto il link e scegli «Copia».' : 'Il link è selezionato: copialo con Ctrl+C.';
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(SITE_URL).then(done, byHand);
+    else byHand();
+  }
+
+  function wirePreview() {
+    const preview = window.CASELLINO_ANTEPRIMA;
+    if (!preview) return;
     if (preview.testo) {
       const note = h('div', { class: 'preview-note', role: 'note' }, h('p', null, preview.testo),
         h('button', { type: 'button', 'aria-label': 'Chiudi la nota', onclick: function () { note.remove(); } }, '✕'));
@@ -3509,6 +3554,10 @@
     $('btn-photos').addEventListener('click', function () { closeMenu(); openPhotos(); });
     $('btn-bug').addEventListener('click', openReport);
     $('btn-support').addEventListener('click', function () { closeMenu(); openSupport(); });
+    $('btn-share').addEventListener('click', share);
+    $('btn-share-menu').addEventListener('click', share);
+    $('share-copy').addEventListener('click', copyShareLink);
+    wireTheme();
     $('support-send').addEventListener('click', sendSupport);
     $('bug-send').addEventListener('click', sendReport);
     $('btn-open-excel').addEventListener('click', function () { closeMenu(); $('file-input').click(); });

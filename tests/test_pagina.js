@@ -267,7 +267,19 @@ function caretAt(ta, needle, offset) {
   assert.ok([...doc.querySelectorAll('#tabs button')].some(function (b) { return /9C/.test(b.textContent); }), 'la linguetta della 9C');
   assert.ok(!afterPhotos.subzones.some(function (s) { return s.name === '9D'; }), 'un cartello seguito solo da note non crea una sottozona vuota');
 
-  assert.ok(!doc.querySelector('.theme-switch') && !doc.documentElement.dataset.palette, 'il programma resta con i suoi colori: il giallo e blu è solo nell\'anteprima');
+  assert.ok(!doc.documentElement.dataset.palette, 'il programma resta con i suoi colori: il giallo e blu è solo nell\'anteprima');
+  // day and night: the sun / moon button fixes the choice and keeps it
+  const sw = doc.getElementById('btn-theme');
+  const wasDark = sw.classList.contains('dark');
+  sw.click();
+  assert.ok(sw.classList.contains('dark') !== wasDark && doc.documentElement.dataset.theme === (wasDark ? 'light' : 'dark') &&
+    win.localStorage.getItem('casellino.tema') === doc.documentElement.dataset.theme, 'il tasto sole e luna cambia e ricorda');
+  sw.click();
+  // Condividi: the link, copied, and its QR code
+  doc.getElementById('btn-share').click();
+  assert.ok(doc.getElementById('dlg-share').open && doc.getElementById('share-link').value === 'https://garadron.github.io/casellino/' &&
+    doc.querySelector('#share-qr svg'), 'Condividi: il link e il codice QR');
+  doc.getElementById('dlg-share').close();
 
   // the segnacasella: a change on a line moves it there, and the pigeonholes of that line are marked
   const taMark = doc.querySelector('textarea.route-text');
