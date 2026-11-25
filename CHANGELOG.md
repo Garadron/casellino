@@ -1,5 +1,26 @@
 # Registro delle versioni
 
+## v0.43.0 · 2026-11-25 · Il segnacasella indica il civico preciso; il contorno solo dove serve
+
+Garadron (25 novembre 2026): il segnacasella piace, ma dice solo la riga, non quale civico; e il contorno nero sulle
+scritte bianche dei colori scuri (come il blu) fa vedere la scritta di meno.
+
+- **👇 sul civico scritto per ultimo.** Il segnacasella ricorda anche il civico (il gruppo tra le virgole) dove hai
+  scritto per ultimo. Nel testo del giro la fascia resta su tutta la riga, e quel civico ha in più un riquadro
+  arancione con il 👇. Nelle strisce (quelle intere e «Sei qui») il 🔖 e il 👇 stanno **sopra la striscia**, nello spazio
+  libero: il 🔖 dove comincia la riga, il 👇 sopra la casella precisa. Non coprono più nessun numero (prima il 🔖 stava
+  dentro la prima casella). Il 👇 c'è anche nel disegno di tutto il mobile.
+- **Il contorno nero solo dove serve.** Ora il programma guarda anche il colore sotto la scritta: il contorno c'è solo
+  se la scritta chiara si stacca poco dal suo colore. Sui colori scuri della tavolozza (blu, verde scuro, viola…) la
+  scritta bianca torna pulita, sullo schermo e nel PDF.
+- «Come si scrive» spiega il 👇.
+- Prove: `tests/test_core.js` (nessun colore della tavolozza ha il contorno; il civico del segnacasella resta nel
+  file), `tests/test_pagina.js` (il 👇 sopra la casella giusta), `tools/prova_segnacasella.py` in Edge (il 👇 nel
+  testo, nelle strisce e in «Sei qui», sopra la striscia senza coprire i numeri, computer e telefono). Controllo
+  della pagina in Edge: nessun errore.
+- File: `app/src/ui.js`, `app/src/core.js`, `app/src/pdf.js`, `app/src/style.css`, `app/index.src.html`,
+  `tests/test_core.js`, `tests/test_pagina.js`, `tools/prova_segnacasella.py`, `Casellino.html`, `sito/`.
+
 ## v0.42.0 · 2026-11-25 · Le scritte delle strisce si leggono sempre
 
 Garadron (25 novembre 2026), dal telefono: una via verde chiaro con la scritta bianca non si leggeva. La visibilità

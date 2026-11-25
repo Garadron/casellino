@@ -62,13 +62,9 @@
   Canvas.prototype.line = function (x1, y1, x2, y2, width, hex) {
     this.ops.push(rgb(hex || '111111') + ' RG ' + n(width) + ' w ' + n(x1) + ' ' + n(PAGE.h - y1) + ' m ' + n(x2) + ' ' + n(PAGE.h - y2) + ' l S');
   };
-  // Light writing (on a dark colour) is drawn with a thin black outline, so it always stands out.
-  const lightInk = function (hex) {
-    const v = parseInt(String(hex || '111111'), 16);
-    return ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
-  };
-  Canvas.prototype.text = function (x, baseline, size, s, hex) {
-    const edge = lightInk(hex) ? ' 0.07 0.07 0.07 RG ' + n(Math.max(0.4, size * 0.06)) + ' w 2 Tr' : ' 0 Tr';
+  // Light writing gets a thin black outline only where it stands out too little on its colour (bg).
+  Canvas.prototype.text = function (x, baseline, size, s, hex, bg) {
+    const edge = Core.needsOutline(hex, bg) ? ' 0.07 0.07 0.07 RG ' + n(Math.max(0.4, size * 0.06)) + ' w 2 Tr' : ' 0 Tr';
     this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg' + edge + ' ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
   };
   // Text turned 90 degrees (read from bottom to top), centred in a box: the "1 Fila" labels.
@@ -78,9 +74,9 @@
       n(PAGE.h - (y + h / 2 + tw / 2)) + ' Tm ' + pdfString(s) + ' Tj ET');
   };
   // Text centred in a box, made smaller until it fits (never cut).
-  Canvas.prototype.centered = function (x, y, w, h, s, max, hex) {
+  Canvas.prototype.centered = function (x, y, w, h, s, max, hex, bg) {
     const size = Math.max(4, Math.min(max, (w - 4) / Math.max(1, textWidth(s, 1)), h * 0.8));
-    this.text(x + (w - textWidth(s, size)) / 2, y + h / 2 + size * 0.36, size, s, hex);
+    this.text(x + (w - textWidth(s, size)) / 2, y + h / 2 + size * 0.36, size, s, hex, bg);
   };
 
   // The largest size that keeps two numbers clear of the "/" line (lower-left to upper-right corner).
@@ -112,7 +108,7 @@
     piece.cells.forEach(function (c) {
       const a = Math.max(c.start, piece.from), b = Math.min(c.end, piece.to);
       const x = xOf(a), w = (b - a + 1) * SLOT;
-      const ink = Core.textColorOf(project, c.key);
+      const ink = Core.textColorOf(project, c.key), bg = Core.colorOf(project, c.key);
       const pair = Core.twoStreets(project, c);   // two streets: each number on its street's colour
       cv.fill(x, yTop, w, TOP, Core.colorOf(project, c.key));
       if (pair && c.second) cv.poly([[x + w, yTop], [x + w, yTop + TOP], [x, yTop + TOP]], pair.color2);
@@ -120,8 +116,8 @@
         cv.fill(x + w / 2, yTop, w / 2, TOP, pair.color2);
         cv.line(x + w / 2, yTop, x + w / 2, yTop + TOP, THIN);
         const s = Math.min(20, (w / 2 - 3) / Math.max(1, textWidth(pair.left, 1)), (w / 2 - 3) / Math.max(1, textWidth(pair.right, 1)), TOP * 0.8);
-        cv.centered(x, yTop, w / 2, TOP, pair.left, s, pair.ink);
-        cv.centered(x + w / 2, yTop, w / 2, TOP, pair.right, s, pair.ink2);
+        cv.centered(x, yTop, w / 2, TOP, pair.left, s, pair.ink, pair.color);
+        cv.centered(x + w / 2, yTop, w / 2, TOP, pair.right, s, pair.ink2, pair.color2);
         if (c.other) cv.line(x + 2.5, yBottom - 2.2, x + w - 2.5, yBottom - 2.2, 3, ink);
         return;
       }
@@ -129,25 +125,25 @@
       if (c.second) {
         const s = diagonalSize(c.top, c.second, w, TOP);
         cv.line(x, yTop + TOP, x + w, yTop, THIN, ink);
-        cv.text(x + 3, yTop + 2 + 0.72 * s, s, c.top, ink);
-        cv.text(x + w - 3 - textWidth(c.second, s), yTop + TOP - 3, s, c.second, pair ? pair.ink2 : ink);
+        cv.text(x + 3, yTop + 2 + 0.72 * s, s, c.top, ink, pair ? pair.color : bg);
+        cv.text(x + w - 3 - textWidth(c.second, s), yTop + TOP - 3, s, c.second, pair ? pair.ink2 : ink, pair ? pair.color2 : bg);
         return;
       }
       const two = /\s/.test(c.top) && c.top.length > 6 ? twoLines(c.top, w) : null;
       if (two && two.size > Math.min(11, (w - 4) / textWidth(c.top, 1))) {
         two.lines.forEach(function (l, k) {
-          cv.text(x + (w - textWidth(l, two.size)) / 2, yTop + TOP / 2 + (k ? two.size * 1.0 : -two.size * 0.15), two.size, l, ink);
+          cv.text(x + (w - textWidth(l, two.size)) / 2, yTop + TOP / 2 + (k ? two.size * 1.0 : -two.size * 0.15), two.size, l, ink, bg);
         });
-      } else if (c.top) cv.centered(x, yTop, w, TOP, c.top, two ? 11 : 20, ink);
+      } else if (c.top) cv.centered(x, yTop, w, TOP, c.top, two ? 11 : 20, ink, bg);
     });
     piece.runs.forEach(function (r) {
       const a = Math.max(r.start, piece.from), b = Math.min(r.end, piece.to);
       cv.fill(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, Core.colorOf(project, r.key));
       if (r.street2) {   // two names, one above the other; two streets: the lower half in the second one's colour
         if (r.key2) cv.fill(xOf(a), yBottom + BOTTOM / 2, (b - a + 1) * SLOT, BOTTOM / 2, Core.colorOf(project, r.key2));
-        cv.centered(xOf(a), yBottom + 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street, 9, Core.textColorOf(project, r.key));
-        cv.centered(xOf(a), yBottom + BOTTOM / 2 - 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street2, 9, Core.textColorOf(project, r.key2 || r.key));
-      } else cv.centered(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, r.street, 16, Core.textColorOf(project, r.key));
+        cv.centered(xOf(a), yBottom + 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street, 9, Core.textColorOf(project, r.key), Core.colorOf(project, r.key));
+        cv.centered(xOf(a), yBottom + BOTTOM / 2 - 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street2, 9, Core.textColorOf(project, r.key2 || r.key), Core.colorOf(project, r.key2 || r.key));
+      } else cv.centered(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, r.street, 16, Core.textColorOf(project, r.key), Core.colorOf(project, r.key));
     });
     // lines: between pigeonholes and between streets (thin), between the two rows (thin), around (medium)
     for (let k = piece.from + 1; k <= piece.to; k++) {

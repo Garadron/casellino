@@ -252,7 +252,10 @@
         sz.locked = s && Number(s.locked) > 0 ? Number(s.locked) : 0;
         if (s && typeof s.routeBefore === 'string' && s.routeBefore) sz.routeBefore = s.routeBefore; // before the last optimization
         // the segnacasella: the line of the route changed last (Garadron, 25 November 2026)
-        if (s && s.mark && Number(s.mark.line) >= 0) sz.mark = { line: Math.floor(Number(s.mark.line)), at: Number(s.mark.at) || 0 };
+        if (s && s.mark && Number(s.mark.line) >= 0) {
+          sz.mark = { line: Math.floor(Number(s.mark.line)), at: Number(s.mark.at) || 0 };
+          if (Number(s.mark.tok) >= 0 && s.mark.tok !== null) sz.mark.tok = Math.floor(Number(s.mark.tok));   // the number written last
+        }
         return sz;
       });
     }
@@ -1160,6 +1163,25 @@
   }
 
   // The colour of the writing on a street's colour.
+  // Contrast of two colours (WCAG, 1 to 21).
+  function contrast(a, b) {
+    const lum = function (hex) {
+      const v = [0, 2, 4].map(function (i) {
+        const c = parseInt(String(hex).replace('#', '').slice(i, i + 2), 16) / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    };
+    const x = lum(a), y = lum(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  // Light writing needs a black outline only when it stands out too little on its colour (Garadron, 25 November 2026).
+  function needsOutline(ink, bg) {
+    const v = parseInt(String(ink || '111111').replace('#', ''), 16);
+    const light = ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
+    return light && !!bg && contrast(ink, bg) < 4.5;
+  }
+
   function textColorOf(project, key) {
     const p = paletteEntry(colorOf(project, key));
     return p ? p.text : '111111';
@@ -1544,6 +1566,7 @@
     ROWS_PER_MODULE: ROWS_PER_MODULE,
     SLOTS_PER_PAGE: SLOTS_PER_PAGE,
     PALETTE: PALETTE,
+    contrast: contrast, needsOutline: needsOutline,
     norm: norm,
     streetKey: streetKey, renameStreet: renameStreet, splitAddress: splitAddress, addressText: addressText,
     provinceName: provinceName, parseCoordinates: parseCoordinates, pairOrderFixes: pairOrderFixes, fixPairOrder: fixPairOrder,

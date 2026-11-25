@@ -312,11 +312,23 @@ test('optimizing the round: shortest order from the office and back', function (
   }
 });
 
+test('the black outline only where light writing stands out too little', function () {
+  Core.PALETTE.forEach(function (c) {
+    assert.ok(!Core.needsOutline(c.text, c.hex), c.name + ': la sua scritta si legge già, niente contorno');
+  });
+  assert.ok(Core.needsOutline('FFFFFF', 'A8D61F'), 'scritta bianca su un verde chiaro: contorno');
+  assert.ok(!Core.needsOutline('111111', 'A8D61F'), 'la scritta nera non ha mai il contorno');
+  assert.ok(!Core.needsOutline('FFFFFF', '1F4E9E'), 'sul blu la scritta bianca si legge già');
+});
+
 test('the segnacasella is kept in the file, for each sub-zone', function () {
   const p = Core.sanitizeProject({ subzones: [{ name: 'A', route: 'VIA A: 1\nVIA B: 2', mark: { line: 1, at: 5 } }, { name: 'B', route: 'VIA C: 3' }] });
   assert.deepStrictEqual(p.subzones[0].mark, { line: 1, at: 5 });
   assert.strictEqual(p.subzones[1].mark, undefined, 'senza segnacasella');
   assert.strictEqual(Core.sanitizeProject({ subzones: [{ route: 'X', mark: { line: -3 } }] }).subzones[0].mark, undefined, 'una riga che non esiste');
+  assert.deepStrictEqual(Core.sanitizeProject({ subzones: [{ route: 'VIA A: 1, 3', mark: { line: 0, tok: 1, at: 5 } }] }).subzones[0].mark,
+    { line: 0, tok: 1, at: 5 }, 'resta anche il civico scritto per ultimo');
+  assert.strictEqual(Core.sanitizeProject({ subzones: [{ route: 'VIA A', mark: { line: 0, tok: null } }] }).subzones[0].mark.tok, undefined, 'senza civico');
 });
 
 test('points put right by hand stay: by street and number, however they are written', function () {

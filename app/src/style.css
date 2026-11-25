@@ -270,14 +270,20 @@ textarea.route-text {
 .cell.here-cell { outline: 3px solid #d93025; outline-offset: -3px; z-index: 3; }
 /* the segnacasella: where the work stopped, in the strips and in the text of the route */
 .cell.marked { box-shadow: inset 0 0 0 3px #f08c00; z-index: 2; }
-.cell.mark-first::before { content: '🔖'; position: absolute; top: 1px; right: 1px; font-size: 11px; line-height: 1; z-index: 4;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); pointer-events: none; }
-.cell.top.mark-first { position: relative; }
 .route-frame { position: relative; }
 .mark-band { position: absolute; left: 0; right: 0; pointer-events: none; background: rgba(240, 140, 0, .16);
   border-left: 4px solid #f08c00; }
 .mark-band span { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 15px; }
 .mark-btn { margin: 0 0 6px; border-color: #f08c00; }
+/* 👇 on the number written last: in the text a box around it, in the strips above its pigeonhole */
+.mark-spot { position: absolute; pointer-events: none; border: 2px solid #f08c00; border-radius: 4px; margin: -1px 0 0 -5px;
+  padding: 0 3px; box-sizing: content-box; }
+.mark-spot span { position: absolute; left: 50%; top: -13px; transform: translateX(-50%); font-size: 12px; line-height: 1; }
+.mark-start { position: absolute; top: -18px; transform: translateX(-55%); font-size: 13px; line-height: 1; pointer-events: none;
+  z-index: 5; }
+.mark-finger { position: absolute; top: -19px; transform: translateX(-50%); font-size: 15px; line-height: 1; pointer-events: none;
+  z-index: 5; filter: drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
+.strip-wrap:has(.mark-start) { padding-top: 20px; }
 
 /* all strips, row by row */
 .fila { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }

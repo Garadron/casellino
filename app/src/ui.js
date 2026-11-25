@@ -248,11 +248,13 @@
 
     const onType = debounce(function () { refreshRoute(); refreshSide(); }, 150);
     els.band = h('div', { class: 'mark-band', 'aria-hidden': 'true' }, h('span', null, '🔖'));
+    els.spot = h('div', { class: 'mark-spot', 'aria-hidden': 'true' }, h('span', null, '👇'));
     els.markBtn = h('button', { type: 'button', class: 'mark-btn', onclick: goToMark,
       title: 'Ti riporta alla riga cambiata per ultima, nel giro e nelle strisce' });
     ta.addEventListener('input', function () {
       s.route = ta.value;
-      s.mark = { line: ta.value.slice(0, ta.selectionStart).split('\n').length - 1, at: Date.now() };   // the segnacasella moves here
+      const where = caretContext(ta, s.town);   // the segnacasella moves here: the line, and the number written
+      s.mark = { line: where.lineIndex, tok: where.skip || where.typingStreet ? null : where.tok, at: Date.now() };
       fitTextarea(ta);
       changed();
       onType();
@@ -291,7 +293,7 @@
         empty ? ' · ' : null,
         empty ? h('button', { type: 'button', class: 'link', onclick: loadExample }, 'Guarda un esempio') : null),
       els.markBtn,
-      h('div', { class: 'route-frame' }, ta, els.band), els.suggest, els.here, els.warnings,
+      h('div', { class: 'route-frame' }, ta, els.band, els.spot), els.suggest, els.here, els.warnings,
       h('div', { class: 'now' }, els.nowTitle, els.nowWrap));
     fitTextarea(ta);
     refreshRoute();
@@ -305,22 +307,42 @@
    * last, is kept in the work for each sub-zone, and shows in the text (a band with 🔖) and in the strips (the
    * pigeonholes of that line, with 🔖); its button brings back there.
    */
-  // Where a place of the text box is drawn: { top, height } of the given line, wrapped pieces included.
-  function linePlace(ta, line) {
+  // Where a piece of the text box (from, to) is drawn, with an invisible copy of it: { top, height } of all its
+  // lines (wrapped pieces included), and { left, width, lineHeight } of its first line.
+  function textPlace(ta, from, to) {
     const css = getComputedStyle(ta);
     const copy = document.createElement('div');
     ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paddingTop', 'paddingLeft', 'paddingRight',
-      'borderLeftWidth', 'borderRightWidth', 'boxSizing', 'tabSize'].forEach(function (k) { copy.style[k] = css[k]; });
+      'boxSizing', 'tabSize'].forEach(function (k) { copy.style[k] = css[k]; });
     Object.assign(copy.style, { position: 'absolute', visibility: 'hidden', whiteSpace: 'pre-wrap', overflowWrap: 'break-word',
-      wordBreak: css.wordBreak, width: ta.clientWidth + 'px', top: '0', left: '-9999px' });
-    const lines = ta.value.split('\n');
+      wordBreak: css.wordBreak, width: ta.clientWidth + 'px', top: '0', left: '-9999px', border: '0' });
     const mark = document.createElement('span');
-    mark.textContent = (lines[line] || '') || ' ';
-    copy.append(lines.slice(0, line).join('\n') + (line ? '\n' : ''), mark);
+    mark.textContent = ta.value.slice(from, to) || ' ';
+    copy.append(ta.value.slice(0, from), mark);
     document.body.append(copy);
-    const place = { top: mark.offsetTop, height: mark.offsetHeight || parseFloat(css.lineHeight) || 20 };
+    const first = mark.getClientRects()[0], base = copy.getBoundingClientRect();
+    const place = { top: mark.offsetTop, height: mark.offsetHeight || parseFloat(css.lineHeight) || 20,
+      left: first ? first.left - base.left : 0, width: first ? first.width : 0, lineHeight: first ? first.height : 20 };
     copy.remove();
     return place;
+  }
+  function linePlace(ta, line) {
+    const lines = ta.value.split('\n');
+    const from = lines.slice(0, line).join('\n').length + (line ? 1 : 0);
+    return textPlace(ta, from, from + (lines[line] || '').length);
+  }
+  // Where the number written last is (the comma group tok of the line): its place, or null.
+  function tokenPlace(ta, line, tok) {
+    const lines = ta.value.split('\n');
+    const text = lines[line] || '';
+    const colon = text.indexOf(':');
+    if (colon < 0) return null;
+    const toks = text.slice(colon + 1).split(',');
+    if (tok >= toks.length || !toks[tok].trim()) return null;
+    let at = lines.slice(0, line).join('\n').length + (line ? 1 : 0) + colon + 1;
+    for (let k = 0; k < tok; k++) at += toks[k].length + 1;
+    at += /^\s*/.exec(toks[tok])[0].length;
+    return textPlace(ta, at, at + toks[tok].trim().length);
   }
   function markOf(s) {
     const lines = String(s.route || '').split('\n').length;
@@ -332,6 +354,7 @@
     const m = markOf(sz());
     els.markBtn.hidden = !m;
     els.band.hidden = !m;
+    els.spot.hidden = true;
     if (!m) return;
     els.markBtn.textContent = '🔖 Segnacasella · riga ' + (m.line + 1);
     const place = linePlace(els.ta, m.line);
@@ -339,6 +362,13 @@
     els.band.style.top = (els.ta.offsetTop + top) + 'px';
     els.band.style.height = place.height + 'px';
     els.band.style.visibility = top + place.height < 0 || top > els.ta.clientHeight ? 'hidden' : 'visible';
+    // 👇 on the number written last
+    const spot = m.tok === null || m.tok === undefined ? null : tokenPlace(els.ta, m.line, m.tok);
+    if (!spot) return;
+    const y = spot.top - els.ta.scrollTop;
+    Object.assign(els.spot.style, { top: (els.ta.offsetTop + els.ta.clientTop + y) + 'px', height: spot.lineHeight + 'px',
+      left: (els.ta.offsetLeft + els.ta.clientLeft + spot.left - els.ta.scrollLeft) + 'px', width: spot.width + 'px' });
+    els.spot.hidden = y < 0 || y > els.ta.clientHeight - 8;
   }
   // Back to the segnacasella: the cursor on its line, and the strips on its pigeonholes.
   function goToMark() {
@@ -465,11 +495,10 @@
     }
     return 5;
   }
-  // Light writing (on a dark colour) gets a black outline, so it always stands out (Garadron, 25 November 2026).
-  function outline(ink) {
-    const v = parseInt(String(ink).replace('#', ''), 16);
-    const light = ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
-    return light ? ';text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 2px #000' : '';
+  // Light writing gets a black outline only where it stands out too little on its colour (Garadron, 25 November
+  // 2026): on dark colours the white is clear already, and the outline would only make it thinner.
+  function outline(ink, bg) {
+    return C.needsOutline(ink, bg) ? ';text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 2px #000' : '';
   }
   function slotPx() {
     return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot')) || 30;
@@ -481,7 +510,7 @@
     el.textContent = '';
     const sel = state.selected && state.selected.p === p ? state.selected.idx : -1;
     const mk = markOf(sz());
-    let firstMark = true;
+    let firstMark = true, fingerAt = null, startAt = null;
     s.cells.forEach(function (c, idx) {
       const bg = '#' + C.colorOf(proj, c.key);
       const ink = '#' + C.textColorOf(proj, c.key);
@@ -493,18 +522,20 @@
       const marked = mk && !c.foreign && c.line === mk.line;
       const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '') +
         (marked ? ' marked' + (firstMark ? ' mark-first' : '') : '');
+      if (marked && firstMark) startAt = c;
       if (marked) firstMark = false;
+      if (marked && fingerAt === null && mk.tok !== null && mk.tok !== undefined && c.tok === mk.tok) fingerAt = c;
       const width = c.span * slot;
       let inside, size, cls = '', paint = 'background-color:' + bg;
       const two = C.twoStreets(proj, c);
       if (two && two.side) {   // two streets, two numbers side by side: each half with its street's colour
         size = Math.min(fitPx(two.left, width / 2, 13), fitPx(two.right, width / 2, 13));
-        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink + outline(two.ink) }, two.left),
-          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 + outline(two.ink2) }, two.right)];
+        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink + outline(two.ink, two.color) }, two.left),
+          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 + outline(two.ink2, two.color2) }, two.right)];
         cls = ' halves';
       } else if (c.second) {
         size = diagPx(c.top, c.second, width, 32);
-        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 + outline(two.ink2) } : { class: 'd2' }, c.second)];
+        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 + outline(two.ink2, two.color2) } : { class: 'd2' }, c.second)];
         cls = ' diag';
         // two streets: the upper-left triangle has the first street's colour, the lower-right one the second's
         if (two) paint += ';background-image:linear-gradient(to bottom right, transparent calc(50% - 0.75px), ' + ink + ' 50%, transparent calc(50% + 0.75px)),' +
@@ -517,7 +548,7 @@
       }
       el.append(h.apply(null, ['div', {
         class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + mark,
-        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink + outline(ink) +
+        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink + outline(ink, two && c.second ? two.color : bg) +
           ';--ink:' + ink + ';font-size:' + size + 'px',
         title: tip, onclick: pick, 'data-idx': idx,
       }].concat(inside)));
@@ -532,20 +563,29 @@
           class: 'cell run two halves', title: r.street + ' / ' + r.street2 + (r.town ? ' · ' + r.town : ''),
           style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';font-size:' + px + 'px',
           onclick: function () { select(p, idx); },
-        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key)) },
+        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key), C.colorOf(proj, r.key)) },
           h('span', { class: 'run-name' }, r.street)),
-        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) + outline(C.textColorOf(proj, r.key2)) },
+        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) + outline(C.textColorOf(proj, r.key2), C.colorOf(proj, r.key2)) },
           h('span', { class: 'run-name' }, r.street2))));
         return;
       }
       el.append(h('div', {
         class: 'cell run' + (two ? ' two' : ''), title: r.street + (two ? ' / ' + r.street2 : '') + (r.town ? ' · ' + r.town : ''),
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
-          ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key)) + ';font-size:' +
+          ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key), C.colorOf(proj, r.key)) + ';font-size:' +
           (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
         onclick: function () { select(p, idx); },
       }, h('span', { class: 'run-name' }, r.street, two ? h('br') : null, two ? r.street2 : null)));
     });
+    // over the strip, in the free space (no number covered): 🔖 where the line starts, 👇 on the pigeonhole written last
+    if (startAt) {
+      el.append(h('div', { class: 'mark-start', title: 'Segnacasella: la riga cambiata per ultima comincia qui',
+        style: 'left:calc(' + startAt.start + ' * var(--slot))' }, '🔖'));
+    }
+    if (fingerAt) {
+      el.append(h('div', { class: 'mark-finger', title: 'Segnacasella: qui hai scritto per ultimo',
+        style: 'left:calc(' + ((fingerAt.start + fingerAt.end + 1) / 2) + ' * var(--slot))' }, '👇'));
+    }
     for (let k = C.SLOTS_PER_PAGE; k < s.capacity; k += C.SLOTS_PER_PAGE) {
       el.append(h('div', { class: 'cut', style: 'left:calc(' + k + ' * var(--slot) - 1px)', title: 'Qui finisce un foglio A4' }));
     }
@@ -1084,6 +1124,7 @@
         'Sottozona ' + (sz0.name || '?') + (sz0.town ? ' · ' + sz0.town : ''));
       g0 = wi + 1;
     });
+    let fingerDone = false;
     wall.modules.forEach(function (mod, wi) {
       const mx = xs[wi];
       const cap = C.WALL_SLOTS[mod.type];
@@ -1104,6 +1145,11 @@
         }
         st.cells.forEach(function (c) {
           if (c.start >= cap) return;
+          const zm = c.fromIndex === undefined && p.subzones.findIndex(function (z) { return z.id === mod.owner; }) === state.current ? markOf(sz()) : null;
+          if (zm && zm.tok !== null && zm.tok !== undefined && c.line === zm.line && c.tok === zm.tok && !fingerDone) {
+            fingerDone = true;   // 👇 over the pigeonhole written last, in the gap above the row
+            add(svg, 'text', { x: mx + (c.start + Math.min(c.end, cap - 1) + 1) / 2 * U, y: y - 1.5, 'font-size': 10, 'text-anchor': 'middle' }, '👇');
+          }
           const end = Math.min(c.end, cap - 1);
           const cx = mx + c.start * U, cw = (end - c.start + 1) * U;
           const ownerIndex = c.fromIndex !== undefined ? c.fromIndex : p.subzones.findIndex(function (z) { return z.id === mod.owner; });

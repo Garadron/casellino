@@ -279,6 +279,10 @@ function caretAt(ta, needle, offset) {
   await wait(400);
   assert.ok(new RegExp('riga ' + (lineMark + 1) + '$').test(text('.mark-btn')) && doc.querySelectorAll('#strips .cell.marked').length > 0,
     'segnacasella sulla riga cambiata, nel testo e nelle strisce');
+  const finger = doc.querySelectorAll('#strips .mark-finger');
+  assert.strictEqual(finger.length, 1, 'il 👇 sopra la casella del civico scritto per ultimo');
+  const fingerCell = [].find.call(doc.querySelectorAll('#strips .cell.marked'), function (c) { return c.textContent === '99'; });
+  assert.ok(fingerCell, 'la casella del 99 è nella riga segnata');
   taMark.value = taMark.value.slice(0, atMark) + taMark.value.slice(atMark + 4);
   taMark.dispatchEvent(new win.Event('input'));
   await wait(300);

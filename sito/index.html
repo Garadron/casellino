@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-64.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>window.CASELLINO_VERSION = '0.42.0';</script>
+<script>window.CASELLINO_VERSION = '0.43.0';</script>
 <style>
 /* © 2026 Emmanuel Surace (Garadron). Uso gratuito non commerciale: vedi LICENSE e LICENZA.md. */
 :root {
@@ -292,14 +292,20 @@ textarea.route-text {
 .cell.here-cell { outline: 3px solid #d93025; outline-offset: -3px; z-index: 3; }
 /* the segnacasella: where the work stopped, in the strips and in the text of the route */
 .cell.marked { box-shadow: inset 0 0 0 3px #f08c00; z-index: 2; }
-.cell.mark-first::before { content: '🔖'; position: absolute; top: 1px; right: 1px; font-size: 11px; line-height: 1; z-index: 4;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); pointer-events: none; }
-.cell.top.mark-first { position: relative; }
 .route-frame { position: relative; }
 .mark-band { position: absolute; left: 0; right: 0; pointer-events: none; background: rgba(240, 140, 0, .16);
   border-left: 4px solid #f08c00; }
 .mark-band span { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 15px; }
 .mark-btn { margin: 0 0 6px; border-color: #f08c00; }
+/* 👇 on the number written last: in the text a box around it, in the strips above its pigeonhole */
+.mark-spot { position: absolute; pointer-events: none; border: 2px solid #f08c00; border-radius: 4px; margin: -1px 0 0 -5px;
+  padding: 0 3px; box-sizing: content-box; }
+.mark-spot span { position: absolute; left: 50%; top: -13px; transform: translateX(-50%); font-size: 12px; line-height: 1; }
+.mark-start { position: absolute; top: -18px; transform: translateX(-55%); font-size: 13px; line-height: 1; pointer-events: none;
+  z-index: 5; }
+.mark-finger { position: absolute; top: -19px; transform: translateX(-50%); font-size: 15px; line-height: 1; pointer-events: none;
+  z-index: 5; filter: drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
+.strip-wrap:has(.mark-start) { padding-top: 20px; }
 
 /* all strips, row by row */
 .fila { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
@@ -827,7 +833,7 @@ input[type="file"]::file-selector-button {
     <p><b>I colori</b>: ogni via ha un colore forte e la scritta in contrasto (bianca sui colori scuri, nera sui chiari). Nella stessa sottozona <b>nessun colore si ripete</b>: ogni via ha il suo. Due vie vicine non hanno mai colori simili. Nell'elenco delle vie i colori già usati nella sottozona e quelli troppo simili alle vie accanto sono bloccati. Una via scritta in più pezzi del giro compare una volta sola nell'elenco e ha lo stesso colore dappertutto.</p>
     <p><b>Un Excel già fatto</b> (fatto con il modello, anche vecchio): «Apri» o «Altro → Apri un Excel già fatto». Ogni foglio scritto diventa una sottozona, con il suo giro letto striscia per striscia: poi si corregge e si ristampa.</p>
     <p><b>Il disegno di tutto il mobile</b> mostra le sottozone una accanto all'altra, per controllare che siano segnate bene. Lì si dice anche com'è fatto il mobile: i moduli da sinistra a destra (casello o ala) e di quale sottozona è ognuno, in qualsiasi ordine (ala, casello, ala, casello… oppure ala, ala, casello, casello…). Con la <b>matita</b> del colore di una sottozona si tocca la casella da cui comincia: da lì verso destra quella fila è sua (per esempio la B che prende metà dell'ultima fila della A). La gomma toglie il segno. <b>La cartina del giro</b> mette le vie sulla mappa nell'ordine del casello e calcola i chilometri: le vie trovate restano salvate. Una tappa nel posto sbagliato si trascina dove va. <b>Ottimizzazione gita</b> cerca l'ordine delle vie con meno chilometri, partendo e tornando al centro di partenza scritto in alto (nome e indirizzo; se l'indirizzo non si trova, il punto si sceglie sulla mappa o con la posizione del telefono); è solo per sapere: mostra i chilometri della gita di adesso e di quella più corta, con il suo ordine, e il giro del casello non cambia. Un punto spostato a mano resta per quella via e quel civico, anche se il giro cambia o il programma si aggiorna. Una tappa che la mappa trova solo in un altro comune resta rossa: la metti tu.</p>
-    <p><b>Il segnacasella 🔖</b> segna dove hai lavorato per ultimo: la riga del giro cambiata per ultima ha una fascia arancione, e le sue caselle nelle strisce un bordo arancione con il 🔖. Il tasto «🔖 Segnacasella» sopra il giro ti riporta lì. Resta salvato per ogni sottozona, anche chiudendo l'app.</p>
+    <p><b>Il segnacasella 🔖</b> segna dove hai lavorato per ultimo: la riga del giro cambiata per ultima ha una fascia arancione, e il civico scritto per ultimo un riquadro con il 👇. Nelle strisce le caselle di quella riga hanno un bordo arancione: sopra la striscia il 🔖 dice dove comincia la riga, il 👇 indica la casella precisa, senza coprire i numeri. Il tasto «🔖 Segnacasella» sopra il giro ti riporta lì. Resta salvato per ogni sottozona, anche chiudendo l'app.</p>
     <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie. Nello stesso elenco, toccando un nome (o la matita ✏️) lo <b>correggi in tutto il giro</b>: cambia in ogni riga e in ogni sottozona dello stesso comune, i civici restano. Così, dopo la lettura delle foto, i nomi si sistemano da lì e nel giro si pensa solo ai numeri.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>
@@ -1891,7 +1897,10 @@ input[type="file"]::file-selector-button {
         sz.locked = s && Number(s.locked) > 0 ? Number(s.locked) : 0;
         if (s && typeof s.routeBefore === 'string' && s.routeBefore) sz.routeBefore = s.routeBefore; // before the last optimization
         // the segnacasella: the line of the route changed last (Garadron, 25 November 2026)
-        if (s && s.mark && Number(s.mark.line) >= 0) sz.mark = { line: Math.floor(Number(s.mark.line)), at: Number(s.mark.at) || 0 };
+        if (s && s.mark && Number(s.mark.line) >= 0) {
+          sz.mark = { line: Math.floor(Number(s.mark.line)), at: Number(s.mark.at) || 0 };
+          if (Number(s.mark.tok) >= 0 && s.mark.tok !== null) sz.mark.tok = Math.floor(Number(s.mark.tok));   // the number written last
+        }
         return sz;
       });
     }
@@ -2799,6 +2808,25 @@ input[type="file"]::file-selector-button {
   }
 
   // The colour of the writing on a street's colour.
+  // Contrast of two colours (WCAG, 1 to 21).
+  function contrast(a, b) {
+    const lum = function (hex) {
+      const v = [0, 2, 4].map(function (i) {
+        const c = parseInt(String(hex).replace('#', '').slice(i, i + 2), 16) / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    };
+    const x = lum(a), y = lum(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  // Light writing needs a black outline only when it stands out too little on its colour (Garadron, 25 November 2026).
+  function needsOutline(ink, bg) {
+    const v = parseInt(String(ink || '111111').replace('#', ''), 16);
+    const light = ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
+    return light && !!bg && contrast(ink, bg) < 4.5;
+  }
+
   function textColorOf(project, key) {
     const p = paletteEntry(colorOf(project, key));
     return p ? p.text : '111111';
@@ -3183,6 +3211,7 @@ input[type="file"]::file-selector-button {
     ROWS_PER_MODULE: ROWS_PER_MODULE,
     SLOTS_PER_PAGE: SLOTS_PER_PAGE,
     PALETTE: PALETTE,
+    contrast: contrast, needsOutline: needsOutline,
     norm: norm,
     streetKey: streetKey, renameStreet: renameStreet, splitAddress: splitAddress, addressText: addressText,
     provinceName: provinceName, parseCoordinates: parseCoordinates, pairOrderFixes: pairOrderFixes, fixPairOrder: fixPairOrder,
@@ -3900,13 +3929,9 @@ input[type="file"]::file-selector-button {
   Canvas.prototype.line = function (x1, y1, x2, y2, width, hex) {
     this.ops.push(rgb(hex || '111111') + ' RG ' + n(width) + ' w ' + n(x1) + ' ' + n(PAGE.h - y1) + ' m ' + n(x2) + ' ' + n(PAGE.h - y2) + ' l S');
   };
-  // Light writing (on a dark colour) is drawn with a thin black outline, so it always stands out.
-  const lightInk = function (hex) {
-    const v = parseInt(String(hex || '111111'), 16);
-    return ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
-  };
-  Canvas.prototype.text = function (x, baseline, size, s, hex) {
-    const edge = lightInk(hex) ? ' 0.07 0.07 0.07 RG ' + n(Math.max(0.4, size * 0.06)) + ' w 2 Tr' : ' 0 Tr';
+  // Light writing gets a thin black outline only where it stands out too little on its colour (bg).
+  Canvas.prototype.text = function (x, baseline, size, s, hex, bg) {
+    const edge = Core.needsOutline(hex, bg) ? ' 0.07 0.07 0.07 RG ' + n(Math.max(0.4, size * 0.06)) + ' w 2 Tr' : ' 0 Tr';
     this.ops.push('BT /F1 ' + n(size) + ' Tf ' + rgb(hex) + ' rg' + edge + ' ' + n(x) + ' ' + n(PAGE.h - baseline) + ' Td ' + pdfString(s) + ' Tj ET');
   };
   // Text turned 90 degrees (read from bottom to top), centred in a box: the "1 Fila" labels.
@@ -3916,9 +3941,9 @@ input[type="file"]::file-selector-button {
       n(PAGE.h - (y + h / 2 + tw / 2)) + ' Tm ' + pdfString(s) + ' Tj ET');
   };
   // Text centred in a box, made smaller until it fits (never cut).
-  Canvas.prototype.centered = function (x, y, w, h, s, max, hex) {
+  Canvas.prototype.centered = function (x, y, w, h, s, max, hex, bg) {
     const size = Math.max(4, Math.min(max, (w - 4) / Math.max(1, textWidth(s, 1)), h * 0.8));
-    this.text(x + (w - textWidth(s, size)) / 2, y + h / 2 + size * 0.36, size, s, hex);
+    this.text(x + (w - textWidth(s, size)) / 2, y + h / 2 + size * 0.36, size, s, hex, bg);
   };
 
   // The largest size that keeps two numbers clear of the "/" line (lower-left to upper-right corner).
@@ -3950,7 +3975,7 @@ input[type="file"]::file-selector-button {
     piece.cells.forEach(function (c) {
       const a = Math.max(c.start, piece.from), b = Math.min(c.end, piece.to);
       const x = xOf(a), w = (b - a + 1) * SLOT;
-      const ink = Core.textColorOf(project, c.key);
+      const ink = Core.textColorOf(project, c.key), bg = Core.colorOf(project, c.key);
       const pair = Core.twoStreets(project, c);   // two streets: each number on its street's colour
       cv.fill(x, yTop, w, TOP, Core.colorOf(project, c.key));
       if (pair && c.second) cv.poly([[x + w, yTop], [x + w, yTop + TOP], [x, yTop + TOP]], pair.color2);
@@ -3958,8 +3983,8 @@ input[type="file"]::file-selector-button {
         cv.fill(x + w / 2, yTop, w / 2, TOP, pair.color2);
         cv.line(x + w / 2, yTop, x + w / 2, yTop + TOP, THIN);
         const s = Math.min(20, (w / 2 - 3) / Math.max(1, textWidth(pair.left, 1)), (w / 2 - 3) / Math.max(1, textWidth(pair.right, 1)), TOP * 0.8);
-        cv.centered(x, yTop, w / 2, TOP, pair.left, s, pair.ink);
-        cv.centered(x + w / 2, yTop, w / 2, TOP, pair.right, s, pair.ink2);
+        cv.centered(x, yTop, w / 2, TOP, pair.left, s, pair.ink, pair.color);
+        cv.centered(x + w / 2, yTop, w / 2, TOP, pair.right, s, pair.ink2, pair.color2);
         if (c.other) cv.line(x + 2.5, yBottom - 2.2, x + w - 2.5, yBottom - 2.2, 3, ink);
         return;
       }
@@ -3967,25 +3992,25 @@ input[type="file"]::file-selector-button {
       if (c.second) {
         const s = diagonalSize(c.top, c.second, w, TOP);
         cv.line(x, yTop + TOP, x + w, yTop, THIN, ink);
-        cv.text(x + 3, yTop + 2 + 0.72 * s, s, c.top, ink);
-        cv.text(x + w - 3 - textWidth(c.second, s), yTop + TOP - 3, s, c.second, pair ? pair.ink2 : ink);
+        cv.text(x + 3, yTop + 2 + 0.72 * s, s, c.top, ink, pair ? pair.color : bg);
+        cv.text(x + w - 3 - textWidth(c.second, s), yTop + TOP - 3, s, c.second, pair ? pair.ink2 : ink, pair ? pair.color2 : bg);
         return;
       }
       const two = /\s/.test(c.top) && c.top.length > 6 ? twoLines(c.top, w) : null;
       if (two && two.size > Math.min(11, (w - 4) / textWidth(c.top, 1))) {
         two.lines.forEach(function (l, k) {
-          cv.text(x + (w - textWidth(l, two.size)) / 2, yTop + TOP / 2 + (k ? two.size * 1.0 : -two.size * 0.15), two.size, l, ink);
+          cv.text(x + (w - textWidth(l, two.size)) / 2, yTop + TOP / 2 + (k ? two.size * 1.0 : -two.size * 0.15), two.size, l, ink, bg);
         });
-      } else if (c.top) cv.centered(x, yTop, w, TOP, c.top, two ? 11 : 20, ink);
+      } else if (c.top) cv.centered(x, yTop, w, TOP, c.top, two ? 11 : 20, ink, bg);
     });
     piece.runs.forEach(function (r) {
       const a = Math.max(r.start, piece.from), b = Math.min(r.end, piece.to);
       cv.fill(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, Core.colorOf(project, r.key));
       if (r.street2) {   // two names, one above the other; two streets: the lower half in the second one's colour
         if (r.key2) cv.fill(xOf(a), yBottom + BOTTOM / 2, (b - a + 1) * SLOT, BOTTOM / 2, Core.colorOf(project, r.key2));
-        cv.centered(xOf(a), yBottom + 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street, 9, Core.textColorOf(project, r.key));
-        cv.centered(xOf(a), yBottom + BOTTOM / 2 - 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street2, 9, Core.textColorOf(project, r.key2 || r.key));
-      } else cv.centered(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, r.street, 16, Core.textColorOf(project, r.key));
+        cv.centered(xOf(a), yBottom + 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street, 9, Core.textColorOf(project, r.key), Core.colorOf(project, r.key));
+        cv.centered(xOf(a), yBottom + BOTTOM / 2 - 0.5, (b - a + 1) * SLOT, BOTTOM / 2, r.street2, 9, Core.textColorOf(project, r.key2 || r.key), Core.colorOf(project, r.key2 || r.key));
+      } else cv.centered(xOf(a), yBottom, (b - a + 1) * SLOT, BOTTOM, r.street, 16, Core.textColorOf(project, r.key), Core.colorOf(project, r.key));
     });
     // lines: between pigeonholes and between streets (thin), between the two rows (thin), around (medium)
     for (let k = piece.from + 1; k <= piece.to; k++) {
@@ -5745,11 +5770,13 @@ input[type="file"]::file-selector-button {
 
     const onType = debounce(function () { refreshRoute(); refreshSide(); }, 150);
     els.band = h('div', { class: 'mark-band', 'aria-hidden': 'true' }, h('span', null, '🔖'));
+    els.spot = h('div', { class: 'mark-spot', 'aria-hidden': 'true' }, h('span', null, '👇'));
     els.markBtn = h('button', { type: 'button', class: 'mark-btn', onclick: goToMark,
       title: 'Ti riporta alla riga cambiata per ultima, nel giro e nelle strisce' });
     ta.addEventListener('input', function () {
       s.route = ta.value;
-      s.mark = { line: ta.value.slice(0, ta.selectionStart).split('\n').length - 1, at: Date.now() };   // the segnacasella moves here
+      const where = caretContext(ta, s.town);   // the segnacasella moves here: the line, and the number written
+      s.mark = { line: where.lineIndex, tok: where.skip || where.typingStreet ? null : where.tok, at: Date.now() };
       fitTextarea(ta);
       changed();
       onType();
@@ -5788,7 +5815,7 @@ input[type="file"]::file-selector-button {
         empty ? ' · ' : null,
         empty ? h('button', { type: 'button', class: 'link', onclick: loadExample }, 'Guarda un esempio') : null),
       els.markBtn,
-      h('div', { class: 'route-frame' }, ta, els.band), els.suggest, els.here, els.warnings,
+      h('div', { class: 'route-frame' }, ta, els.band, els.spot), els.suggest, els.here, els.warnings,
       h('div', { class: 'now' }, els.nowTitle, els.nowWrap));
     fitTextarea(ta);
     refreshRoute();
@@ -5802,22 +5829,42 @@ input[type="file"]::file-selector-button {
    * last, is kept in the work for each sub-zone, and shows in the text (a band with 🔖) and in the strips (the
    * pigeonholes of that line, with 🔖); its button brings back there.
    */
-  // Where a place of the text box is drawn: { top, height } of the given line, wrapped pieces included.
-  function linePlace(ta, line) {
+  // Where a piece of the text box (from, to) is drawn, with an invisible copy of it: { top, height } of all its
+  // lines (wrapped pieces included), and { left, width, lineHeight } of its first line.
+  function textPlace(ta, from, to) {
     const css = getComputedStyle(ta);
     const copy = document.createElement('div');
     ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paddingTop', 'paddingLeft', 'paddingRight',
-      'borderLeftWidth', 'borderRightWidth', 'boxSizing', 'tabSize'].forEach(function (k) { copy.style[k] = css[k]; });
+      'boxSizing', 'tabSize'].forEach(function (k) { copy.style[k] = css[k]; });
     Object.assign(copy.style, { position: 'absolute', visibility: 'hidden', whiteSpace: 'pre-wrap', overflowWrap: 'break-word',
-      wordBreak: css.wordBreak, width: ta.clientWidth + 'px', top: '0', left: '-9999px' });
-    const lines = ta.value.split('\n');
+      wordBreak: css.wordBreak, width: ta.clientWidth + 'px', top: '0', left: '-9999px', border: '0' });
     const mark = document.createElement('span');
-    mark.textContent = (lines[line] || '') || ' ';
-    copy.append(lines.slice(0, line).join('\n') + (line ? '\n' : ''), mark);
+    mark.textContent = ta.value.slice(from, to) || ' ';
+    copy.append(ta.value.slice(0, from), mark);
     document.body.append(copy);
-    const place = { top: mark.offsetTop, height: mark.offsetHeight || parseFloat(css.lineHeight) || 20 };
+    const first = mark.getClientRects()[0], base = copy.getBoundingClientRect();
+    const place = { top: mark.offsetTop, height: mark.offsetHeight || parseFloat(css.lineHeight) || 20,
+      left: first ? first.left - base.left : 0, width: first ? first.width : 0, lineHeight: first ? first.height : 20 };
     copy.remove();
     return place;
+  }
+  function linePlace(ta, line) {
+    const lines = ta.value.split('\n');
+    const from = lines.slice(0, line).join('\n').length + (line ? 1 : 0);
+    return textPlace(ta, from, from + (lines[line] || '').length);
+  }
+  // Where the number written last is (the comma group tok of the line): its place, or null.
+  function tokenPlace(ta, line, tok) {
+    const lines = ta.value.split('\n');
+    const text = lines[line] || '';
+    const colon = text.indexOf(':');
+    if (colon < 0) return null;
+    const toks = text.slice(colon + 1).split(',');
+    if (tok >= toks.length || !toks[tok].trim()) return null;
+    let at = lines.slice(0, line).join('\n').length + (line ? 1 : 0) + colon + 1;
+    for (let k = 0; k < tok; k++) at += toks[k].length + 1;
+    at += /^\s*/.exec(toks[tok])[0].length;
+    return textPlace(ta, at, at + toks[tok].trim().length);
   }
   function markOf(s) {
     const lines = String(s.route || '').split('\n').length;
@@ -5829,6 +5876,7 @@ input[type="file"]::file-selector-button {
     const m = markOf(sz());
     els.markBtn.hidden = !m;
     els.band.hidden = !m;
+    els.spot.hidden = true;
     if (!m) return;
     els.markBtn.textContent = '🔖 Segnacasella · riga ' + (m.line + 1);
     const place = linePlace(els.ta, m.line);
@@ -5836,6 +5884,13 @@ input[type="file"]::file-selector-button {
     els.band.style.top = (els.ta.offsetTop + top) + 'px';
     els.band.style.height = place.height + 'px';
     els.band.style.visibility = top + place.height < 0 || top > els.ta.clientHeight ? 'hidden' : 'visible';
+    // 👇 on the number written last
+    const spot = m.tok === null || m.tok === undefined ? null : tokenPlace(els.ta, m.line, m.tok);
+    if (!spot) return;
+    const y = spot.top - els.ta.scrollTop;
+    Object.assign(els.spot.style, { top: (els.ta.offsetTop + els.ta.clientTop + y) + 'px', height: spot.lineHeight + 'px',
+      left: (els.ta.offsetLeft + els.ta.clientLeft + spot.left - els.ta.scrollLeft) + 'px', width: spot.width + 'px' });
+    els.spot.hidden = y < 0 || y > els.ta.clientHeight - 8;
   }
   // Back to the segnacasella: the cursor on its line, and the strips on its pigeonholes.
   function goToMark() {
@@ -5962,11 +6017,10 @@ input[type="file"]::file-selector-button {
     }
     return 5;
   }
-  // Light writing (on a dark colour) gets a black outline, so it always stands out (Garadron, 25 November 2026).
-  function outline(ink) {
-    const v = parseInt(String(ink).replace('#', ''), 16);
-    const light = ((v >> 16 & 255) * 299 + (v >> 8 & 255) * 587 + (v & 255) * 114) / 1000 > 140;
-    return light ? ';text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 2px #000' : '';
+  // Light writing gets a black outline only where it stands out too little on its colour (Garadron, 25 November
+  // 2026): on dark colours the white is clear already, and the outline would only make it thinner.
+  function outline(ink, bg) {
+    return C.needsOutline(ink, bg) ? ';text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 2px #000' : '';
   }
   function slotPx() {
     return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot')) || 30;
@@ -5978,7 +6032,7 @@ input[type="file"]::file-selector-button {
     el.textContent = '';
     const sel = state.selected && state.selected.p === p ? state.selected.idx : -1;
     const mk = markOf(sz());
-    let firstMark = true;
+    let firstMark = true, fingerAt = null, startAt = null;
     s.cells.forEach(function (c, idx) {
       const bg = '#' + C.colorOf(proj, c.key);
       const ink = '#' + C.textColorOf(proj, c.key);
@@ -5990,18 +6044,20 @@ input[type="file"]::file-selector-button {
       const marked = mk && !c.foreign && c.line === mk.line;
       const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '') +
         (marked ? ' marked' + (firstMark ? ' mark-first' : '') : '');
+      if (marked && firstMark) startAt = c;
       if (marked) firstMark = false;
+      if (marked && fingerAt === null && mk.tok !== null && mk.tok !== undefined && c.tok === mk.tok) fingerAt = c;
       const width = c.span * slot;
       let inside, size, cls = '', paint = 'background-color:' + bg;
       const two = C.twoStreets(proj, c);
       if (two && two.side) {   // two streets, two numbers side by side: each half with its street's colour
         size = Math.min(fitPx(two.left, width / 2, 13), fitPx(two.right, width / 2, 13));
-        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink + outline(two.ink) }, two.left),
-          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 + outline(two.ink2) }, two.right)];
+        inside = [h('span', { class: 'h1', style: 'background:#' + two.color + ';color:#' + two.ink + outline(two.ink, two.color) }, two.left),
+          h('span', { class: 'h2', style: 'background:#' + two.color2 + ';color:#' + two.ink2 + outline(two.ink2, two.color2) }, two.right)];
         cls = ' halves';
       } else if (c.second) {
         size = diagPx(c.top, c.second, width, 32);
-        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 + outline(two.ink2) } : { class: 'd2' }, c.second)];
+        inside = [h('span', { class: 'd1' }, c.top), h('span', two ? { class: 'd2', style: 'color:#' + two.ink2 + outline(two.ink2, two.color2) } : { class: 'd2' }, c.second)];
         cls = ' diag';
         // two streets: the upper-left triangle has the first street's colour, the lower-right one the second's
         if (two) paint += ';background-image:linear-gradient(to bottom right, transparent calc(50% - 0.75px), ' + ink + ' 50%, transparent calc(50% + 0.75px)),' +
@@ -6014,7 +6070,7 @@ input[type="file"]::file-selector-button {
       }
       el.append(h.apply(null, ['div', {
         class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + mark,
-        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink + outline(ink) +
+        style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink + outline(ink, two && c.second ? two.color : bg) +
           ';--ink:' + ink + ';font-size:' + size + 'px',
         title: tip, onclick: pick, 'data-idx': idx,
       }].concat(inside)));
@@ -6029,20 +6085,29 @@ input[type="file"]::file-selector-button {
           class: 'cell run two halves', title: r.street + ' / ' + r.street2 + (r.town ? ' · ' + r.town : ''),
           style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';font-size:' + px + 'px',
           onclick: function () { select(p, idx); },
-        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key)) },
+        }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key), C.colorOf(proj, r.key)) },
           h('span', { class: 'run-name' }, r.street)),
-        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) + outline(C.textColorOf(proj, r.key2)) },
+        h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) + outline(C.textColorOf(proj, r.key2), C.colorOf(proj, r.key2)) },
           h('span', { class: 'run-name' }, r.street2))));
         return;
       }
       el.append(h('div', {
         class: 'cell run' + (two ? ' two' : ''), title: r.street + (two ? ' / ' + r.street2 : '') + (r.town ? ' · ' + r.town : ''),
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
-          ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key)) + ';font-size:' +
+          ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key), C.colorOf(proj, r.key)) + ';font-size:' +
           (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
         onclick: function () { select(p, idx); },
       }, h('span', { class: 'run-name' }, r.street, two ? h('br') : null, two ? r.street2 : null)));
     });
+    // over the strip, in the free space (no number covered): 🔖 where the line starts, 👇 on the pigeonhole written last
+    if (startAt) {
+      el.append(h('div', { class: 'mark-start', title: 'Segnacasella: la riga cambiata per ultima comincia qui',
+        style: 'left:calc(' + startAt.start + ' * var(--slot))' }, '🔖'));
+    }
+    if (fingerAt) {
+      el.append(h('div', { class: 'mark-finger', title: 'Segnacasella: qui hai scritto per ultimo',
+        style: 'left:calc(' + ((fingerAt.start + fingerAt.end + 1) / 2) + ' * var(--slot))' }, '👇'));
+    }
     for (let k = C.SLOTS_PER_PAGE; k < s.capacity; k += C.SLOTS_PER_PAGE) {
       el.append(h('div', { class: 'cut', style: 'left:calc(' + k + ' * var(--slot) - 1px)', title: 'Qui finisce un foglio A4' }));
     }
@@ -6581,6 +6646,7 @@ input[type="file"]::file-selector-button {
         'Sottozona ' + (sz0.name || '?') + (sz0.town ? ' · ' + sz0.town : ''));
       g0 = wi + 1;
     });
+    let fingerDone = false;
     wall.modules.forEach(function (mod, wi) {
       const mx = xs[wi];
       const cap = C.WALL_SLOTS[mod.type];
@@ -6601,6 +6667,11 @@ input[type="file"]::file-selector-button {
         }
         st.cells.forEach(function (c) {
           if (c.start >= cap) return;
+          const zm = c.fromIndex === undefined && p.subzones.findIndex(function (z) { return z.id === mod.owner; }) === state.current ? markOf(sz()) : null;
+          if (zm && zm.tok !== null && zm.tok !== undefined && c.line === zm.line && c.tok === zm.tok && !fingerDone) {
+            fingerDone = true;   // 👇 over the pigeonhole written last, in the gap above the row
+            add(svg, 'text', { x: mx + (c.start + Math.min(c.end, cap - 1) + 1) / 2 * U, y: y - 1.5, 'font-size': 10, 'text-anchor': 'middle' }, '👇');
+          }
           const end = Math.min(c.end, cap - 1);
           const cx = mx + c.start * U, cw = (end - c.start + 1) * U;
           const ownerIndex = c.fromIndex !== undefined ? c.fromIndex : p.subzones.findIndex(function (z) { return z.id === mod.owner; });
