@@ -24,6 +24,7 @@ const dom = new JSDOM(html, {
     win.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
     win.HTMLDialogElement.prototype.close = function () { this.open = false; };
     win.HTMLElement.prototype.scrollIntoView = function () {};
+    win.localStorage.setItem('casellino.novita', '99.0.0');
   },
 });
 const win = dom.window;

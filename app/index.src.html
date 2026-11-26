@@ -34,7 +34,8 @@
     </div>
     <button type="button" id="btn-theme" class="theme-switch"><span aria-hidden="true">☀️</span><span aria-hidden="true">🌙</span><span class="ts-knob"></span></button>
     <button type="button" id="btn-share" class="share-btn" title="Condividi Casellino: il link da mandare ai colleghi" aria-label="Condividi">📤<span class="share-word"> Condividi</span></button>
-    <button type="button" id="btn-tutorial" class="tut-open">📖 Tutorial</button>
+    <button type="button" id="btn-tutorial" class="tut-open"><span class="tut-icon">📖 </span>Tutorial</button>
+    <button type="button" id="btn-news" class="news-open" title="Le ultime novità di Casellino" aria-label="Novità">🆕<span class="news-word"> Novità</span></button>
   </div>
   <nav class="actions">
     <button type="button" id="btn-account">Accedi</button>
@@ -84,6 +85,18 @@
     <input type="file" id="file-input" accept=".json,.txt,.xlsx,.xlsm,application/json,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12" hidden>
   </nav>
 </header>
+
+<section id="gate" class="gate" hidden aria-labelledby="gate-title">
+  <div class="gate-card">
+    <h2 id="gate-title">Benvenuto in Casellino</h2>
+    <p>Per usare Casellino entra con il tuo account. I tuoi giri restano tuoi: li vedi solo tu, e li ritrovi su ogni
+      telefono o computer. È gratis.</p>
+    <p class="small hint" id="gate-kept" hidden>Il lavoro che c'era su questo dispositivo non si perde: lo ritrovi appena entri.</p>
+    <div id="gate-body"></div>
+    <p class="small muted gate-foot"><button type="button" class="link-btn" id="gate-support">✉️ Scrivi al supporto</button> ·
+      <a href="https://garadron.github.io/casellino/privacy.html" target="_blank" rel="noopener">Informativa sulla privacy</a></p>
+  </div>
+</section>
 
 <main class="layout">
   <section class="editor" aria-label="Il giro">
@@ -179,7 +192,7 @@
   </aside>
 </main>
 
-<footer class="foot">Casellino · © 2026 Emmanuel Surace (Garadron) · uso gratuito, non commerciale · i tuoi dati restano su questo dispositivo</footer>
+<footer class="foot">Casellino · © 2026 Emmanuel Surace (Garadron) · uso gratuito, non commerciale · i tuoi giri li vedi solo tu</footer>
 
 <dialog id="dlg-help">
   <form method="dialog" class="dlg">
@@ -225,6 +238,14 @@
     <h3>Sul telefono</h3>
     <p>Apri la pagina dal suo indirizzo internet. Su iPhone: Condividi → «Aggiungi alla schermata Home». Su Android: menu ⋮ → «Installa app». Poi si apre come un'app e funziona anche senza internet (la mappa no). Ogni tanto usa «Salva file»: è la copia sicura del tuo lavoro.</p>
     <menu><button value="ok" class="primary">Ho capito</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-news" class="news" aria-labelledby="news-title">
+  <form method="dialog" class="dlg">
+    <h2 id="news-title">🆕 Le novità</h2>
+    <div id="news-body"></div>
+    <menu><button type="button" id="news-all">Tutte le novità</button><button value="ok" class="primary">Ho capito</button></menu>
   </form>
 </dialog>
 
@@ -1013,7 +1034,7 @@
 <circle cx="160" cy="20" r="4" fill="#ff8a8a"/><circle cx="20" cy="40" r="5" fill="#8fd3ff"/><circle cx="150" cy="160" r="4" fill="#a6e28a"/><circle cx="345" cy="30" r="5" fill="#ffe37a"/>
 </svg>
       <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
-        <p class="tut-bubble"><b class="tut-title">15 · Fatto!</b>Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: ti spiega come scrivere il giro a mano.</p></div>
+        <p class="tut-bubble"><b class="tut-title">15 · Fatto!</b>Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: ti spiega come scrivere il giro a mano. Dopo ogni aggiornamento, in alto, <b>«🆕 Novità»</b> ti dice che cosa c'è di nuovo.</p></div>
       <p class="tut-more"><button type="button" id="tut-help">📝 Come si scrive</button></p>
     </section>
     </div>

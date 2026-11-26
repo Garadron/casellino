@@ -25,6 +25,9 @@ const dom = new JSDOM(html, {
     win.URL.revokeObjectURL = function () {};
     win.HTMLAnchorElement.prototype.click = function () {};
     win.HTMLElement.prototype.scrollIntoView = function () {};
+    // already signed in, the news already seen (entering is tried in test_accesso.js)
+    win.localStorage.setItem('casellino.account', JSON.stringify({ token: 'prova', utente: 'prova' }));
+    win.localStorage.setItem('casellino.novita', '99.0.0');
     // the voice recognition of the phone, pretended: the test says the words
     win.webkitSpeechRecognition = function () {
       fakeRec.last = this;

@@ -1,5 +1,38 @@
 # Registro delle versioni
 
+## v0.49.0 · 2026-11-26 · Si entra con l'account, e le novità di ogni aggiornamento
+
+Garadron (26 novembre 2026): «Quando c'è [...] una feature nuova, vorrei che fosse lanciato il messaggio appena si
+entra e appena si logga nell'applicazione», «l'applicazione voglio che non fa vedere il [casello], non fa vedere
+niente se uno non ha loggato. Deve sempre loggare», «Quindi il messaggio della novità, una volta sola. E magari vicino
+a tutorial le ultime novità [...] non troppe cose, solo le essenziali».
+
+- **Si entra sempre con l'account.** Senza accesso la pagina mostra solo il riquadro «Benvenuto in Casellino» con
+  Accedi, Registrati e Password dimenticata, il Supporto e l'informativa sulla privacy: niente giro, niente strisce,
+  niente tasti del lavoro. In alto restano giorno e notte, Condividi, Tutorial e Novità.
+  - Una volta entrato, il dispositivo ricorda l'accesso e Casellino funziona anche senza internet. Serve internet
+    solo per entrare.
+  - Il lavoro che c'era già sul dispositivo non si perde: dopo l'accesso si ritrova e si salva nell'account.
+  - **Il lavoro resta di chi l'ha scritto.** Chi esce tenendo il lavoro sul dispositivo lo ritrova solo lui quando
+    rientra: un collega che entra con il suo account su quel telefono non lo vede, e non finisce nel suo account
+    (prima succedeva). Se l'accesso scade (per esempio dopo una password nuova su un altro telefono), si torna al
+    riquadro d'accesso, e il lavoro aspetta.
+  - Eliminare l'account toglie anche il lavoro e le foto dal dispositivo (prima restavano).
+  - Fa eccezione l'anteprima privata per l'azienda, che resta una prova da guardare senza account.
+- **Le novità.** Dopo un aggiornamento con qualcosa di nuovo, appena entri (o appena fai l'accesso) compare una
+  volta sola la finestra «🆕 Novità in Casellino», con le cose essenziali. Chi si registra adesso non la vede: per lui
+  c'è il tutorial. Su un dispositivo nuovo, dopo le novità si apre l'elenco dei tuoi lavori.
+- **«🆕 Novità»**, in alto accanto a «📖 Tutorial» (sul telefono solo 🆕): le ultime novità, versione per versione.
+- Il tutorial, all'ultima pagina, dice del tasto Novità; il «tieni premuto» spiega Novità e il tasto dell'account.
+- L'informativa sulla privacy e il README dicono che serve l'account (aggiornata il 26 novembre 2026).
+- Prove:
+  - `tests/test_accesso.js` (nuova): senza accesso non si vede niente; si entra; le novità una volta sola; il tasto
+    Novità; chi esce tenendo il lavoro lo ritrova solo lui, e un altro account non lo vede;
+  - `tests/test_pagina.js` e `tests/test_anteprima.js` partono con un accesso finto;
+  - in Edge, giorno e notte, telefono e computer, nessun errore.
+- File: `app/index.src.html`, `app/src/ui.js`, `app/src/style.css`, `app/privacy.html`, `tools/tutorial.py`,
+  `tests/test_accesso.js`, `tests/test_pagina.js`, `tests/test_anteprima.js`, `README.md`, `CLAUDE.md`.
+
 ## v0.48.0 · 2026-11-26 · Il dettato
 
 Garadron (26 novembre 2026): «Stavo pensando alla dettatura del [casello]. Quindi tu imposti solo il [casello] e poi

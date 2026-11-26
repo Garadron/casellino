@@ -408,7 +408,8 @@ PAGES = [
      "a che serve e come funziona."),
     (the_end(), "15 · Fatto!",
      "Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: "
-     "ti spiega come scrivere il giro a mano."),
+     "ti spiega come scrivere il giro a mano. Dopo ogni aggiornamento, in alto, <b>«🆕 Novità»</b> ti dice che cosa "
+     "c'è di nuovo."),
 ]
 
 

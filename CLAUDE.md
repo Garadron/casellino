@@ -55,6 +55,13 @@ tutti i postini, non solo alla zona di Garadron.
   email), password più usate rifiutate, Supporto anche senza account (`/api/supporto`, al Gmail di Casellino con il
   «rispondi a»), informativa sulla privacy in `app/privacy.html` (si aggiorna, con la data, quando cambiano i dati
   raccolti o i servizi usati).
+- **Si entra sempre con l'account** (Garadron, 26 novembre 2026: «Deve sempre loggare»), v0.49.0. È un'eccezione alla
+  Regola Mondiale degli account («l'app funziona anche senza account»): senza accesso Casellino mostra solo il
+  riquadro d'accesso, perché i giri sono dati di lavoro e su un telefono o un computer in comune non li deve vedere
+  nessun altro. Il lavoro tenuto sul dispositivo dopo «Esci» lo ritrova solo lo stesso account. L'anteprima per
+  l'azienda resta senza accesso.
+- **Le novità** (Garadron, 26 novembre 2026): ogni versione con qualcosa di nuovo da vedere aggiunge in cima a `NEWS`
+  (`app/src/ui.js`) una o due righe essenziali; compaiono una volta sola appena si entra, e restano in «🆕 Novità».
 - **La proposta all'azienda** (Garadron, 12 novembre 2026): un'anteprima privata con i colori, il logo, le parole e
   il nome ufficiale del programma scelti per l'azienda (`python tools/build.py --anteprima`, tutto in
   nella cartella `Proposta per l'azienda/`, mai su GitHub). Il programma pubblico resta Casellino, senza nome né logo dell'azienda, finché

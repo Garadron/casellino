@@ -703,3 +703,25 @@ dialog.voice-tut .dlg { height: 100%; box-sizing: border-box; }
 .vt-pages > p { margin: 0 0 8px; }
 .vt-foot { display: flex; align-items: center; gap: 8px; }
 .vt-said { font: 16px/1.5 system-ui, sans-serif; background: var(--accent-soft); border-radius: 8px; padding: 8px 10px; min-height: 2.6em; }
+
+/* entering with the account (v0.49.0): until then only the sign-in */
+body.gated main.layout, body.gated nav.actions, body.gated #saved { display: none !important; }
+.gate { display: flex; justify-content: center; padding: 28px 16px 56px; }
+.gate[hidden] { display: none; }
+.gate-card { width: 100%; max-width: 480px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.08); }
+.gate-card h2 { font-size: 22px; }
+.gate-card p { margin: 0; }
+.gate-foot { text-align: center; }
+/* the news */
+.brand .news-open { white-space: nowrap; flex: none; }
+@media (max-width: 560px) {   /* four buttons in the first row: a little closer, so they all fit */
+  .brand .news-word { display: none; }
+  .brand { gap: 4px; }
+  .brand > button:not(.theme-switch) { padding-left: 8px; padding-right: 8px; }
+}
+@media (max-width: 400px) { .brand .tut-icon { display: none; } }
+dialog.news { width: min(560px, calc(100vw - 32px)); }
+.news-version h3 { font-size: 15px; margin: 6px 0 4px; }
+.news-version ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+#news-all[hidden] { display: none; }

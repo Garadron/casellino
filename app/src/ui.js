@@ -3035,6 +3035,114 @@
     }
   }
 
+  // ------------------------------------------------------------ the news (Garadron, 26 November 2026)
+  // Only the essentials of each version, newest first. Shown once by itself, on entering or signing in after an
+  // update; always there from «🆕 Novità». A version with nothing new to see adds nothing here.
+  const NEWS = [
+    { v: '0.49.0', data: '26 novembre 2026', cose: [
+      'Si entra con il tuo account: senza accesso non si vede niente, così i tuoi giri li vedi solo tu.',
+      'Le novità di ogni aggiornamento compaiono una volta sola appena entri. Le rileggi quando vuoi da «🆕 Novità», in alto.'] },
+    { v: '0.48.0', data: '26 novembre 2026', cose: [
+      '🎤 Detta il giro: dici la via e i civici, e Casellino scrive le caselle mentre parli. Si detta in silenzio!',
+      'Puoi continuare dalla fine, aggiungere da un punto o cambiare una casella a voce. Le frasi sono nel tutorial del dettato.'] },
+    { v: '0.47.0', data: '26 novembre 2026', cose: ['🔎 Il controllo anomalie trova anche i civici scritti due volte.'] },
+    { v: '0.46.0', data: '26 novembre 2026', cose: ['🔎 Controllo anomalie: guarda l\'ordine dei civici di ogni via e piazza, senza cambiare niente.'] },
+    { v: '0.45.0', data: '25 novembre 2026', cose: [
+      '🔗 I simbolini: due caselle, anche di vie diverse, con lo stesso simbolino.',
+      'Tieni premuto un tasto per sapere a che cosa serve.'] },
+    { v: '0.44.0', data: '25 novembre 2026', cose: ['☀️ 🌙 Giorno e notte, e 📤 Condividi per mandare Casellino ai colleghi.'] },
+  ];
+  const NEWS_KEY = 'casellino.novita';
+  const vnum = function (v) { return String(v || '').split('.').reduce(function (a, n) { return a * 1000 + (+n || 0); }, 0); };
+  function newsSeen() { try { return localStorage.getItem(NEWS_KEY) || ''; } catch (e) { return NEWS[0].v; } }
+  function newsMarkSeen() { try { localStorage.setItem(NEWS_KEY, NEWS[0].v); } catch (e) { /* only a convenience */ } }
+  // all = the whole list (the button); otherwise what was not seen yet, and nothing if it was all seen.
+  function showNews(all) {
+    const seen = newsSeen();
+    const list = all ? NEWS : (seen ? NEWS.filter(function (n) { return vnum(n.v) > vnum(seen); }) : NEWS.slice(0, 1));
+    if (!list.length) return false;
+    newsMarkSeen();
+    const body = $('news-body');
+    body.textContent = '';
+    list.forEach(function (n) {
+      const ul = h('ul');
+      n.cose.forEach(function (c) { ul.append(h('li', null, c)); });
+      body.append(h('section', { class: 'news-version' }, h('h3', null, 'Versione ' + n.v + ' · ' + n.data), ul));
+    });
+    $('news-title').textContent = all ? '🆕 Le ultime novità' : '🆕 Novità in Casellino';
+    $('news-all').hidden = all || list.length >= NEWS.length;
+    if (!$('dlg-news').open) $('dlg-news').showModal();
+    return true;
+  }
+  let worksAfterNews = false;   // a new device: after the news, the list of the works in the account
+  function wireNews() {
+    $('btn-news').addEventListener('click', function () { showNews(true); });
+    $('news-all').addEventListener('click', function () { showNews(true); });
+    $('dlg-news').addEventListener('close', function () {
+      if (worksAfterNews) { worksAfterNews = false; openAccount(); }
+    });
+  }
+
+  /*
+   * Entering is always with the account (Garadron, 26 November 2026: «Deve sempre loggare»): without it the page
+   * shows only the sign-in, nothing of the work. Not in the preview for the company, which is a demo.
+   */
+  const gated = function () { return document.body.classList.contains('gated'); };
+  function setGate(on) {
+    document.body.classList.toggle('gated', on);
+    $('gate').hidden = !on;
+    if (!on) return;
+    Array.prototype.forEach.call(document.querySelectorAll('dialog[open]'), function (d) {
+      if (d.id !== 'dlg-support' && d.id !== 'dlg-tutorial') d.close();
+    });
+    $('gate-kept').hidden = isEmptyProject();
+    renderAccountDialog();
+  }
+
+  // Signing out keeping the work: it waits on the device for the same account, and no one else sees it.
+  const PARK_KEY = 'casellino.parcheggio';
+  function parked() {
+    try { return JSON.parse(localStorage.getItem(PARK_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function parkWork() {
+    if (!account.utente || isEmptyProject()) return;
+    const park = parked();
+    park[account.utente.toLowerCase()] = state.project;
+    try { localStorage.setItem(PARK_KEY, JSON.stringify(park)); } catch (e) { /* full: the work is in the account anyway */ }
+  }
+  function unparkWork() {
+    const park = parked(), key = account.utente.toLowerCase(), p = park[key];
+    if (!p) return;
+    delete park[key];
+    try {
+      if (Object.keys(park).length) localStorage.setItem(PARK_KEY, JSON.stringify(park));
+      else localStorage.removeItem(PARK_KEY);
+    } catch (e) { /* nothing to tidy */ }
+    if (!isEmptyProject()) return;
+    const back = C.sanitizeProject(p);
+    back.cloud = p.cloud || null;
+    state.project = back;
+    state.current = 0;
+    C.assignColors(state.project);
+    changed();
+    renderAll();
+  }
+  // Out of the account (signed out, or the server says the entry is no longer valid): the page shows only the sign-in.
+  function lockOut(note) {
+    parkWork();
+    account.token = '';
+    accountStore();
+    renderAccountButton();
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* nothing saved */ }
+    state.project = C.newProject();
+    state.current = 0;
+    state.selected = null;
+    renderAll();
+    savedLine('Non ancora salvato');
+    accountNote = note || '';
+    setGate(true);
+  }
+
   // ------------------------------------------------------------ account: works saved online (free, Cloudflare)
 
   const API = window.CASELLINO_API || 'https://casellino.ricettaio-mannisi.workers.dev';
@@ -3072,7 +3180,8 @@
     let data = {};
     try { data = await res.json(); } catch (e) { /* empty answer */ }
     if (res.status === 401 && account.token && path !== '/api/accedi' && path !== '/api/recupera') {
-      account.token = ''; accountStore(); renderAccountButton();
+      if (window.CASELLINO_ANTEPRIMA) { account.token = ''; accountStore(); renderAccountButton(); }
+      else lockOut((data.errore || 'Sei uscito dal tuo account') + ' Il tuo lavoro non si perde: lo ritrovi appena entri.');
     }
     if (!res.ok) {
       const err = new Error(data.errore || ('Errore ' + res.status));
@@ -3236,7 +3345,7 @@
       msg, h('p', { class: 'actions-inline' }, go),
       recovering ? h('p', { class: 'small' },
         mailSent ? switchTo('Mandami un altro codice', function () { mailSent = null; renderAccountDialog(); }) : null,
-        switchTo('Non ho più quell\'email: scrivo al supporto', function () { $('dlg-account').close(); openSupport(); })) : null);
+        switchTo('Non ho più quell\'email: scrivo al supporto', function () { if ($('dlg-account').open) $('dlg-account').close(); openSupport(); })) : null);
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       msg.textContent = '';
@@ -3264,12 +3373,12 @@
         go.disabled = false;
       }
     });
-    box.append(
-      h('p', null, 'Con un account i tuoi lavori si salvano da soli mentre scrivi e li ritrovi da qualsiasi telefono o computer. È gratis.'),
-      tabs, form,
+    if (!gated()) box.append(h('p', null, 'Con un account i tuoi lavori si salvano da soli mentre scrivi e li ritrovi da qualsiasi telefono o computer. È gratis.'));
+    box.append(tabs, form,
       h('p', { class: 'small muted' }, 'Se dimentichi la password ti mando un codice all\'email dell\'account. ' +
         'L\'email nel server resta nascosta: nessuno la può leggere, nemmeno da lì. Nell\'account si salvano solo i tuoi lavori.'));
-    setTimeout(function () { (mailSent ? mailCode : (recovering ? email : user)).focus(); }, 30);
+    // on the sign-in page of a phone the keyboard does not jump out by itself
+    if (!(gated() && isTouch)) setTimeout(function () { (mailSent ? mailCode : (recovering ? email : user)).focus(); }, 30);
   }
   const USER_TIP = 'Usa pure il tuo stesso nome utente che usi nel palmare se ti viene più facile da ricordare. Ma non la stessa password!';
 
@@ -3342,12 +3451,29 @@
 
   // After signing in: the code to keep (new account or new password), then the works.
   async function afterSignIn(mode) {
-    if (mode === 'registrati') tutorialAfterAccount = true;
+    const fromGate = gated();
+    if (fromGate) setGate(false);
+    unparkWork();
     if (!state.project.cloud && !isEmptyProject()) {
       await cloudSave(false);
       if (state.project.cloud) toast('Il lavoro aperto ora è salvato anche nel tuo account.');
+    } else if (state.project.cloud) syncFromAccount();
+    if (!fromGate) {
+      if (mode === 'registrati') tutorialAfterAccount = true;
+      renderAccountDialog({ done: mode === 'registrati' ? 'Account creato.' : (mode === 'recupera' ? 'Password cambiata: gli altri dispositivi sono usciti.' : '') });
+      return;
     }
-    renderAccountDialog({ done: mode === 'registrati' ? 'Account creato.' : (mode === 'recupera' ? 'Password cambiata: gli altri dispositivi sono usciti.' : '') });
+    if (mode === 'registrati') {   // someone new: the tutorial, and the news are already in it
+      newsMarkSeen();
+      toast('Account creato. Benvenuto in Casellino!');
+      openTutorial();
+      return;
+    }
+    if (mode === 'recupera') toast('Password cambiata: gli altri dispositivi sono usciti.');
+    else toast('Ciao ' + account.utente + '!');
+    const empty = isEmptyProject();   // a new device: the works saved in the account
+    if (showNews(false)) worksAfterNews = empty;
+    else if (empty) openAccount();
   }
 
   async function worksList(box) {
@@ -3414,7 +3540,13 @@
   function renderAccountDialog(extra) {
     const box = $('account-body');
     box.textContent = '';
-    if (!account.token) { $('account-title').textContent = 'Il tuo account'; accountForm(box); return; }
+    if (!account.token) {
+      $('account-title').textContent = 'Il tuo account';
+      const into = gated() ? $('gate-body') : box;
+      into.textContent = '';
+      accountForm(into);
+      return;
+    }
     $('account-title').textContent = 'Account: ' + account.utente;
     if (extra && extra.done) box.append(h('p', { class: 'done-note' }, extra.done));
     worksList(box);
@@ -3426,40 +3558,31 @@
   }
 
   async function signOut() {
-    const forget = confirm('Esco dall\'account.\n\nOK = tolgo anche il lavoro da questo dispositivo (consigliato se il computer non è tuo, per esempio in ufficio)\nAnnulla = il lavoro resta qui');
+    const forget = confirm('Esco dall\'account.\n\nOK = tolgo anche il lavoro e le foto da questo dispositivo (consigliato se il computer non è tuo, per esempio in ufficio)\nAnnulla = restano qui, ma li ritrovi solo tu quando rientri');
     if (account.saving || (state.project.cloud && !isEmptyProject())) await cloudSave(false);
     try { await api('POST', '/api/esci', {}); } catch (e) { /* signed out anyway on this device */ }
-    account.token = ''; account.utente = '';
-    accountStore();
-    renderAccountButton();
-    if (forget) {
-      try { localStorage.removeItem(STORE_KEY); } catch (e) { /* nothing saved */ }
-      forgetAllPhotos();
-      if ($('dlg-photos').open) $('dlg-photos').close();
-      state.project = C.newProject();
-      state.current = 0;
-      renderAll();
-      savedLine('Uscito: su questo dispositivo non c\'è più niente');
-    } else {
-      state.project.cloud = null;
-      changed();
-    }
     $('dlg-account').close();
+    if (forget) {
+      forgetAllPhotos();
+      state.project = C.newProject();
+    }
+    lockOut('');
+    account.utente = '';
     toast('Sei uscito dal tuo account.');
   }
 
   async function deleteAccount() {
-    const pw = prompt('Per eliminare l\'account e tutti i lavori salvati lì, scrivi la tua password. Non si torna indietro.');
+    const pw = prompt('Per eliminare l\'account e tutti i lavori salvati lì e su questo dispositivo, scrivi la tua password. ' +
+      'Non si torna indietro: se vuoi tenerne una copia, prima usa «Salva file».');
     if (!pw) return;
     try {
       await api('POST', '/api/elimina-account', { password: pw });
-      account.token = ''; account.utente = '';
-      accountStore();
-      state.project.cloud = null;
-      changed();
-      renderAccountButton();
       $('dlg-account').close();
-      toast('Account eliminato. Il lavoro aperto resta su questo dispositivo.');
+      forgetAllPhotos();
+      state.project = C.newProject();
+      lockOut('');
+      account.utente = '';
+      toast('Account eliminato.');
     } catch (e) { toast(e.message); }
   }
 
@@ -4050,7 +4173,8 @@
     ['#btn-theme', '☀️/🌙 Giorno e notte', 'L\'interruttore tra pagina chiara e pagina scura.', 'Di sera o al buio la pagina scura stanca meno gli occhi.', 'All\'inizio segue il telefono o il computer. Toccalo per scegliere tu: la scelta resta, anche quando riapri.'],
     ['#btn-share, #btn-share-menu', '📤 Condividi', 'Il link di Casellino da mandare ai colleghi.', 'Così anche loro scrivono il giro e stampano le strisce, gratis.', 'Sul telefono si apre la condivisione (WhatsApp, email…). Sul computer il link si copia e compare il codice QR da inquadrare.'],
     ['#btn-tutorial', '📖 Tutorial', 'Il giro guidato di Casellino, a fumetti.', 'Per imparare a fare le foto del casello e a usare i tasti.', 'Si sfoglia con «Continua» e ◀; «Salta» lo chiude. Si riapre quando vuoi da qui.'],
-    ['#btn-account', '👤 Accedi', 'Il tuo account di Casellino.', 'Per ritrovare il tuo giro su un altro telefono o computer.', 'Ti registri con nome, email e password. Senza account Casellino funziona lo stesso, solo su questo dispositivo.'],
+    ['#btn-account', '👤 Il tuo account', 'Il tuo account di Casellino: i tuoi lavori, il nome, l\'email, Esci.', 'Per ritrovare il tuo giro su un altro telefono o computer.', 'Senza account Casellino non si apre: così i tuoi giri li vedi solo tu.'],
+    ['#btn-news', '🆕 Novità', 'Le ultime novità di Casellino, solo le essenziali.', 'Per sapere che cosa c\'è di nuovo dopo un aggiornamento.', 'Compaiono da sole una volta, appena entri dopo un aggiornamento. Da qui le rileggi quando vuoi.'],
     ['#btn-open', 'Apri', 'Apre un file di Casellino salvato prima (o un Excel o un testo).', 'Per riprendere un giro salvato in un file o arrivato da un collega.', 'Scegli il file: il giro che c\'era sullo schermo viene sostituito.'],
     ['#btn-save', 'Salva file', 'Salva tutto il lavoro in un file sul dispositivo.', 'È la copia di sicurezza: si riapre con «Apri», anche su un altro dispositivo.', 'Il file finisce nei download. Dal computer anche con Ctrl+S.'],
     ['.print-menu > summary', 'Stampa', 'Il menu per stampare le strisce.', 'Per avere le strisce di carta da mettere sotto le file del casello.', 'Scegli come mettere le strisce sul foglio, poi il PDF (consigliato) o l\'Excel. Stampa sempre a dimensioni reali (100%).'],
@@ -4293,6 +4417,8 @@
     wirePreview();
     wireViewer();
     $('btn-account').addEventListener('click', openAccount);
+    $('gate-support').addEventListener('click', openSupport);
+    wireNews();
     window.addEventListener('online', function () { if (account.token) cloudSave(false); });
     [['depot-town', 'comune'], ['depot-prov', 'provincia'], ['depot-street', 'via'], ['depot-number', 'civico']].forEach(function (f) {
       $(f[0]).addEventListener('input', function (e) {
@@ -4365,7 +4491,11 @@
     C.assignColors(state.project);
     renderAll();
     if (stored && p === stored) $('saved').textContent = 'Ripreso da questo dispositivo';
-    if (stored && p === stored) syncFromAccount();   // the account may have a newer copy (saved on another device)
+    if (!account.token && !window.CASELLINO_ANTEPRIMA) setGate(true);   // first the sign-in, then the work
+    else {
+      if (stored && p === stored) syncFromAccount();   // the account may have a newer copy (saved on another device)
+      if (!window.CASELLINO_ANTEPRIMA) showNews(false);
+    }
     const v = $('version');
     if (v && window.CASELLINO_VERSION) v.textContent = 'Versione ' + window.CASELLINO_VERSION;
     registerOffline();
