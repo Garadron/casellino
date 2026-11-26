@@ -380,7 +380,7 @@ PAGES = [
      "quando qualcuno cambia casa."),
     (anomalies(), "12 · Controllo anomalie",
      "Hai finito il giro? Premi <b>«🔎 Controllo anomalie»</b>: guarda l'ordine dei civici in ogni via e piazza e ti "
-     "mostra <b>in giallo</b> quelli fuori posto, come il 9 in «1, 3, 5, 9, 7». <b>Non cambia niente</b>: se il "
+     "mostra <b>in giallo</b> quelli fuori posto, come il 9 in «1, 3, 5, 9, 7», e quelli <b>ripetuti</b>. <b>Non cambia niente</b>: se il "
      "disordine è voluto lo lasci, se no lo correggi tu."),
     (hold(), "13 · Tieni premuto",
      "Non sai a che serve un tasto o una casella? <b>Tienilo premuto</b>: si apre una finestrina che ti dice che cos'è, "

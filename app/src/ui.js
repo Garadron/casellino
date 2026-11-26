@@ -3567,9 +3567,30 @@
       });
       box.append(sec);
     });
-    $('anomalies-sum').textContent = total
-      ? '⚠️ ' + total + (total === 1 ? ' civico fuori posto' : ' civici fuori posto') + ' in ' + streets + (streets === 1 ? ' riga' : ' righe') + ': in giallo.'
-      : '✅ Nessuna anomalia: in tutte le vie e le piazze i civici sono in ordine.';
+    // the same number of the same street written more than once (Garadron, 26 November 2026)
+    const dups = C.findDuplicates(state.project);
+    if (dups.length) {
+      const sec = h('section', null, h('h3', null, 'Civici ripetuti'));
+      dups.forEach(function (d) {
+        const card = h('div', { class: 'anom' },
+          h('p', null, '⚠️ ', h('b', null, d.places[0].street + ' ' + d.places[0].number), ' è scritto ' + d.places.length + ' volte:'));
+        d.places.forEach(function (x) {
+          card.append(h('p', { class: 'small' }, '• ' + x.text + ' · riga ' + (x.line + 1) + ' del giro ',
+            h('button', { type: 'button', onclick: function () {
+              $('dlg-anomalies').close();
+              if (x.zone !== state.current) openSubzone(x.zone);
+              setTimeout(function () { goToLine(x.line); }, 50);
+            } }, 'Vai alla riga')));
+        });
+        sec.append(card);
+      });
+      box.append(sec);
+    }
+    const said = [];
+    if (total) said.push(total + (total === 1 ? ' civico fuori posto' : ' civici fuori posto') + ' in ' + streets + (streets === 1 ? ' riga' : ' righe') + ' (in giallo)');
+    if (dups.length) said.push(dups.length + (dups.length === 1 ? ' civico ripetuto' : ' civici ripetuti'));
+    $('anomalies-sum').textContent = said.length ? '⚠️ ' + said.join(' e ') + '.'
+      : '✅ Nessuna anomalia: in tutte le vie e le piazze i civici sono in ordine e nessuno è ripetuto.';
     $('dlg-anomalies').showModal();
   }
 
@@ -3629,7 +3650,7 @@
     [/^👥/, '👥 Lo consegna un collega', 'Segna le caselle che porta un collega di un\'altra linea.', 'Chi smista vede subito che quella posta non è tua.', 'Tocca la casella nella striscia e premi il tasto: sotto il numero compare una riga spessa, anche nella stampa. Premi di nuovo per toglierla. Dal computer anche con il cursore sul civico nel giro.'],
     [/^🔗 Lega/, '🔗 Lega a un\'altra casella', 'Dà lo stesso simbolino (cerchio, stella, luna…) a due o più caselle, anche di vie diverse.', 'Quando la posta di chi abita lì la porti in un altro posto: per esempio i padroni di un bar, a cui la porti al bar.', 'Premi il tasto e poi tocca l\'altra casella nella striscia. Il simbolino ha un colore che si vede bene sulle vie di tutte e due. In «Stampa» scegli se averli dentro le strisce o su carta adesiva.'],
     [/^✖ Togli il simbolino/, '✖ Togli il simbolino', 'Toglie il simbolino da questa casella.', 'Quando qualcuno cambia casa e la posta torna a casa sua.', 'Se restava una casella sola con quel simbolino, lo toglie anche da lì.'],
-    [/^🔎 Controllo anomalie/, '🔎 Controllo anomalie', 'Controlla l\'ordine dei civici in ogni via e piazza di tutto il casello.', 'Per trovare i numeri scritti fuori posto (per fretta, o aggiunti dopo), come 1, 3, 5, 9, 7.', 'Mostra in giallo i civici fuori posto, riga per riga, con «Vai alla riga». Non cambia niente: un disordine voluto lo lasci, uno sbagliato lo correggi tu nel giro.'],
+    [/^🔎 Controllo anomalie/, '🔎 Controllo anomalie', 'Controlla l\'ordine dei civici in ogni via e piazza di tutto il casello, e i civici ripetuti.', 'Per trovare i numeri scritti fuori posto (per fretta, o aggiunti dopo), come 1, 3, 5, 9, 7, e quelli scritti più volte.', 'Mostra in giallo i civici fuori posto, riga per riga, con «Vai alla riga». Non cambia niente: un disordine voluto lo lasci, uno sbagliato lo correggi tu nel giro.'],
     [/^🔒 Blocca/, '🔒 Blocca il giro controllato', 'Blocca vie e civici di questa sottozona.', 'Così non si cambiano per sbaglio dopo averli controllati.', 'Si sblocca quando vuoi con «Sblocca».'],
     ['.cell.top', 'Una casella', 'Una casella del casello, con il suo civico.', 'Qui vedi come uscirà la striscia stampata.', 'Toccala per vedere via e civico e per i tasti: collega 👥, simbolino 🔗, mappa. Riga spessa sotto il numero: la porta un collega. Simbolino nell\'angolo: è legata ad altre caselle con lo stesso simbolino.'],
     ['.cell.run', 'Il nome della via', 'La riga di sotto della striscia, con il nome della via.', 'Il nome sta sotto tutte le caselle della sua via, nel suo colore.', 'Toccala per vedere la prima casella della via. Il colore si cambia nell\'elenco delle vie.'],

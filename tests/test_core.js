@@ -899,6 +899,13 @@ test('anomaly check: streets and squares, nothing changed', function () {
   // squares: all the numbers one after the other
   assert.deepStrictEqual(bad('PIAZZA H: 1, 3, 2, 4, 5, 6'), ['3']);
   assert.deepStrictEqual(bad('P.ZA I: 6, 5, 4, 2, 3, 1'), ['2']);
+  // a number written twice is not "out of place": it is told as repeated
+  assert.deepStrictEqual(bad('VIA R: 1, 3, 3, 5, 7'), []);
+  const rp = Core.newProject();
+  rp.subzones[0].modules = { alaA: false, casello: true, alaB: true };
+  rp.subzones[0].route = 'VIA R: 1, 3, 3, 5\nVIA S: 2\nVIA R: 7, 5';
+  const dups = Core.findDuplicates(rp);
+  assert.deepStrictEqual(dups.map(function (d) { return d.number + ':' + d.places.map(function (x) { return x.line; }).join(','); }), ['3:0,0', '5:0,2']);
   const a = Core.orderAnomalies('VIA A: 1, 3, 5, 9, 7, 11', '')[0];
   assert.strictEqual(a.parity, 'dispari');
   assert.strictEqual(a.way, 'in salita');

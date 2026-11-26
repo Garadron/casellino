@@ -643,7 +643,9 @@
         });
       });
       ['all', 'dispari', 'pari'].forEach(function (k) {
-        const list = entries.filter(function (e) { return e.group === k; });
+        // a number written twice is told apart, as repeated (findDuplicates), not as out of place
+        const once = {};
+        const list = entries.filter(function (e) { return e.group === k && !once[e.v] && (once[e.v] = true); });
         if (list.length < 3) return;
         const r = keep(list.map(function (e) { return e.v; }));
         if (r.n === list.length) return;
@@ -865,14 +867,15 @@
         [c.top, c.second].forEach(function (n) {
           if (!c.key || !/^\d+\s*[A-Z]?$/i.test(n)) return;
           const key = c.key + '|' + norm(n).replace(/\s/g, '');
-          (seen[key] = seen[key] || []).push(placeName(sz, c));
+          (seen[key] = seen[key] || []).push({ text: placeName(sz, c), zone: k, line: c.line, street: c.street, number: n });
         });
       });
     });
     Object.keys(seen).forEach(function (k) {
       if (seen[k].length > 1) {
         const parts = k.split('|');
-        dups.push({ street: parts[0], number: parts[2], town: parts[1], where: seen[k] });
+        // where: the places in words; places: sub-zone and line of each one (to go there)
+        dups.push({ street: parts[0], number: parts[2], town: parts[1], where: seen[k].map(function (x) { return x.text; }), places: seen[k] });
       }
     });
     return dups;

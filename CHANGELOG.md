@@ -1,5 +1,22 @@
 # Registro delle versioni
 
+## v0.47.0 · 2026-11-26 · Il controllo anomalie trova anche i civici ripetuti
+
+Garadron (26 novembre 2026): «O anche se sono ripetuti, aggiungiamo.»
+
+- **«🔎 Controllo anomalie» segna anche i civici ripetuti**: lo stesso numero della stessa via scritto più volte,
+  nella stessa riga, in righe diverse o in un'altra sottozona. Per ognuno dice quante volte è scritto e dove (fila,
+  modulo, casella e riga del giro), con «Vai alla riga» per ogni posto. Il riepilogo in alto conta i fuori posto e i
+  ripetuti. Come sempre non cambia niente.
+- Un numero scritto due volte non compare più anche come «fuori posto»: è contato solo tra i ripetuti.
+- Il tutorial, la spiegazione del tasto e quella del «tieni premuto» dicono anche dei ripetuti.
+- Prove:
+  - `tests/test_core.js`: i ripetuti nella stessa riga e in righe diverse, con la riga di ognuno;
+  - `tests/test_pagina.js`: il tasto mostra il civico ripetuto;
+  - in Edge, giorno e notte, telefono e computer, nessun errore.
+- File: `app/src/core.js`, `app/src/ui.js`, `app/index.src.html`, `tools/tutorial.py`, `tests/test_core.js`,
+  `tests/test_pagina.js`, `Casellino.html`, `sito/`.
+
 ## v0.46.0 · 2026-11-26 · Il controllo anomalie
 
 Idea di Garadron (26 novembre 2026): un tasto che controlla l'ordine dei civici in tutte le vie e le piazze. Il tasto

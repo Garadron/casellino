@@ -164,6 +164,12 @@ function caretAt(ta, needle, offset) {
   assert.strictEqual(doc.querySelectorAll('#anomalies-list mark').length, 1, 'un civico in giallo');
   assert.strictEqual(rb.value, routeOdd, 'non cambia niente');
   doc.getElementById('dlg-anomalies').close();
+  rb.value = rb.value.replace('VIA DEI TIGLI: 1, 3, 5, 9, 7,', 'VIA DEI TIGLI: 1, 3, 3, 5, 7, 9,');
+  rb.dispatchEvent(new win.Event('input'));
+  doc.querySelector('.route-actions .anomalies-btn').dispatchEvent(new win.Event('click'));
+  assert.ok(/Civici ripetuti/.test(text('#anomalies-list')) && /VIA DEI TIGLI 3 è scritto 2 volte/.test(text('#anomalies-list')) &&
+    /1 civico ripetuto/.test(text('#anomalies-sum')), text('#anomalies-sum') + ' / ' + text('#anomalies-list'));
+  doc.getElementById('dlg-anomalies').close();
   rb.value = routeBefore;
   rb.dispatchEvent(new win.Event('input'));
   doc.getElementById('btn-anomalies-menu').dispatchEvent(new win.Event('click'));
