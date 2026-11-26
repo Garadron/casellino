@@ -313,6 +313,20 @@ def linked():
     return svg(182, "\n".join(out), "Il 5 di via dei Tigli e il bar hanno la stessa stella; sotto, gli adesivi da ritagliare")
 
 
+def anomalies():
+    nums = ["1", "3", "5", "9", "7", "11"]
+    out = [f'<rect x="20" y="20" width="320" height="34" rx="8" fill="#fff" stroke="{INK}" stroke-width="2"/>',
+           label(180, 43, "🔎 Controllo anomalie", 14)]
+    for k, n in enumerate(nums):
+        x = 40 + k * 48
+        if n == "9":
+            out.append(f'<rect x="{x - 4}" y="78" width="40" height="34" rx="6" fill="#ffd54f" stroke="#e8a317" stroke-width="3"/>')
+        out.append(label(x + 16, 102, n + ("," if k < len(nums) - 1 else ""), 18, weight=900))
+    out.append(label(180, 140, "VIA DEI TIGLI · i dispari in salita", 12))
+    out.append(label(180, 162, "⚠️ il 9 è fuori posto: sta tra il 5 e il 7", 12, "#9a5200"))
+    return svg(178, "\n".join(out), "Il controllo anomalie mostra in giallo il 9 fuori posto in 1, 3, 5, 9, 7, 11")
+
+
 def hold():
     out = [phone(20, 150, f"""<rect x="42" y="70" width="106" height="30" rx="8" fill="#2c6db3" stroke="{INK}" stroke-width="1.5"/>
 {label(95, 89, "📄 PDF", 11, "#fff")}
@@ -364,10 +378,14 @@ PAGES = [
      "tutte e due prendono <b>lo stesso simbolino</b> (stella, cerchio, luna…), di un colore che si vede bene. "
      "In «Stampa» scegli se averli <b>dentro le strisce</b> o <b>a parte, su carta adesiva</b>, da attaccare e staccare "
      "quando qualcuno cambia casa."),
-    (hold(), "12 · Tieni premuto",
+    (anomalies(), "12 · Controllo anomalie",
+     "Hai finito il giro? Premi <b>«🔎 Controllo anomalie»</b>: guarda l'ordine dei civici in ogni via e piazza e ti "
+     "mostra <b>in giallo</b> quelli fuori posto, come il 9 in «1, 3, 5, 9, 7». <b>Non cambia niente</b>: se il "
+     "disordine è voluto lo lasci, se no lo correggi tu."),
+    (hold(), "13 · Tieni premuto",
      "Non sai a che serve un tasto o una casella? <b>Tienilo premuto</b>: si apre una finestrina che ti dice che cos'è, "
      "a che serve e come funziona."),
-    (the_end(), "13 · Fatto!",
+    (the_end(), "14 · Fatto!",
      "Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: "
      "ti spiega come scrivere il giro a mano."),
 ]

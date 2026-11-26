@@ -275,12 +275,14 @@
               if (!confirm('Sblocco il giro della ' + (s.name || 'sottozona') + '? Potrai di nuovo cambiare vie e civici.')) return;
               s.locked = 0; changed(); renderSubzone();
             } }, 'Sblocca'), ' ',
-            window.indexedDB ? h('button', { type: 'button', class: 'photos-view-btn', onclick: function () { openViewer(); } }, '🖼 Guarda le foto') : null)
+            window.indexedDB ? h('button', { type: 'button', class: 'photos-view-btn', onclick: function () { openViewer(); } }, '🖼 Guarda le foto') : null, ' ',
+            h('button', { type: 'button', class: 'anomalies-btn', onclick: checkAnomalies }, '🔎 Controllo anomalie'))
         : h('p', { class: 'route-actions' },
             h('button', { type: 'button', class: 'primary photo-btn', onclick: openPhotos }, '📷 Carica e leggi le foto delle strisce'),
             window.indexedDB ? h('button', { type: 'button', class: 'photos-view-btn', onclick: function () { openViewer(); } }, '🖼 Guarda le foto') : null,
             h('button', { type: 'button', title: 'I civici scelti (cursore o selezione) li consegna un collega, di un\'altra linea: nelle strisce la casella del numero è sottolineata. Premi di nuovo per togliere. Dal telefono: tocca la casella nella striscia.',
               onmousedown: function (e) { e.preventDefault(); }, onclick: toggleOtherLine }, '👥 Lo consegna un collega'),
+            h('button', { type: 'button', class: 'anomalies-btn', onclick: checkAnomalies }, '🔎 Controllo anomalie'),
             h('button', { type: 'button', onclick: function () {
               if (!confirm('Hai controllato tutte le vie, le cascine e i civici di questo giro? Lo blocco: non si potrà cambiare per sbaglio. (Si sblocca quando vuoi.)')) return;
               s.locked = Date.now(); changed(); renderSubzone();
@@ -3522,6 +3524,55 @@
     }
   }
 
+  /*
+   * Controllo anomalie (Garadron, 26 November 2026): the numbers out of order in every street and square of every
+   * sub-zone. It only shows them, with a button to the line: nothing is changed.
+   */
+  // "l'1", "l'8", "l'11", "dell'1"…: the article of a number as it is read
+  const VOWEL_NUMBER = /^(8|1(\D|$)|11(\D|$))/;
+  function theNumber(t) { return (VOWEL_NUMBER.test(t) ? 'l\'' : 'il ') + t; }
+  function ofNumber(t) { return (VOWEL_NUMBER.test(t) ? 'dell\'' : 'del ') + t; }
+  function checkAnomalies() {
+    document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
+    const box = $('anomalies-list');
+    box.textContent = '';
+    let total = 0, streets = 0;
+    state.project.subzones.forEach(function (s, zi) {
+      const list = C.orderAnomalies(s.route, s.town);
+      if (!list.length) return;
+      const sec = h('section', null, h('h3', null, 'Sottozona ' + (s.name || zi + 1)));
+      list.forEach(function (a) {
+        total += a.bad.length;
+        streets++;
+        const seq = h('p', { class: 'anom-seq' });
+        a.seq.forEach(function (x, i) {
+          if (i) seq.append(', ');
+          seq.append(x.bad ? h('mark', null, x.text) : x.text);
+        });
+        const card = h('div', { class: 'anom' },
+          h('p', null, h('b', null, a.street), ' · riga ' + (a.line + 1) + ' del giro · ' +
+            (a.square ? 'piazza: i numeri uno dopo l\'altro, ' : 'i ' + a.parity + ' ') + a.way),
+          seq);
+        a.bad.forEach(function (b) {
+          const where = b.before && b.after ? 'sta tra ' + theNumber(b.before) + ' e ' + theNumber(b.after)
+            : b.before ? 'viene dopo ' + theNumber(b.before) : 'viene prima ' + ofNumber(b.after);
+          card.append(h('p', { class: 'small' }, '⚠️ ' + theNumber(b.text).replace(/^./, function (x) { return x.toUpperCase(); }) + ' è fuori posto: ' + where + '.'));
+        });
+        card.append(h('p', null, h('button', { type: 'button', onclick: function () {
+          $('dlg-anomalies').close();
+          if (zi !== state.current) openSubzone(zi);
+          setTimeout(function () { goToLine(a.line); }, 50);
+        } }, 'Vai alla riga')));
+        sec.append(card);
+      });
+      box.append(sec);
+    });
+    $('anomalies-sum').textContent = total
+      ? '⚠️ ' + total + (total === 1 ? ' civico fuori posto' : ' civici fuori posto') + ' in ' + streets + (streets === 1 ? ' riga' : ' righe') + ': in giallo.'
+      : '✅ Nessuna anomalia: in tutte le vie e le piazze i civici sono in ordine.';
+    $('dlg-anomalies').showModal();
+  }
+
   function hasLinks() { return state.project.subzones.some(function (x) { return /@\s*\d/.test(x.route); }); }
   // The PDF of the link symbols to stick on: one sticker per pigeonhole, as wide as the pigeonhole.
   function downloadStickers(quiet) {
@@ -3578,6 +3629,7 @@
     [/^👥/, '👥 Lo consegna un collega', 'Segna le caselle che porta un collega di un\'altra linea.', 'Chi smista vede subito che quella posta non è tua.', 'Tocca la casella nella striscia e premi il tasto: sotto il numero compare una riga spessa, anche nella stampa. Premi di nuovo per toglierla. Dal computer anche con il cursore sul civico nel giro.'],
     [/^🔗 Lega/, '🔗 Lega a un\'altra casella', 'Dà lo stesso simbolino (cerchio, stella, luna…) a due o più caselle, anche di vie diverse.', 'Quando la posta di chi abita lì la porti in un altro posto: per esempio i padroni di un bar, a cui la porti al bar.', 'Premi il tasto e poi tocca l\'altra casella nella striscia. Il simbolino ha un colore che si vede bene sulle vie di tutte e due. In «Stampa» scegli se averli dentro le strisce o su carta adesiva.'],
     [/^✖ Togli il simbolino/, '✖ Togli il simbolino', 'Toglie il simbolino da questa casella.', 'Quando qualcuno cambia casa e la posta torna a casa sua.', 'Se restava una casella sola con quel simbolino, lo toglie anche da lì.'],
+    [/^🔎 Controllo anomalie/, '🔎 Controllo anomalie', 'Controlla l\'ordine dei civici in ogni via e piazza di tutto il casello.', 'Per trovare i numeri scritti fuori posto (per fretta, o aggiunti dopo), come 1, 3, 5, 9, 7.', 'Mostra in giallo i civici fuori posto, riga per riga, con «Vai alla riga». Non cambia niente: un disordine voluto lo lasci, uno sbagliato lo correggi tu nel giro.'],
     [/^🔒 Blocca/, '🔒 Blocca il giro controllato', 'Blocca vie e civici di questa sottozona.', 'Così non si cambiano per sbaglio dopo averli controllati.', 'Si sblocca quando vuoi con «Sblocca».'],
     ['.cell.top', 'Una casella', 'Una casella del casello, con il suo civico.', 'Qui vedi come uscirà la striscia stampata.', 'Toccala per vedere via e civico e per i tasti: collega 👥, simbolino 🔗, mappa. Riga spessa sotto il numero: la porta un collega. Simbolino nell\'angolo: è legata ad altre caselle con lo stesso simbolino.'],
     ['.cell.run', 'Il nome della via', 'La riga di sotto della striscia, con il nome della via.', 'Il nome sta sotto tutte le caselle della sua via, nel suo colore.', 'Toccala per vedere la prima casella della via. Il colore si cambia nell\'elenco delle vie.'],
@@ -3728,6 +3780,7 @@
     $('btn-bug').addEventListener('click', openReport);
     $('btn-support').addEventListener('click', function () { closeMenu(); openSupport(); });
     wireLinkPrint();
+    $('btn-anomalies-menu').addEventListener('click', checkAnomalies);
     wireHints();
     $('btn-share').addEventListener('click', share);
     $('btn-share-menu').addEventListener('click', share);

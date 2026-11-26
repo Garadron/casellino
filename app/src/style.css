@@ -377,6 +377,12 @@ a.btn, label.btn {
   display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px;
   background: var(--panel); color: var(--text); border: 2px solid #aa00ff; box-shadow: 0 6px 24px rgba(0,0,0,.3); }
 .link-bar p { margin: 0; flex: 1; }
+/* the anomaly check */
+#anomalies-list h3 { margin: 14px 0 6px; }
+.anom { border: 1px solid var(--line, #ccc); border-left: 4px solid #e8a317; border-radius: 8px; padding: 8px 10px; margin: 0 0 8px; }
+.anom p { margin: 0 0 4px; }
+.anom-seq { font: 700 15px/1.5 Arial, system-ui, sans-serif; word-break: break-word; }
+.anom-seq mark { background: #ffd54f; color: #111; border-radius: 4px; padding: 0 3px; outline: 2px solid #e8a317; }
 /* long press: the little window that explains */
 .hint h2 { margin-top: 0; }
 .hint h3 { margin: 12px 0 2px; font-size: 1rem; }

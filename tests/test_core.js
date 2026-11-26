@@ -887,6 +887,28 @@ test('link symbols: written, changed, grouped, printed', function () {
   assert.strictEqual(Pdf.buildStickers(Core.newProject(), 'x'), null, 'senza simbolini niente adesivi');
 });
 
+test('anomaly check: streets and squares, nothing changed', function () {
+  const bad = function (line) { return Core.orderAnomalies(line, '').map(function (a) { return a.bad.map(function (b) { return b.text; }).join(' '); }); };
+  // streets: each side in its own way, mixed, one after the other, up and down: all right
+  ['VIA B: 1, 2, 4, 3, 5, 6, 7, 9, 8', 'VIA C: 1, 3, 5, 7, 2, 4, 6', 'VIA D: 9, 7, 5, 3, 1, 2, 4, 6', 'VIA E: 15..1, 2..14',
+    'VIA M: 20A..20E, 22/24, 26, 28', 'PIAZZA F: 1, 2, 3, 4, 5', 'PIAZZA G: 5, 4, 3, 2, 1', 'BAR X', 'VIA O: 1, 3*, 5@1, 7']
+    .forEach(function (l) { assert.deepStrictEqual(bad(l), [], l); });
+  assert.deepStrictEqual(bad('VIA A: 1, 3, 5, 9, 7, 11'), ['9']);
+  assert.deepStrictEqual(bad('VIA N: 2, 4, 10, 6, 8, 12'), ['10']);
+  assert.deepStrictEqual(bad('VIA L: 1/3, 5/7, 11, 9, 13'), ['11']);
+  // squares: all the numbers one after the other
+  assert.deepStrictEqual(bad('PIAZZA H: 1, 3, 2, 4, 5, 6'), ['3']);
+  assert.deepStrictEqual(bad('P.ZA I: 6, 5, 4, 2, 3, 1'), ['2']);
+  const a = Core.orderAnomalies('VIA A: 1, 3, 5, 9, 7, 11', '')[0];
+  assert.strictEqual(a.parity, 'dispari');
+  assert.strictEqual(a.way, 'in salita');
+  assert.deepStrictEqual([a.bad[0].before, a.bad[0].after], ['5', '7']);
+  // the example is in order
+  const ex = Core.textToProject(EXAMPLE);
+  assert.ok(ex.subzones.some(function (sz) { return sz.route.trim(); }));
+  ex.subzones.forEach(function (sz) { assert.deepStrictEqual(Core.orderAnomalies(sz.route, sz.town), [], sz.name); });
+});
+
 asyncTests().then(function () {
   console.log(passed + ' prove superate' + (process.exitCode ? ', ALCUNE FALLITE' : ''));
 });

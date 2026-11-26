@@ -1,5 +1,30 @@
 # Registro delle versioni
 
+## v0.46.0 · 2026-11-26 · Il controllo anomalie
+
+Idea di Garadron (26 novembre 2026): un tasto che controlla l'ordine dei civici in tutte le vie e le piazze. Il tasto
+controlla e basta, senza cambiare niente: un disordine può essere voluto per comodità del giro, oppure scritto per
+fretta o aggiunto dopo, e decide il postino.
+
+- **🔎 Controllo anomalie**: sopra il giro (anche quando il giro è bloccato) e nel menu «Altro». Guarda tutte le
+  sottozone, riga per riga.
+  - **Vie** (via, viale, vicolo, corso…): i dispari tutti in un verso e i pari tutti in un verso, in salita o in
+    discesa. Vanno bene mescolati (1, 2, 4, 3, 5), un lato dopo l'altro (1, 3, 5, 7, 2, 4, 6) e un lato che sale e
+    l'altro che scende.
+  - **Piazze**: tutti i numeri uno dopo l'altro, in salita o in discesa (1, 2, 3, 4, 5 oppure 5, 4, 3, 2, 1).
+  - Per ogni riga con un'anomalia mostra la via, il verso, i civici con quelli fuori posto **in giallo**, e frasi
+    come «Il 9 è fuori posto: sta tra il 5 e il 7». C'è il tasto «Vai alla riga».
+  - Quando due numeri sono scambiati, segna quello che salta (in 1, 3, 5, 9, 7, 11 segna il 9).
+  - Le caselle con due numeri (5/7), le lettere (20A) e i nomi senza numero non danno falsi avvisi.
+- Tutorial: una pagina nuova, «Controllo anomalie», e ora le pagine sono 14. Tenendo premuto il tasto si apre la sua
+  spiegazione.
+- Prove:
+  - `tests/test_core.js`: vie e piazze giuste e sbagliate, e l'esempio è in ordine;
+  - `tests/test_pagina.js`: il tasto mostra il civico in giallo e non cambia il giro;
+  - in Edge, giorno e notte, telefono e computer, nessun errore.
+- File: `app/src/core.js`, `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `tools/tutorial.py`,
+  `tests/test_core.js`, `tests/test_pagina.js`, `Casellino.html`, `sito/`.
+
 ## v0.45.0 · 2026-11-25 · I simbolini delle caselle legate e il «tieni premuto»
 
 Idea di Garadron (25 novembre 2026): dare lo stesso simbolino a civici anche di vie diverse, quando la posta di chi

@@ -592,6 +592,77 @@
     return lines.join('\n');
   }
 
+  /*
+   * The anomaly check (Garadron, 26 November 2026): only looks, never changes the route. On every line of a street:
+   * - a street (via, viale, vicolo…): the odd numbers go one way (up or down) and the even numbers one way; they may
+   *   be mixed (1, 2, 4, 3, 5), one side after the other (1, 3, 5, 2, 4, 6), one side up and the other down;
+   * - a square (piazza, piazzale): all the numbers one after the other, up or down.
+   * A number that breaks its order ("1, 3, 5, 9, 7") is an anomaly: it may be wanted, the postman decides.
+   * Returns [{ line, street, square, parity: 'dispari'|'pari'|'', way: 'in salita'|'in discesa', bad: [{ text, tok,
+   * before, after }], seq: [{ text, bad }] }].
+   */
+  function orderAnomalies(text, baseTown) {
+    const byLine = {};
+    parseRoute(text, baseTown).items.forEach(function (it) {
+      if (it.kind === 'cell' && it.top && it.street) (byLine[it.line] = byLine[it.line] || []).push(it);
+    });
+    const out = [];
+    // the longest run that keeps the order, going up or down (the longer one; up when the same): the rest is out of place
+    const keep = function (vals) {
+      const best = function (up) {
+        const len = [], prev = [];
+        vals.forEach(function (v, i) {
+          len[i] = 1; prev[i] = -1;
+          for (let j = 0; j < i; j++) {
+            if ((up ? vals[j] < v : vals[j] > v) && len[j] + 1 >= len[i] && len[j] + 1 > 1) { len[i] = len[j] + 1; prev[i] = j; }
+          }
+        });
+        let end = 0;
+        len.forEach(function (l, i) { if (l >= len[end]) end = i; });   // when the same, the nearest numbers stay
+        const kept = {};
+        for (let i = end; i >= 0; i = prev[i]) kept[i] = true;
+        return { up: up, n: len[end], kept: kept };
+      };
+      const a = best(true), b = best(false);
+      return b.n > a.n ? b : a;
+    };
+    Object.keys(byLine).forEach(function (ln) {
+      const cells = byLine[ln];
+      const square = /^(P\.?\s*Z?ZA|PIAZZ)/.test(norm(cells[0].street));
+      // each pigeonhole gives its number; two numbers of the same side in one pigeonhole (5/7) count as one
+      const entries = [];
+      cells.forEach(function (c) {
+        const nums = [c.top, c.second].filter(Boolean).map(function (t) { return { t: t, v: houseValue(t) }; })
+          .filter(function (x) { return x.v !== null; });
+        const groups = {};
+        nums.forEach(function (x) { const k = square ? 'all' : (Math.floor(x.v) % 2 ? 'dispari' : 'pari'); (groups[k] = groups[k] || []).push(x); });
+        Object.keys(groups).forEach(function (k) {
+          const g = groups[k];
+          entries.push({ group: k, v: g.reduce(function (s, x) { return s + x.v; }, 0) / g.length,
+            text: c.second && g.length === 2 ? c.top + '/' + c.second : g[0].t, tok: c.tok });
+        });
+      });
+      ['all', 'dispari', 'pari'].forEach(function (k) {
+        const list = entries.filter(function (e) { return e.group === k; });
+        if (list.length < 3) return;
+        const r = keep(list.map(function (e) { return e.v; }));
+        if (r.n === list.length) return;
+        const bad = [];
+        list.forEach(function (e, i) {
+          if (r.kept[i]) return;
+          let before = null, after = null;
+          for (let j = i - 1; j >= 0 && !before; j--) if (r.kept[j]) before = list[j].text;
+          for (let j = i + 1; j < list.length && !after; j++) if (r.kept[j]) after = list[j].text;
+          bad.push({ text: e.text, tok: e.tok, before: before, after: after });
+        });
+        out.push({ line: +ln, street: cells[0].street, square: square, parity: k === 'all' ? '' : k,
+          way: r.up ? 'in salita' : 'in discesa', bad: bad,
+          seq: list.map(function (e, i) { return { text: e.text, bad: !r.kept[i] }; }) });
+      });
+    });
+    return out.sort(function (a, b) { return a.line - b.line; });
+  }
+
   // The strips of a sub-zone in reading order: row 1 left to right, then row 2...
   function stripOrder(sz) {
     const out = [];
@@ -1717,6 +1788,7 @@
     SLOTS_PER_PAGE: SLOTS_PER_PAGE,
     PALETTE: PALETTE,
     contrast: contrast, needsOutline: needsOutline,
+    orderAnomalies: orderAnomalies,
     LINK_SHAPES: LINK_SHAPES, linkMark: linkMark, setCellMarks: setCellMarks, linkGroups: linkGroups, nextLink: nextLink,
     linkShapePoints: linkShapePoints,
     norm: norm,

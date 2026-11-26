@@ -153,6 +153,22 @@ function caretAt(ta, needle, offset) {
   doc.querySelector('input[name="link-print"][value="strisce"]').dispatchEvent(new win.Event('change', { bubbles: true }));
   doc.querySelector('#selection .unlink-btn').dispatchEvent(new win.Event('click'));
   assert.ok(!/@/.test(rb.value) && doc.querySelectorAll('#strips .link-sym').length === 0, 'tolto da tutte e due');
+  // the anomaly check: shows the numbers out of order and changes nothing
+  const routeBefore = rb.value;
+  rb.value = rb.value.replace('VIA DEI TIGLI: 1, 3, 5, 7, 9,', 'VIA DEI TIGLI: 1, 3, 5, 9, 7,');
+  rb.dispatchEvent(new win.Event('input'));
+  const routeOdd = rb.value;
+  doc.querySelector('.route-actions .anomalies-btn').dispatchEvent(new win.Event('click'));
+  assert.ok(doc.getElementById('dlg-anomalies').open, 'si apre il controllo');
+  assert.ok(/VIA DEI TIGLI/.test(text('#anomalies-list')) && /Il 9 è fuori posto: sta tra il 5 e il 7/.test(text('#anomalies-list')), text('#anomalies-list'));
+  assert.strictEqual(doc.querySelectorAll('#anomalies-list mark').length, 1, 'un civico in giallo');
+  assert.strictEqual(rb.value, routeOdd, 'non cambia niente');
+  doc.getElementById('dlg-anomalies').close();
+  rb.value = routeBefore;
+  rb.dispatchEvent(new win.Event('input'));
+  doc.getElementById('btn-anomalies-menu').dispatchEvent(new win.Event('click'));
+  assert.ok(/Nessuna anomalia/.test(text('#anomalies-sum')), 'l\'esempio è in ordine: ' + text('#anomalies-list'));
+  doc.getElementById('dlg-anomalies').close();
   // long press on a button: the little window that explains it, and the button is not pressed
   const pdfButton = doc.getElementById('btn-pdf');
   const blobsHold = blobs.length;
@@ -234,16 +250,16 @@ function caretAt(ta, needle, offset) {
   assert.ok(doc.getElementById('dlg-foto').open, 'finestra delle foto dal pulsante');
   const tut = doc.getElementById('dlg-tutorial');
   assert.ok(tut.open, 'il tutorial si apre da solo la prima volta');
-  assert.strictEqual(text('#tut-count'), '1 di 13');
+  assert.strictEqual(text('#tut-count'), '1 di 14');
   assert.ok(doc.getElementById('tut-back').hidden, 'sulla prima pagina niente «indietro»');
   doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
-  assert.strictEqual(text('#tut-count'), '2 di 13', 'Continua va avanti');
+  assert.strictEqual(text('#tut-count'), '2 di 14', 'Continua va avanti');
   assert.strictEqual(doc.querySelectorAll('#dlg-tutorial .tut-page:not([hidden])').length, 1, 'una pagina alla volta');
   doc.getElementById('tut-skip').dispatchEvent(new win.Event('click'));
   assert.ok(!tut.open, 'Salta lo chiude');
   doc.getElementById('btn-tutorial').dispatchEvent(new win.Event('click'));
-  assert.ok(tut.open && text('#tut-count') === '1 di 13', 'il tasto in alto lo riapre dall\'inizio');
-  for (let k = 0; k < 12; k++) doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
+  assert.ok(tut.open && text('#tut-count') === '1 di 14', 'il tasto in alto lo riapre dall\'inizio');
+  for (let k = 0; k < 13; k++) doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
   assert.strictEqual(text('#tut-next'), 'Ho capito ✓', 'sull\'ultima pagina');
   assert.ok(/Come si scrive/.test(text('#dlg-tutorial .tut-page:not([hidden])')), 'alla fine il rimando a «Come si scrive»');
   doc.getElementById('tut-help').dispatchEvent(new win.Event('click'));
