@@ -659,3 +659,47 @@ input[type="file"]::file-selector-button {
 .update-note { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 70; display: flex; flex-wrap: wrap;
   gap: 8px 12px; align-items: center; max-width: calc(100vw - 24px); padding: 10px 12px; border-radius: 12px;
   background: var(--panel); border: 2px solid var(--accent); box-shadow: 0 8px 24px rgba(0,0,0,.3); font-size: 14px; }
+
+/* the dictation (v0.48.0) */
+dialog.voice { width: min(780px, 100vw); height: calc(100vh - 32px); height: min(920px, calc(100dvh - 32px)); max-height: none; overflow: hidden; }
+@media (max-width: 640px) {
+  dialog.voice { width: 100vw; max-width: 100vw; height: 100vh; height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+}
+.voice-box { display: flex; flex-direction: column; height: 100%; }
+.voice-head { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.voice-head h2 { font-size: 18px; margin: 0; }
+.voice-where { flex: 1 1 160px; }
+.voice-rules { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 14px 12px; overscroll-behavior: contain; }
+.voice-rules h3 { font-size: 15px; margin: 4px 0; }
+.voice-rule { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.voice-rule p { margin: 0 0 4px; }
+.voice-ex { margin-top: 4px; }
+.voice-bottom { flex: none; display: flex; flex-direction: column; gap: 6px; max-height: 62%; overflow-y: auto;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 2px solid var(--line); background: var(--panel); }
+#voice-text { width: 100%; box-sizing: border-box; min-height: 60px; font: 16px/1.4 system-ui, sans-serif; resize: vertical;
+  background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.voice-interim { margin: 0; min-height: 1.3em; color: var(--muted); font-style: italic; }
+.voice-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.voice-actions .voice-mic { flex: 1 1 150px; font-size: 17px; padding: 12px; }
+.voice-mic.on { background: var(--bad); border-color: var(--bad); color: var(--bg); animation: voice-pulse 1.4s ease-in-out infinite; }
+@keyframes voice-pulse { 50% { box-shadow: 0 0 0 6px rgba(179, 38, 30, .25); } }
+@media (prefers-reduced-motion: reduce) { .voice-mic.on { animation: none; } }
+.voice-preview p { margin: 0; }
+.voice-notes { color: var(--warn); }
+.voice-notes:empty { display: none; }
+.cell.top.fresh { box-shadow: inset 0 0 0 3px var(--accent); }
+.cell.top.fresh.other { box-shadow: inset 0 -4px 0 var(--ink, #111), inset 0 0 0 3px var(--accent); }
+.voice-choices { display: flex; flex-direction: column; gap: 8px; }
+.voice-choices button { text-align: left; padding: 12px 14px; font-weight: 700; }
+.voice-choices button span { display: block; margin-top: 2px; font-weight: 400; font-size: 13px; opacity: .85; }
+.voice-warn p { margin: 0 0 6px; }
+.voice-warn ul { margin: 0 0 6px; padding-left: 20px; }
+.voice-warn li { margin: 4px 0; }
+dialog.voice-tut { width: min(620px, calc(100vw - 16px)); height: calc(100vh - 16px); height: min(760px, calc(100dvh - 16px)); max-height: none; overflow: hidden; }
+dialog.voice-tut .dlg { height: 100%; box-sizing: border-box; }
+.vt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.vt-pages { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.vt-pages h3 { font-size: 17px; margin: 0 0 8px; }
+.vt-pages > p { margin: 0 0 8px; }
+.vt-foot { display: flex; align-items: center; gap: 8px; }
+.vt-said { font: 16px/1.5 system-ui, sans-serif; background: var(--accent-soft); border-radius: 8px; padding: 8px 10px; min-height: 2.6em; }

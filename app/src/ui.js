@@ -276,9 +276,11 @@
               s.locked = 0; changed(); renderSubzone();
             } }, 'Sblocca'), ' ',
             window.indexedDB ? h('button', { type: 'button', class: 'photos-view-btn', onclick: function () { openViewer(); } }, '🖼 Guarda le foto') : null, ' ',
-            h('button', { type: 'button', class: 'anomalies-btn', onclick: checkAnomalies }, '🔎 Controllo anomalie'))
+            h('button', { type: 'button', class: 'anomalies-btn', onclick: checkAnomalies }, '🔎 Controllo anomalie'), ' ',
+            h('button', { type: 'button', class: 'voice-btn', onclick: startVoice }, '🎤 Cambia una casella a voce'))
         : h('p', { class: 'route-actions' },
             h('button', { type: 'button', class: 'primary photo-btn', onclick: openPhotos }, '📷 Carica e leggi le foto delle strisce'),
+            h('button', { type: 'button', class: 'primary voice-btn', onclick: startVoice }, '🎤 Detta il giro'),
             window.indexedDB ? h('button', { type: 'button', class: 'photos-view-btn', onclick: function () { openViewer(); } }, '🖼 Guarda le foto') : null,
             h('button', { type: 'button', title: 'I civici scelti (cursore o selezione) li consegna un collega, di un\'altra linea: nelle strisce la casella del numero è sottolineata. Premi di nuovo per togliere. Dal telefono: tocca la casella nella striscia.',
               onmousedown: function (e) { e.preventDefault(); }, onclick: toggleOtherLine }, '👥 Lo consegna un collega'),
@@ -507,12 +509,14 @@
     return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot')) || 30;
   }
 
-  function renderStrip(el, s, p, focusIdx) {
-    const proj = state.project;
+  // view: a strip that is not the route's (the dictation's preview, the examples): { project, links, fresh: [cells] }
+  function renderStrip(el, s, p, focusIdx, view) {
+    const proj = view ? view.project : state.project;
+    const links = view ? view.links : state.links;
     const slot = slotPx();
     el.textContent = '';
-    const sel = state.selected && state.selected.p === p ? state.selected.idx : -1;
-    const mk = markOf(sz());
+    const sel = !view && state.selected && state.selected.p === p ? state.selected.idx : -1;
+    const mk = view ? null : markOf(sz());
     let firstMark = true, fingerAt = null, startAt = null;
     s.cells.forEach(function (c, idx) {
       const bg = '#' + C.colorOf(proj, c.key);
@@ -522,8 +526,8 @@
         (c.second ? ' / ' + c.second : '') + ' · casella ' + (c.start + 1) + (c.span > 1 ? '-' + (c.end + 1) : '') +
         ' · riga ' + (c.line + 1) + ' del giro' + (c.other ? ' · per un\'altra linea' : '') +
         (c.link ? ' · simbolino ' + c.link : '');
-      const pick = function () { tap(p, idx); };
-      const g = c.link && state.links && state.links[c.link];
+      const pick = view ? null : function () { tap(p, idx); };
+      const g = c.link && links && links[c.link];
       const marked = mk && !c.foreign && c.line === mk.line;
       const mark = (idx === sel ? ' sel' : '') + (idx === focusIdx ? ' here-cell' : '') + (c.foreign ? ' foreign' : '') +
         (marked ? ' marked' + (firstMark ? ' mark-first' : '') : '');
@@ -552,7 +556,7 @@
         cls = long ? ' long' : '';
       }
       el.append(h.apply(null, ['div', {
-        class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + (g ? ' linked' : '') + mark,
+        class: 'cell top' + cls + (unsure ? ' unsure' : '') + (c.other ? ' other' : '') + (g ? ' linked' : '') + mark + (view && view.fresh && view.fresh.indexOf(c) >= 0 ? ' fresh' : ''),
         style: 'grid-column:' + (c.start + 1) + ' / ' + (c.end + 2) + ';' + paint + ';color:' + ink + outline(ink, two && c.second ? two.color : bg) +
           ';--ink:' + ink + ';font-size:' + size + 'px',
         title: tip, onclick: pick, 'data-idx': idx,
@@ -567,7 +571,7 @@
         el.append(h('div', {
           class: 'cell run two halves', title: r.street + ' / ' + r.street2 + (r.town ? ' · ' + r.town : ''),
           style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';font-size:' + px + 'px',
-          onclick: function () { tap(p, idx); },
+          onclick: view ? null : function () { tap(p, idx); },
         }, h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key) + ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key), C.colorOf(proj, r.key)) },
           h('span', { class: 'run-name' }, r.street)),
         h('div', { class: 'half', style: 'background:#' + C.colorOf(proj, r.key2) + ';color:#' + C.textColorOf(proj, r.key2) + outline(C.textColorOf(proj, r.key2), C.colorOf(proj, r.key2)) },
@@ -579,7 +583,7 @@
         style: 'grid-column:' + (r.start + 1) + ' / ' + (r.end + 2) + ';background:#' + C.colorOf(proj, r.key) +
           ';color:#' + C.textColorOf(proj, r.key) + outline(C.textColorOf(proj, r.key), C.colorOf(proj, r.key)) + ';font-size:' +
           (two ? Math.min(fitPx(r.street, width, 8), fitPx(r.street2, width, 8)) : fitPx(r.street, width, 11)) + 'px',
-        onclick: function () { tap(p, idx); },
+        onclick: view ? null : function () { tap(p, idx); },
       }, h('span', { class: 'run-name' }, r.street, two ? h('br') : null, two ? r.street2 : null)));
     });
     // over the strip, in the free space (no number covered): 🔖 where the line starts, 👇 on the pigeonhole written last
@@ -812,6 +816,8 @@
           c.top || c.street ? h('button', { type: 'button', class: 'tie-btn', onclick: function () { startLink(c); } },
             c.link ? '🔗 Lega anche un\'altra casella' : '🔗 Lega a un\'altra casella') : null,
           c.link ? h('button', { type: 'button', class: 'unlink-btn', onclick: function () { unlink(c); } }, '✖ Togli il simbolino') : null,
+          sz().locked ? null : h('button', { type: 'button', onclick: function () { voiceFrom(c, false); } }, '🎤 Detta da qui'),
+          h('button', { type: 'button', onclick: function () { voiceFrom(c, true); } }, '🎤 Cambiala a voce'),
           h('button', { type: 'button', onclick: function () { goToLine(c.line); } }, 'Vai alla riga del giro'),
           q ? h('a', { class: 'btn', href: mapsLink(q), target: '_blank', rel: 'noopener' }, 'Apri in Google Maps') : null)));
     if (q) setMap(q);
@@ -927,6 +933,14 @@
   }
   // A tap on a strip: it picks the pigeonhole, or finishes the link started from another one.
   function tap(p, idx) {
+    if (state.voicePick) {
+      const v = (stripsOf(state.analysis)[p] || { cells: [] }).cells[idx];
+      if (!v || v.foreign) { toast('Tocca una casella di questa sottozona.'); return; }
+      const mode = state.voicePick;
+      stopVoicePick();
+      voiceFrom(v, mode === 'change');
+      return;
+    }
     const L = state.linking;
     if (!L) { select(p, idx); return; }
     const c = (stripsOf(state.analysis)[p] || { cells: [] }).cells[idx];
@@ -3627,7 +3641,412 @@
    * what it is, what it is for and how it works. Each entry: [what it is on, title, what, why, how]; "what it is on"
    * is a selector or the start of the button's text. Without an entry, the button's own explanation (title).
    */
+  // ------------------------------------------------------------ the dictation (Garadron, 26 November 2026)
+  /*
+   * «🎤 Detta il giro»: the route said aloud. The words go in the box at the bottom (from the voice recognition of the
+   * phone or browser, or from the keyboard's microphone), CasellinoVoce turns them into lines of the route, and the
+   * preview shows the strip as it grows. Nothing changes in the route until «✔ Fatto»: it is a draft. It adds at the
+   * end, after a pigeonhole, or in place of one pigeonhole; it never takes away anything else.
+   */
+  const V = window.CasellinoVoce;
+  const Recognizer = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  const voice = { at: null, rec: null, want: false, interim: '', pending: null, ok: false, rulesDone: false };
+  // What to say and what it is for; the example strip is drawn from the words by the real translator.
+  const VOICE_RULES = [
+    ['via Rossi 1 3 5 7', 'Dì la via, poi i civici uno dopo l\'altro: una casella per civico. Per cambiare via, dì la via nuova.'],
+    ['via Rossi 41 due caselle', 'Una casella larga due. Anche «tre caselle».'],
+    ['via Rossi 41 collega', 'Lo consegna un collega: riga spessa sotto il numero.'],
+    ['via Rossi 41 due caselle collega', 'Tutte e due le cose insieme, nella stessa frase.'],
+    ['via Rossi dal 9 al 15', 'Dal 9 al 15 sullo stesso lato della via: 9, 11, 13, 15.'],
+    ['via Rossi dal 2 al 6 tutti', 'Tutti i numeri: 2, 3, 4, 5, 6.'],
+    ['via Rossi dal 10 al 4', 'All\'indietro: 10, 8, 6, 4.'],
+    ['via Rossi 2 barra 4', 'Una casella divisa dalla riga obliqua: 2 sopra, 4 sotto.'],
+    ['via Rossi 35 A 35 B', 'Il civico con la lettera.'],
+    ['via Rossi 7 via dei Gelsi 37 via Rossi 9', 'Una casella di un\'altra via in mezzo: dì l\'altra via, poi torna alla prima.'],
+    ['nome Bar del Ponte due caselle', 'Una casella con un nome sotto (un bar, una ditta). Le cascine anche senza «nome»: «cascina Alta».'],
+    ['nome Bar del Ponte simbolino 1 via Rossi 38 simbolino 1', 'Lo stesso simbolino lega due caselle: la posta del 38 la porti al bar.'],
+    ['via Rossi 1 vuota 3 tre vuote', 'Caselle vuote: «vuota» per una, «tre vuote» per tre.'],
+    ['via Rossi 1 3 fine fila', '«Fine fila»: il resto della fila resta vuoto e si continua sulla fila sotto. Anche «fine striscia».'],
+    ['via Rossi 5 da controllare', 'La casella resta segnata in rosso, da guardare dopo.'],
+    ['via Rossi 41 41 43', 'Ripetuto per sbaglio? Si scrive una volta sola.'],
+    ['via Rossi 43 no 45', '«No» o «anzi» cambiano l\'ultimo numero.'],
+    ['via Rossi 1 3 7 cancella 5', '«Cancella» toglie l\'ultima casella detta.'],
+  ];
+  const VOICE_DEMO = 'via Rossi 1 3 5 41 41 due caselle collega via dei Gelsi 37 via Rossi 43 no 45 nome Bar del Ponte simbolino 1 47 simbolino 1';
+
+  function voiceAccepted() {
+    if (voice.ok) return true;
+    try { return localStorage.getItem('casellino.dettato') === '1'; } catch (e) { return false; }
+  }
+  // First the warning (once): then `then(first)`, first = true the first time.
+  function needVoiceOk(then) {
+    if (voiceAccepted()) { then(false); return; }
+    voice.pending = then;
+    $('dlg-voice-warn').showModal();
+  }
+
+  // A short strip drawn from some words said: the example of a rule.
+  function voiceExample(said) {
+    const p = C.newProject();
+    const z = p.subzones[0];
+    z.modules = { alaA: true, casello: false, alaB: false };
+    z.route = V.translate(said).lines.join('\n');
+    C.assignColors(p);
+    const s = C.analyseProject(p)[0].strips[0];
+    const used = s.cells.reduce(function (m, c) { return Math.max(m, c.end + 1); }, 0);
+    const strip = Object.assign({}, s, { capacity: Math.max(used, 1), boundaries: [] });
+    const el = h('div', { class: 'strip', style: '--n:' + strip.capacity });
+    renderStrip(el, strip, -1, -1, { project: p, links: C.linkGroups(p) });
+    return h('div', { class: 'strip-wrap voice-ex' }, el);
+  }
+  function voiceRule(r) {
+    return h('div', { class: 'voice-rule' },
+      h('p', null, h('b', null, '«' + r[0] + '»')), h('p', { class: 'small muted' }, r[1]), voiceExample(r[0]));
+  }
+  function renderVoiceRules() {
+    if (voice.rulesDone) return;
+    const box = $('voice-rules');
+    box.textContent = '';
+    box.append(h('h3', null, 'Come si detta'),
+      h('p', { class: 'small muted' }, 'Parla come se lo dicessi a chi scrive. Quando una fila è piena si va avanti da soli sulla fila sotto; i colori si mettono da soli.'));
+    VOICE_RULES.forEach(function (r) { box.append(voiceRule(r)); });
+    voice.rulesDone = true;
+  }
+
+  // Where the new pigeonholes go, and the route with them: the draft.
+  function voiceDraft() {
+    const s = sz();
+    const cells = C.allCells(state.analysis);
+    const at = voice.at;
+    const ins = at ? cells.findIndex(function (x) { return !x.foreign && x.line === at.cell.line && x.tok === at.cell.tok && x.top === at.cell.top && x.second === at.cell.second; })
+      : cells.length - 1;
+    let street = '';   // the numbers said first go to the street of the pigeonhole before
+    for (let k = ins; k >= 0; k--) if (cells[k].top && cells[k].street) { street = cells[k].street; break; }
+    const said = ($('voice-text').value + (voice.interim ? ' ' + voice.interim : '')).trim();
+    const tr = V.translate(said, { street: street, streets: knownStreets(s.town).concat(cells.map(function (c) { return c.street; })) });
+    const res = V.insertLines(s.route, at ? { line: at.cell.line, tok: at.cell.tok, top: at.cell.top, second: at.cell.second, replace: at.replace } : null, tr.lines);
+    const n = C.parseRoute(tr.lines.join('\n'), s.town).items.filter(function (it) { return it.kind === 'cell'; }).length;
+    return { tr: tr, res: res, n: n, ins: ins, cells: cells, at: at, said: said };
+  }
+
+  function voicePreview() {
+    if (!$('dlg-voice').open) return;
+    const d = voiceDraft();
+    const clone = JSON.parse(JSON.stringify(state.project));
+    clone.subzones[state.current].route = d.res.text;
+    C.assignColors(clone);
+    const a = C.analyseProject(clone)[state.current];
+    const cells = C.allCells(a);
+    const first = d.at && d.at.replace ? d.ins : d.ins + 1;
+    const fresh = cells.slice(first, first + d.n);
+    const focus = fresh[fresh.length - 1] || cells[Math.max(0, Math.min(first, cells.length - 1))];
+    const strip = focus ? stripsOf(a).find(function (st) { return st.cells.indexOf(focus) >= 0; }) : null;
+    const wrap = $('voice-strip');
+    wrap.textContent = '';
+    $('voice-strip-title').textContent = strip ? 'Anteprima · ' + stripTitle(strip) + ' · casella ' + (focus.start + 1) + ' di ' + strip.capacity
+      : (focus ? '⚠️ Non entra più nei moduli' : 'Anteprima: qui vedi la striscia che cresce.');
+    if (strip) {
+      const el = h('div', { class: 'strip', style: '--n:' + strip.capacity });
+      renderStrip(el, strip, -1, strip.cells.indexOf(focus), { project: clone, links: C.linkGroups(clone), fresh: fresh });
+      wrap.append(el);
+      const cell = el.querySelector('[data-idx="' + strip.cells.indexOf(focus) + '"]');
+      if (cell) requestAnimationFrame(function () { wrap.scrollLeft = Math.max(0, cell.offsetLeft - wrap.clientWidth / 2 + cell.offsetWidth / 2); });
+    }
+    // what moves: the pigeonholes after the new ones
+    const info = [];
+    const removed = d.at && d.at.replace ? 1 : 0;
+    if (!d.said) info.push(Recognizer ? 'Premi «🎤 Ascolta» e dì la via e i civici, come negli esempi qui sopra.' : 'Tocca la casella qui sotto e usa il 🎤 della tastiera: dì la via e i civici, come negli esempi qui sopra.');
+    else if (!d.n) info.push('Ancora nessuna casella: dì un civico.');
+    else info.push(d.at && d.at.replace ? 'Questa casella diventa: ' + d.tr.lines.join(' · ') : '➕ ' + d.n + (d.n === 1 ? ' casella nuova' : ' caselle nuove') + ' · nel giro: ' + d.tr.lines.join(' · '));
+    const after = d.cells.slice(d.ins + 1);
+    if (after.length && d.n - removed) {
+      let rows = 0;
+      after.forEach(function (c, k) { const nc = cells[first + d.n + k]; if (nc && (nc.m !== c.m || nc.i !== c.i)) rows++; });
+      info.push('↪ ' + (after.length === 1 ? 'La casella dopo si sposta' : 'Le ' + after.length + ' caselle dopo si spostano') +
+        (d.n - removed > 0 ? ' più avanti' : ' indietro') + (rows ? ' (' + rows + ' passano a un\'altra fila)' : '') + '.');
+    }
+    if (a.overflow.length > state.analysis.overflow.length) info.push('⚠️ ' + a.overflow.length + (a.overflow.length === 1 ? ' casella non entra' : ' caselle non entrano') + ' più nei moduli.');
+    $('voice-info').textContent = info.join(' ');
+    const notes = d.tr.notes.slice();
+    if (d.tr.unknown.length) notes.push('Non ho capito «' + d.tr.unknown.join(' ') + '»: non l\'ho scritto.');
+    $('voice-notes').textContent = notes.join(' ');
+    $('voice-undo').disabled = !d.tr.entries.length;
+  }
+  const voicePreviewLater = debounce(voicePreview, 120);
+
+  function voiceButtons() {
+    const mic = $('voice-mic');
+    mic.textContent = voice.want ? '⏸ Pausa' : '🎤 Ascolta';
+    mic.classList.toggle('on', voice.want);
+    mic.setAttribute('aria-pressed', voice.want ? 'true' : 'false');
+  }
+  function listen(on) {
+    if (!Recognizer) return;
+    if (!on) {
+      voice.want = false;
+      const r = voice.rec;
+      voice.rec = null;
+      try { if (r) r.stop(); } catch (e) { /* already stopped */ }
+      voice.interim = '';
+      $('voice-interim').textContent = '';
+      voiceButtons();
+      voicePreviewLater();
+      return;
+    }
+    $('voice-text').blur();   // the keyboard goes down
+    const r = new Recognizer();
+    r.lang = 'it-IT';
+    r.continuous = true;
+    r.interimResults = true;
+    r.onresult = function (e) {
+      if (voice.rec !== r) return;
+      let rest = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) voiceSaid(e.results[i][0].transcript);
+        else rest += e.results[i][0].transcript;
+      }
+      voice.interim = rest.trim();
+      $('voice-interim').textContent = voice.interim;
+      voicePreviewLater();
+    };
+    r.onerror = function (e) {
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
+      voice.want = false;
+      voice.rec = null;
+      voiceButtons();
+      $('voice-interim').textContent = e.error === 'not-allowed' || e.error === 'service-not-allowed'
+        ? 'Il browser non lascia usare il microfono: permettilo nelle impostazioni, poi riprova. Puoi usare anche il 🎤 della tastiera.'
+        : 'Non riesco ad ascoltare adesso: riprova, oppure usa il 🎤 della tastiera.';
+    };
+    // the phone stops by itself after a silence: it starts again, until «Pausa»
+    r.onend = function () {
+      if (!voice.want || voice.rec !== r) return;
+      try { r.start(); } catch (e) { voice.want = false; voice.rec = null; voiceButtons(); }
+    };
+    voice.rec = r;
+    voice.want = true;
+    try { r.start(); } catch (e) { voice.want = false; voice.rec = null; }
+    voiceButtons();
+  }
+  function voiceSaid(text) {
+    const ta = $('voice-text');
+    ta.value = (ta.value.replace(/\s+$/, '') + ' ' + String(text).trim()).trim();
+    ta.scrollTop = ta.scrollHeight;
+    voice.interim = '';
+  }
+
+  function startVoice() {
+    document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
+    needVoiceOk(function (first) {
+      const s = sz();
+      if (!s.route.trim()) { openVoice(null, first); return; }
+      const n = C.allCells(state.analysis).length;
+      $('voice-from-end').disabled = !!s.locked;
+      $('voice-from-point').disabled = !!s.locked;
+      $('voice-start-note').textContent = s.locked
+        ? '🔒 Il giro è bloccato: a voce puoi solo cambiare una casella. Per aggiungere, prima sbloccalo.'
+        : 'Il giro ha già ' + n + (n === 1 ? ' casella' : ' caselle') + '. Di solito si continua dalla fine. Niente cambia finché non premi «✔ Fatto».';
+      $('dlg-voice-start').dataset.first = first ? '1' : '';
+      $('dlg-voice-start').showModal();
+    });
+  }
+  function voiceFrom(c, replace) {
+    needVoiceOk(function (first) { openVoice({ cell: c, replace: replace }, first); });
+  }
+  function startVoicePick(mode) {
+    stopLink();
+    state.voicePick = mode;
+    document.body.append(h('div', { class: 'link-bar', role: 'status' },
+      h('p', null, mode === 'change' ? '✏️ Tocca nella striscia la casella da cambiare a voce.' : '➕ Tocca nella striscia la casella dopo cui aggiungere.'),
+      h('button', { type: 'button', onclick: stopVoicePick }, 'Annulla')));
+    if (state.els.strips) state.els.strips.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  function stopVoicePick() {
+    state.voicePick = null;
+    const bar = document.querySelector('.link-bar');
+    if (bar) bar.remove();
+  }
+
+  function openVoice(at, first) {
+    const s = sz();
+    if (s.locked && !(at && at.replace)) { toast('Il giro è bloccato: a voce puoi solo cambiare una casella. Per aggiungere, prima sbloccalo.'); return; }
+    voice.at = at;
+    voice.interim = '';
+    $('voice-text').value = '';
+    $('voice-interim').textContent = '';
+    $('voice-where').textContent = at ? (at.replace ? '✏️ Cambi: ' : '➕ Dopo: ') + cellName(at.cell)
+      : (s.route.trim() ? '▶ Continui dalla fine del giro' : '▶ Il giro comincia qui') + (s.name ? ' della ' + s.name : '');
+    $('voice-mic').hidden = !Recognizer;
+    $('voice-nomic').hidden = !!Recognizer;
+    renderVoiceRules();
+    $('dlg-voice').showModal();
+    voiceButtons();
+    voicePreview();
+    if (first) openVoiceTutorial(1);
+    else if (Recognizer) listen(true);
+  }
+  function voiceUndo() {
+    const d = voiceDraft();
+    const last = d.tr.entries[d.tr.entries.length - 1];
+    if (!last) return;
+    const ta = $('voice-text');
+    ta.value = ta.value.slice(0, last.from).replace(/\s+$/, '');
+    voice.interim = '';
+    voicePreview();
+  }
+  function voiceCancel() {
+    if ($('voice-text').value.trim() && !confirm('Butto via quello che hai dettato? Il giro resta com\'era.')) return;
+    listen(false);
+    $('dlg-voice').close();
+  }
+  function voiceDone() {
+    listen(false);
+    const d = voiceDraft();
+    if (!d.n) {
+      $('dlg-voice').close();
+      if (d.said) toast(d.at && d.at.replace ? 'Non hai detto un civico: la casella resta com\'era.' : 'Non hai detto nessun civico: il giro resta com\'era.');
+      return;
+    }
+    const s = sz();
+    s.route = d.res.text;
+    s.mark = { line: d.res.first, tok: null, at: Date.now() };
+    if (state.els.ta) { state.els.ta.value = s.route; fitTextarea(state.els.ta); }
+    changed();
+    refreshRoute();
+    refreshSide();
+    showMark();
+    $('dlg-voice').close();
+    toast(d.at && d.at.replace ? '✏️ Casella cambiata.' : '🎤 ' + (d.n === 1 ? 'Aggiunta 1 casella' : 'Aggiunte ' + d.n + ' caselle') + ' al giro. Alla fine premi «🔎 Controllo anomalie».');
+  }
+
+  // ---- the tutorial of the dictation: the warning first, then the rules with their strips, and a try to watch
+  let vtPage = 0, vtDemo = null;
+  const VOICE_TUT = [
+    ['🤫 Prima di tutto: il silenzio', null, 'warn'],
+    ['1 · Come si comincia', 'Premi <b>«🎤 Detta il giro»</b>. Dì la <b>via</b> e poi i <b>civici</b>, uno dopo l\'altro. Quando cambia via, dì la via nuova e continua con i numeri. Le file vanno avanti da sole, i colori si mettono da soli.', [0]],
+    ['2 · Caselle larghe e collega', 'Quello che dici <b>dopo un civico</b> è per quella casella.', [1, 2, 3]],
+    ['3 · Tanti numeri insieme', '«dal … al …»: sullo stesso lato, tutti, o all\'indietro.', [4, 5, 6]],
+    ['4 · Barra e lettere', null, [7, 8]],
+    ['5 · Un\'altra via in mezzo, nomi e simbolini', null, [9, 10, 11]],
+    ['6 · Vuote, fine fila, da controllare', null, [12, 13, 14]],
+    ['7 · Se ti impappini', 'Succede a tutti: Casellino sbroglia.', [15, 16, 17]],
+    ['8 · Pausa e correzioni', 'In basso c\'è sempre quello che hai detto. <b>«⏸ Pausa»</b> ferma l\'ascolto: tocca il testo, si apre la tastiera e correggi. Premi <b>«🎤 Ascolta»</b>: la tastiera si chiude e si riparte. <b>«↶ Togli l\'ultima»</b> toglie l\'ultima casella detta. Sotto vedi l\'anteprima della striscia, con le caselle nuove contornate.', null],
+    ['9 · Da dove partire', 'Se il giro ha già qualcosa, Casellino chiede da dove: <b>«▶ Continua dalla fine»</b> (il solito), <b>«➕ Aggiungi da un punto»</b> (tocchi una casella: quello che detti va subito dopo) o <b>«✏️ Cambia una casella»</b> (la detti come deve essere: cambia solo quella). Anche dalla casella toccata: «🎤 Detta da qui» e «🎤 Cambiala a voce». <b>Il dettato non cancella mai niente</b>, e finché non premi «✔ Fatto» il giro resta com\'era. Su un giro bloccato 🔒 si può solo cambiare una casella.', null],
+    ['10 · Guarda una prova', 'Ecco un pezzo di giro dettato, parola per parola, con la striscia che cresce.', 'demo'],
+    ['Fatto!', 'Premi <b>«✔ Fatto»</b>: tutto va nel giro. Poi un giro di <b>«🔎 Controllo anomalie»</b>. Le frasi le ritrovi sempre nella finestra del dettato, sopra, e questo tutorial in «❔ Come si detta» e in «Altro».', null],
+  ];
+  function stopVoiceDemo() { clearInterval(vtDemo && vtDemo.timer); vtDemo = null; }
+  function voiceDemo(box) {
+    const words = VOICE_DEMO.split(' ');
+    const said = h('p', { class: 'vt-said' });
+    const strip = h('div');
+    const play = h('button', { type: 'button', class: 'primary' }, '⏸ Pausa');
+    const again = h('button', { type: 'button' }, '↺ Da capo');
+    let k = 0;
+    const show = function () {
+      const text = words.slice(0, k).join(' ');
+      said.textContent = text ? '🎤 «' + text + '»' : '🎤 …';
+      strip.textContent = '';
+      if (text) strip.append(voiceExample(text));
+    };
+    const run = function () {
+      stopVoiceDemo();
+      vtDemo = { timer: setInterval(function () {
+        if (k >= words.length) { stopVoiceDemo(); play.textContent = '▶ Riguarda'; return; }
+        k++;
+        show();
+      }, 650) };
+      play.textContent = '⏸ Pausa';
+    };
+    play.addEventListener('click', function () {
+      if (vtDemo) { stopVoiceDemo(); play.textContent = '▶ Riprendi'; return; }
+      if (k >= words.length) k = 0;
+      run();
+    });
+    again.addEventListener('click', function () { k = 0; show(); run(); });
+    box.append(said, strip, h('p', { class: 'actions-inline' }, play, again));
+    show();
+    run();
+  }
+  function showVoiceTutorial(k) {
+    stopVoiceDemo();
+    vtPage = Math.max(0, Math.min(VOICE_TUT.length - 1, k));
+    const page = VOICE_TUT[vtPage];
+    const box = $('vt-pages');
+    box.textContent = '';
+    box.scrollTop = 0;
+    box.append(h('h3', null, page[0]));
+    if (page[2] === 'warn') {
+      const warn = $('voice-warn-text').cloneNode(true);
+      warn.removeAttribute('id');
+      box.append(warn);
+    }
+    if (page[1]) {
+      const p = h('p');
+      p.innerHTML = page[1];
+      box.append(p);
+    }
+    if (Array.isArray(page[2])) page[2].forEach(function (i) { box.append(voiceRule(VOICE_RULES[i])); });
+    if (page[2] === 'demo') voiceDemo(box);
+    $('vt-count').textContent = (vtPage + 1) + ' di ' + VOICE_TUT.length;
+    $('vt-back').disabled = vtPage === 0;
+    $('vt-next').textContent = vtPage === VOICE_TUT.length - 1 ? 'Ho capito ✓' : 'Avanti ▶';
+  }
+  function openVoiceTutorial(k) {
+    document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
+    listen(false);
+    showVoiceTutorial(k || 0);
+    if (!$('dlg-voice-tut').open) $('dlg-voice-tut').showModal();
+  }
+
+  function wireVoice() {
+    $('btn-voice-menu').addEventListener('click', startVoice);
+    $('btn-voice-tut').addEventListener('click', function () { openVoiceTutorial(0); });
+    $('help-voice-tut').addEventListener('click', function () { $('dlg-help').close(); openVoiceTutorial(0); });
+    $('tut-voice').addEventListener('click', function () { $('dlg-tutorial').close(); openVoiceTutorial(0); });
+    $('dlg-voice-warn').addEventListener('close', function () {
+      const then = voice.pending;
+      voice.pending = null;
+      if ($('dlg-voice-warn').returnValue !== 'ok') return;
+      const first = !voiceAccepted();
+      voice.ok = true;
+      try { localStorage.setItem('casellino.dettato', '1'); } catch (e) { /* only a convenience */ }
+      if (then) then(first);
+    });
+    $('dlg-voice-start').addEventListener('close', function () {
+      const dlg = $('dlg-voice-start'), v = dlg.returnValue;
+      if (v === 'end') openVoice(null, dlg.dataset.first === '1');
+      else if (v === 'after' || v === 'change') startVoicePick(v);
+    });
+    $('voice-mic').addEventListener('click', function () { listen(!voice.want); });
+    $('voice-undo').addEventListener('click', voiceUndo);
+    $('voice-cancel').addEventListener('click', voiceCancel);
+    $('voice-done').addEventListener('click', voiceDone);
+    $('voice-quiet').addEventListener('click', function () { voice.pending = null; listen(false); $('dlg-voice-warn').showModal(); });
+    $('voice-tut').addEventListener('click', function () { openVoiceTutorial(1); });
+    const ta = $('voice-text');
+    ta.addEventListener('focus', function () { if (voice.want) listen(false); });   // to correct by hand: the listening pauses
+    ta.addEventListener('input', voicePreviewLater);
+    const dlg = $('dlg-voice');
+    dlg.addEventListener('cancel', function (e) { e.preventDefault(); voiceCancel(); });
+    dlg.addEventListener('close', function () { listen(false); });
+    $('vt-next').addEventListener('click', function () {
+      if (vtPage >= VOICE_TUT.length - 1) $('dlg-voice-tut').close(); else showVoiceTutorial(vtPage + 1);
+    });
+    $('vt-back').addEventListener('click', function () { showVoiceTutorial(vtPage - 1); });
+    $('vt-exit').addEventListener('click', function () { $('dlg-voice-tut').close(); });
+    $('dlg-voice-tut').addEventListener('close', stopVoiceDemo);
+  }
+
   const HINTS = [
+    ['.voice-btn, #btn-voice-menu', '🎤 Detta il giro', 'Scrivi il giro a voce: dici la via e i civici, Casellino li scrive.', 'È il modo più veloce e più lineare dopo le foto: niente da ricopiare a mano.', 'La prima volta leggi l\'avviso (si detta in silenzio). Se il giro ha già qualcosa, scegli da dove: dalla fine, da un punto o una casella sola. Niente cambia finché non premi «✔ Fatto».'],
+    ['#btn-voice-tut, #voice-tut, #tut-voice, #help-voice-tut', '❔ Come si detta', 'Il tutorial del dettato.', 'Per vedere tutte le frasi da dire, ognuna con la sua striscia, e una prova dal vivo.', 'Si sfoglia con «Avanti» e «Indietro»; «Esci» lo chiude.'],
+    ['#voice-mic', '🎤 Ascolta / ⏸ Pausa', 'Accende e spegne l\'ascolto.', 'In pausa puoi correggere il testo con la tastiera.', 'Premi per ascoltare: la tastiera si chiude. Premi di nuovo per la pausa, poi tocca il testo per correggere.'],
+    ['#voice-undo', '↶ Togli l\'ultima', 'Toglie l\'ultima casella detta.', 'Se Casellino ha capito male l\'ultima cosa.', 'Taglia il testo dove comincia l\'ultima casella. Anche a voce: «cancella».'],
+    ['#voice-done', '✔ Fatto', 'Mette nel giro quello che hai dettato.', 'Fino a qui era tutto una bozza: il giro non cambiava.', 'Le caselle vanno dove hai scelto (alla fine, dopo una casella o al posto di una). Poi premi «🔎 Controllo anomalie».'],
+    ['#voice-quiet', '🤫 Silenzio intorno?', 'Il promemoria dell\'avviso del dettato.', 'Con rumore o colleghi che parlano, Casellino scrive anche quello che non è un civico.', 'Toccalo per rileggere l\'avviso.'],
+    [/^🎤 Detta da qui/, '🎤 Detta da qui', 'Aggiunge a voce delle caselle subito dopo questa.', 'Per inserire un pezzo dimenticato senza riscrivere il resto.', 'Le caselle dopo si spostano più avanti: l\'anteprima ti dice quante, prima di «✔ Fatto».'],
+    [/^🎤 Cambiala a voce/, '🎤 Cambiala a voce', 'Riscrive a voce solo questa casella.', 'Per correggere una casella senza toccare le altre, anche su un giro bloccato.', 'Detta come deve essere, per esempio «41 due caselle collega», poi «✔ Fatto».'],
     ['#btn-theme', '☀️/🌙 Giorno e notte', 'L\'interruttore tra pagina chiara e pagina scura.', 'Di sera o al buio la pagina scura stanca meno gli occhi.', 'All\'inizio segue il telefono o il computer. Toccalo per scegliere tu: la scelta resta, anche quando riapri.'],
     ['#btn-share, #btn-share-menu', '📤 Condividi', 'Il link di Casellino da mandare ai colleghi.', 'Così anche loro scrivono il giro e stampano le strisce, gratis.', 'Sul telefono si apre la condivisione (WhatsApp, email…). Sul computer il link si copia e compare il codice QR da inquadrare.'],
     ['#btn-tutorial', '📖 Tutorial', 'Il giro guidato di Casellino, a fumetti.', 'Per imparare a fare le foto del casello e a usare i tasti.', 'Si sfoglia con «Continua» e ◀; «Salta» lo chiude. Si riapre quando vuoi da qui.'],
@@ -3803,6 +4222,7 @@
     wireLinkPrint();
     $('btn-anomalies-menu').addEventListener('click', checkAnomalies);
     wireHints();
+    wireVoice();
     $('btn-share').addEventListener('click', share);
     $('btn-share-menu').addEventListener('click', share);
     $('share-copy').addEventListener('click', copyShareLink);

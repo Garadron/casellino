@@ -70,6 +70,8 @@
         <button type="button" id="btn-export-text">Scarica come testo</button>
         <button type="button" id="btn-example">Carica l'esempio</button>
         <button type="button" id="btn-anomalies-menu">🔎 Controllo anomalie</button>
+        <button type="button" id="btn-voice-menu">🎤 Detta il giro</button>
+        <button type="button" id="btn-voice-tut">❔ Tutorial del dettato</button>
         <button type="button" id="btn-help">Come si scrive</button>
         <button type="button" id="btn-bug">🐞 Segnala un problema</button>
         <button type="button" id="btn-support">✉️ Supporto</button>
@@ -182,6 +184,8 @@
 <dialog id="dlg-help">
   <form method="dialog" class="dlg">
     <h2>Come si scrive</h2>
+    <p>🎤 <b>Si può anche dettare</b>: premi «🎤 Detta il giro» e dì la via e i civici («via Rossi 1 3 5, 41 due caselle
+      collega»). Tutte le frasi, con la loro striscia, sono nel <button type="button" class="link" id="help-voice-tut">tutorial del dettato</button>.</p>
     <p>Il casello si legge come un libro: <b>da sinistra a destra e dall'alto in basso</b>. Si scrive il giro dall'inizio alla fine, una via per riga: il programma riempie la fila 1 di ogni modulo (Ala A, Casello, Ala B), poi la fila 2, e così via. Per spostare una via basta spostare la sua riga.</p>
     <table class="help">
       <tr><td><code>VIA DEI TIGLI: 1, 3, 5</code></td><td>tre caselle, una per civico</td></tr>
@@ -947,6 +951,37 @@
         <p class="tut-bubble"><b class="tut-title">12 · Controllo anomalie</b>Hai finito il giro? Premi <b>«🔎 Controllo anomalie»</b>: guarda l'ordine dei civici in ogni via e piazza e ti mostra <b>in giallo</b> quelli fuori posto, come il 9 in «1, 3, 5, 9, 7», e quelli <b>ripetuti</b>. <b>Non cambia niente</b>: se il disordine è voluto lo lasci, se no lo correggi tu.</p></div>
     </section>
     <section class="tut-page" hidden>
+      <svg class="tut-pic" viewBox="0 0 360 220" role="img" aria-label="Si detta il giro dal telefono: la striscia si costruisce mentre si parla">
+<rect width="360" height="220" fill="#fdf6e3"/>
+<rect x="20" y="6" width="150" height="214" rx="18" fill="#2b1d12"/>
+<rect x="28" y="20" width="134" height="186" rx="6" fill="#fffdf2"/>
+<rect x="28" y="20" width="134" height="20" rx="6" fill="#2c6db3"/>
+<text x="95.0" y="34" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Casellino</text>
+<rect x="36" y="56" width="118" height="44" rx="8" fill="#fffaf0" stroke="#2b1d12" stroke-width="1.5"/>
+<text x="95" y="74" font-size="10" font-weight="400" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">«via Rossi 1 3 5,</text>
+<text x="95" y="90" font-size="10" font-weight="400" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">41 due caselle»</text>
+<rect x="52" y="112" width="86" height="30" rx="15" fill="#e0442f"/><text x="95" y="132" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">🎤 Ascolta</text>
+<text x="95" y="178" font-size="11" font-weight="700" text-anchor="middle" fill="#e0442f" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">🤫 in silenzio</text>
+<rect x="186" y="40" width="108" height="56" fill="#bfe6ff" stroke="#2b1d12" stroke-width="3"/>
+<path d="M186 72H294" stroke="#2b1d12" stroke-width="2"/>
+<text x="204.0" y="63" font-size="14" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">1</text>
+<path d="M222 40V72" stroke="#2b1d12" stroke-width="1.6"/>
+<text x="240.0" y="63" font-size="14" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">3</text>
+<path d="M258 40V72" stroke="#2b1d12" stroke-width="1.6"/>
+<text x="276.0" y="63" font-size="14" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">5</text>
+<text x="240.0" y="90" font-size="11" font-weight="700" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">VIA ROSSI</text>
+<rect x="294" y="40" width="72" height="56" fill="#bfe6ff" stroke="#2b1d12" stroke-width="3"/>
+<path d="M294 72H366" stroke="#2b1d12" stroke-width="2"/>
+<text x="330" y="63" font-size="14" font-weight="900" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">41</text>
+<text x="276" y="128" font-size="11" font-weight="700" text-anchor="middle" fill="#9a5200" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">la striscia cresce mentre parli</text>
+<text x="276" y="150" font-size="10.5" font-weight="400" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">«no», «anzi», «cancella»</text>
+<text x="276" y="166" font-size="10.5" font-weight="400" text-anchor="middle" fill="#2b1d12" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">sbrogliano le impappinature</text>
+</svg>
+      <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
+        <p class="tut-bubble"><b class="tut-title">13 · Il dettato</b>🤫 <b>Prima un patto: si detta in silenzio</b>, non tra colleghi che scherzano o discutono, se no Casellino scrive anche le loro battute. Poi premi <b>«🎤 Detta il giro»</b> e dì la via e i civici: «via Rossi 1 3 5, 41 due caselle collega». Se il giro c'è già, scegli se <b>continuare dalla fine</b>, <b>aggiungere da un punto</b> o <b>cambiare una casella</b>. Niente cambia finché non premi «✔ Fatto». Tutte le frasi sono nel tutorial del dettato.</p></div>
+      <p class="tut-more"><button type="button" id="tut-voice">🎤 Il tutorial del dettato</button></p>
+    </section>
+    <section class="tut-page" hidden>
       <svg class="tut-pic" viewBox="0 0 360 226" role="img" aria-label="Tieni premuto un tasto: si apre la finestrina che lo spiega">
 <rect width="360" height="226" fill="#fdf6e3"/>
 <rect x="20" y="6" width="150" height="214" rx="18" fill="#2b1d12"/>
@@ -966,7 +1001,7 @@
 <rect x="236" y="132" width="64" height="20" rx="10" fill="#2e9d4a"/><text x="268" y="146" font-size="10" font-weight="700" text-anchor="middle" fill="#fff" font-family="'Comic Sans MS','Chalkboard SE','Comic Neue','Segoe Print',sans-serif">Ho capito</text>
 </svg>
       <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
-        <p class="tut-bubble"><b class="tut-title">13 · Tieni premuto</b>Non sai a che serve un tasto o una casella? <b>Tienilo premuto</b>: si apre una finestrina che ti dice che cos'è, a che serve e come funziona.</p></div>
+        <p class="tut-bubble"><b class="tut-title">14 · Tieni premuto</b>Non sai a che serve un tasto o una casella? <b>Tienilo premuto</b>: si apre una finestrina che ti dice che cos'è, a che serve e come funziona.</p></div>
     </section>
     <section class="tut-page" hidden>
       <svg class="tut-pic" viewBox="0 0 360 176" role="img" aria-label="Il postino saluta: senza foto si scrive a mano, con «Come si scrive»">
@@ -978,7 +1013,7 @@
 <circle cx="160" cy="20" r="4" fill="#ff8a8a"/><circle cx="20" cy="40" r="5" fill="#8fd3ff"/><circle cx="150" cy="160" r="4" fill="#a6e28a"/><circle cx="345" cy="30" r="5" fill="#ffe37a"/>
 </svg>
       <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
-        <p class="tut-bubble"><b class="tut-title">14 · Fatto!</b>Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: ti spiega come scrivere il giro a mano.</p></div>
+        <p class="tut-bubble"><b class="tut-title">15 · Fatto!</b>Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: ti spiega come scrivere il giro a mano.</p></div>
       <p class="tut-more"><button type="button" id="tut-help">📝 Come si scrive</button></p>
     </section>
     </div>
@@ -1072,6 +1107,85 @@
   </form>
 </dialog>
 
+<dialog id="dlg-voice-warn">
+  <form method="dialog" class="dlg">
+    <h2>🤫 Prima di dettare, un patto tra noi</h2>
+    <div class="voice-warn" id="voice-warn-text">
+      <p>Il dettato è come un collega molto attento: scrive tutto quello che sente. Proprio <i>tutto</i>.</p>
+      <ul>
+        <li>Detta <b>in silenzio</b>, o con pochissimo rumore intorno.</li>
+        <li><b>Non</b> durante le discussioni animate, quando i colleghi scherzano o vicino a chi sta dettando anche lui:
+          Casellino proverebbe a scrivere anche le loro battute, e quelle non sono civici.</li>
+        <li>Parla con calma, un civico alla volta, come se lo dicessi a chi scrive.</li>
+        <li>Alla fine guarda l'anteprima e premi «🔎 Controllo anomalie».</li>
+      </ul>
+      <p class="small muted">La voce la capisce il riconoscimento del telefono o del browser (su Chrome è quello di Google):
+        vie e civici passano da lì, non dal server di Casellino.</p>
+    </div>
+    <menu>
+      <button value="no">Non ora</button>
+      <button value="ok" class="primary" id="voice-warn-ok">Ho capito, detto in silenzio</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-voice-start">
+  <form method="dialog" class="dlg">
+    <h2>🎤 Da dove vuoi dettare?</h2>
+    <p class="small muted" id="voice-start-note"></p>
+    <div class="voice-choices">
+      <button value="end" class="primary" id="voice-from-end">▶ Continua dalla fine<span>quello che detti va in fondo al giro</span></button>
+      <button value="after" id="voice-from-point">➕ Aggiungi da un punto<span>tocchi una casella: quello che detti va subito dopo</span></button>
+      <button value="change" id="voice-change">✏️ Cambia una casella<span>tocchi una casella e la detti come deve essere: cambia solo quella</span></button>
+    </div>
+    <menu><button value="cancel">Annulla</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-voice" class="voice" aria-label="Il dettato">
+  <div class="voice-box">
+    <div class="voice-head">
+      <h2>🎤 Dettato</h2>
+      <span class="small muted voice-where" id="voice-where"></span>
+      <button type="button" class="link" id="voice-quiet">🤫 Silenzio intorno?</button>
+      <button type="button" id="voice-tut">❔ Come si detta</button>
+    </div>
+    <div class="voice-rules" id="voice-rules"></div>
+    <div class="voice-bottom">
+      <textarea id="voice-text" rows="3" spellcheck="false" autocomplete="off" aria-label="Quello che hai dettato"
+        placeholder="Qui compare quello che detti: «via Rossi 1 3 5, 41 due caselle collega»"></textarea>
+      <p class="voice-interim" id="voice-interim" aria-live="polite"></p>
+      <p class="small" id="voice-nomic" hidden>Questo browser non ascolta da solo: tocca la casella qui sopra e usa il
+        🎤 della tastiera.</p>
+      <div class="voice-actions">
+        <button type="button" class="primary voice-mic" id="voice-mic" aria-pressed="false">🎤 Ascolta</button>
+        <button type="button" id="voice-undo">↶ Togli l'ultima</button>
+        <button type="button" id="voice-cancel">Annulla</button>
+        <button type="button" class="primary" id="voice-done">✔ Fatto</button>
+      </div>
+      <div class="voice-preview">
+        <p class="small" id="voice-strip-title"></p>
+        <div class="strip-wrap" id="voice-strip"></div>
+        <p class="small" id="voice-info"></p>
+        <p class="small voice-notes" id="voice-notes"></p>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlg-voice-tut" class="voice-tut" aria-label="Tutorial del dettato">
+  <div class="dlg">
+    <p class="vt-head"><b>❔ Come si detta</b><span class="small muted" id="vt-count"></span></p>
+    <div class="vt-pages" id="vt-pages"></div>
+    <div class="vt-foot">
+      <button type="button" class="link" id="vt-exit">Esci</button>
+      <span class="tut-gap"></span>
+      <button type="button" id="vt-back">◀ Indietro</button>
+      <button type="button" class="primary" id="vt-next">Avanti ▶</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="dlg-hint">
   <form method="dialog" class="dlg hint">
     <h2 id="hint-title"></h2>
@@ -1163,6 +1277,7 @@
 </dialog>
 
 <script src="src/core.js"></script>
+<script src="src/voce.js"></script>
 <script src="src/xlsx.js"></script>
 <script src="src/pdf.js"></script>
 <script src="src/importa.js"></script>

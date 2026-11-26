@@ -10,6 +10,7 @@ const { JSDOM } = require(process.env.JSDOM_PATH || 'jsdom');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'Casellino.html'), 'utf8');
 const blobs = [];
+const fakeRec = { last: null, started: 0, stopped: 0 };
 const swChange = [];
 const dom = new JSDOM(html, {
   url: 'http://localhost/#esempio',
@@ -24,6 +25,12 @@ const dom = new JSDOM(html, {
     win.URL.revokeObjectURL = function () {};
     win.HTMLAnchorElement.prototype.click = function () {};
     win.HTMLElement.prototype.scrollIntoView = function () {};
+    // the voice recognition of the phone, pretended: the test says the words
+    win.webkitSpeechRecognition = function () {
+      fakeRec.last = this;
+      this.start = function () { fakeRec.started++; };
+      this.stop = function () { fakeRec.stopped++; };
+    };
     // a service worker that is already there, to try an update of the program
     Object.defineProperty(win.navigator, 'serviceWorker', { value: { controller: {}, register: function () { return Promise.resolve({ update: function () { return Promise.resolve(); } }); },
       addEventListener: function (type, fn) { if (type === 'controllerchange') swChange.push(fn); } } });
@@ -175,6 +182,74 @@ function caretAt(ta, needle, offset) {
   doc.getElementById('btn-anomalies-menu').dispatchEvent(new win.Event('click'));
   assert.ok(/Nessuna anomalia/.test(text('#anomalies-sum')), 'l\'esempio è in ordine: ' + text('#anomalies-list'));
   doc.getElementById('dlg-anomalies').close();
+  // the dictation: first the warning, then where to start, a draft until «Fatto»
+  const routeVoice = rb.value;
+  const closeWith = function (id, value) {
+    const d = doc.getElementById(id);
+    d.returnValue = value;
+    d.close();
+    d.dispatchEvent(new win.Event('close'));
+  };
+  doc.querySelector('.route-actions .voice-btn').dispatchEvent(new win.Event('click'));
+  assert.ok(doc.getElementById('dlg-voice-warn').open && /in silenzio/.test(text('#voice-warn-text')), 'prima l\'avviso del silenzio');
+  closeWith('dlg-voice-warn', 'ok');
+  assert.ok(doc.getElementById('dlg-voice-start').open && /Di solito si continua dalla fine/.test(text('#voice-start-note')), 'da dove dettare');
+  closeWith('dlg-voice-start', 'end');
+  assert.ok(doc.getElementById('dlg-voice').open && /Continui dalla fine/.test(text('#voice-where')), 'si apre il dettato');
+  assert.ok(doc.getElementById('dlg-voice-tut').open && text('#vt-count') === '2 di 12', 'la prima volta il tutorial del dettato: ' + text('#vt-count'));
+  for (let k = 0; k < 10; k++) {
+    assert.ok(text('#vt-pages').length > 40, 'pagina ' + text('#vt-count') + ' piena');
+    if (/Guarda una prova/.test(text('#vt-pages'))) {
+      await wait(3300);
+      assert.ok(doc.querySelector('#vt-pages .vt-said') && doc.querySelectorAll('#vt-pages .cell.top').length >= 2, 'la prova dal vivo: la striscia cresce');
+    }
+    doc.getElementById('vt-next').dispatchEvent(new win.Event('click'));
+  }
+  assert.strictEqual(text('#vt-next'), 'Ho capito ✓', 'ultima pagina del tutorial del dettato');
+  doc.getElementById('vt-back').dispatchEvent(new win.Event('click'));
+  doc.getElementById('vt-exit').dispatchEvent(new win.Event('click'));
+  closeWith('dlg-voice-tut', '');
+  const rules = doc.querySelectorAll('#voice-rules .voice-rule');
+  assert.ok(rules.length >= 18 && Array.prototype.every.call(rules, function (r) { return r.querySelector('.cell'); }), 'ogni regola ha la sua striscia');
+  doc.getElementById('voice-mic').dispatchEvent(new win.Event('click'));
+  assert.ok(fakeRec.last && fakeRec.started > 0 && /Pausa/.test(text('#voice-mic')), 'ascolta');
+  const said = function (words) { fakeRec.last.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: words }], { isFinal: true })] }); };
+  said('via dei Tigli 41 due caselle lo do al collega 43 43');
+  await wait(250);
+  assert.ok(/2 caselle nuove/.test(text('#voice-info')) && /41 \(2\)\*, 43/.test(text('#voice-info')), text('#voice-info'));
+  assert.strictEqual(doc.querySelectorAll('#voice-strip .cell.fresh').length, 2, 'le caselle nuove nell\'anteprima');
+  assert.strictEqual(rb.value, routeVoice, 'finché non premi Fatto il giro non cambia');
+  doc.getElementById('voice-mic').dispatchEvent(new win.Event('click'));
+  assert.ok(/Ascolta/.test(text('#voice-mic')), 'pausa');
+  const vt = doc.getElementById('voice-text');
+  vt.value += ' 45 cancella 47 pippo';
+  vt.dispatchEvent(new win.Event('input'));
+  await wait(250);
+  assert.ok(/3 caselle nuove/.test(text('#voice-info')) && /pippo/.test(text('#voice-notes')), text('#voice-info') + ' / ' + text('#voice-notes'));
+  doc.getElementById('voice-undo').dispatchEvent(new win.Event('click'));
+  assert.ok(!/47/.test(vt.value) && /2 caselle nuove/.test(text('#voice-info')), 'togli l\'ultima: ' + vt.value);
+  doc.getElementById('voice-done').dispatchEvent(new win.Event('click'));
+  assert.ok(!doc.getElementById('dlg-voice').open && /41 \(2\)\*, 43\s*$/.test(rb.value), 'Fatto: nel giro, alla fine');
+  // a pigeonhole changed by voice: only that one
+  const linesBefore = rb.value.split('\n').length;
+  doc.querySelector('#strips .cell.top').dispatchEvent(new win.Event('click'));
+  const changeBtn = Array.prototype.find.call(doc.querySelectorAll('#selection button'), function (b) { return /Cambiala a voce/.test(b.textContent); });
+  changeBtn.dispatchEvent(new win.Event('click'));
+  assert.ok(/Cambi:/.test(text('#voice-where')), 'cambia una casella');
+  said('8 collega');
+  await wait(250);
+  doc.getElementById('voice-done').dispatchEvent(new win.Event('click'));
+  assert.ok(rb.value.split('\n').length === linesBefore && /8\*/.test(rb.value), 'cambiata solo quella: ' + rb.value.split('\n')[0]);
+  // from a point: the bar asks to touch the pigeonhole
+  doc.getElementById('btn-voice-menu').dispatchEvent(new win.Event('click'));
+  closeWith('dlg-voice-start', 'after');
+  assert.ok(/Tocca nella striscia la casella dopo cui aggiungere/.test(text('.link-bar')), 'tocca la casella');
+  doc.querySelector('#strips .cell.top').dispatchEvent(new win.Event('click'));
+  assert.ok(doc.getElementById('dlg-voice').open && /Dopo:/.test(text('#voice-where')) && !doc.querySelector('.link-bar'), 'detta da qui');
+  doc.getElementById('voice-cancel').dispatchEvent(new win.Event('click'));
+  assert.ok(!doc.getElementById('dlg-voice').open, 'annulla senza niente detto');
+  rb.value = routeVoice;
+  rb.dispatchEvent(new win.Event('input'));
   // long press on a button: the little window that explains it, and the button is not pressed
   const pdfButton = doc.getElementById('btn-pdf');
   const blobsHold = blobs.length;
@@ -256,16 +331,16 @@ function caretAt(ta, needle, offset) {
   assert.ok(doc.getElementById('dlg-foto').open, 'finestra delle foto dal pulsante');
   const tut = doc.getElementById('dlg-tutorial');
   assert.ok(tut.open, 'il tutorial si apre da solo la prima volta');
-  assert.strictEqual(text('#tut-count'), '1 di 14');
+  assert.strictEqual(text('#tut-count'), '1 di 15');
   assert.ok(doc.getElementById('tut-back').hidden, 'sulla prima pagina niente «indietro»');
   doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
-  assert.strictEqual(text('#tut-count'), '2 di 14', 'Continua va avanti');
+  assert.strictEqual(text('#tut-count'), '2 di 15', 'Continua va avanti');
   assert.strictEqual(doc.querySelectorAll('#dlg-tutorial .tut-page:not([hidden])').length, 1, 'una pagina alla volta');
   doc.getElementById('tut-skip').dispatchEvent(new win.Event('click'));
   assert.ok(!tut.open, 'Salta lo chiude');
   doc.getElementById('btn-tutorial').dispatchEvent(new win.Event('click'));
-  assert.ok(tut.open && text('#tut-count') === '1 di 14', 'il tasto in alto lo riapre dall\'inizio');
-  for (let k = 0; k < 13; k++) doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
+  assert.ok(tut.open && text('#tut-count') === '1 di 15', 'il tasto in alto lo riapre dall\'inizio');
+  for (let k = 0; k < 14; k++) doc.getElementById('tut-next').dispatchEvent(new win.Event('click'));
   assert.strictEqual(text('#tut-next'), 'Ho capito ✓', 'sull\'ultima pagina');
   assert.ok(/Come si scrive/.test(text('#dlg-tutorial .tut-page:not([hidden])')), 'alla fine il rimando a «Come si scrive»');
   doc.getElementById('tut-help').dispatchEvent(new win.Event('click'));

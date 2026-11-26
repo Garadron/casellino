@@ -1,5 +1,47 @@
 # Registro delle versioni
 
+## v0.48.0 · 2026-11-26 · Il dettato
+
+Garadron (26 novembre 2026): «Stavo pensando alla dettatura del [casello]. Quindi tu imposti solo il [casello] e poi
+detti la via e i civici.» Poi: «si può anche utilizzare la dettatura per continuare da dove l'ha scritto», e
+l'avvertenza «che il dettato è uno strumento da utilizzare in silenzio assoluto». Il suo sì: «Sì, mi convince, vai».
+
+- **«🎤 Detta il giro»** (sotto il giro, e in «Altro»): si dice la via e poi i civici, e Casellino scrive il giro.
+  - Le frasi: «41 due caselle», «collega», «dal 9 al 21», «dal 2 al 10 tutti», «2 barra 4», «35 A», un'altra via in
+    mezzo, «nome Bar del Ponte», «simbolino 1», «vuota», «tre vuote», «fine fila», «fine striscia», «da controllare».
+    Anche i numeri detti a parole («quarantuno») e la via detta in breve, se è chiaro quale («via Rossi» per «VIA
+    FRATELLI ROSSI»).
+  - **Le impappinature si sbrogliano**: un numero ripetuto si scrive una volta sola, «no» o «anzi» cambiano l'ultimo
+    numero, «cancella» toglie l'ultima casella. Le parole che non c'entrano non si scrivono, e la finestra le dice.
+  - Le file vanno avanti da sole, i colori si mettono da soli.
+- **La finestra del dettato**, pensata per il telefono:
+  - in alto le regole da scorrere, ognuna con la sua striscia di esempio, disegnata dal vero traduttore;
+  - in basso, fisso, quello che hai detto, con «🎤 Ascolta / ⏸ Pausa», «↶ Togli l'ultima», «Annulla» e «✔ Fatto».
+    In pausa si corregge con la tastiera; quando si riprende la tastiera si chiude. Toccare il testo mette in pausa;
+  - sotto, l'anteprima della striscia che cresce, con le caselle nuove contornate, quante caselle si spostano e quante
+    passano a un'altra fila.
+- **Da dove dettare**, se il giro ha già qualcosa: «Continua dalla fine» (già scelta), «Aggiungi da un punto» o
+  «Cambia una casella» (si tocca la casella). Anche dalla casella toccata: «🎤 Detta da qui» e «🎤 Cambiala a voce».
+  Il dettato non cancella mai niente, e fino a «✔ Fatto» è una bozza. Su un giro bloccato si può solo cambiare una
+  casella.
+- **L'avvertenza del silenzio**: la prima volta si legge e si accetta («Ho capito, detto in silenzio»); poi resta per
+  sempre come prima pagina del tutorial del dettato, e nella finestra c'è «🤫 Silenzio intorno?» per rileggerla.
+- **Il tutorial del dettato** (12 pagine): l'avvertenza, le frasi con le loro strisce, pausa e correzioni, da dove
+  partire e una prova da guardare, con la striscia che cresce parola per parola (con pausa e «Da capo»). La prima
+  volta parte da solo; poi da «❔ Come si detta», da «Altro» e da «Come si scrive».
+- Il tutorial generale ha la pagina nuova **«13 · Il dettato»**, che comincia con l'avvertenza. Le spiegazioni del
+  «tieni premuto» coprono i tasti nuovi.
+- La voce la capisce il riconoscimento del telefono o del browser, gratis (Chrome su Android, Safari su iPhone, Edge).
+  Dove non c'è, si usa il microfono della tastiera, che scrive nella stessa casella.
+- Prove:
+  - `tests/test_core.js`: le frasi, le impappinature, i numeri a parole, le vie dette in breve, e dove vanno le righe
+    (alla fine, dopo una casella anche dentro una serie, al posto di una casella);
+  - `tests/test_pagina.js`: avvertenza, scelta, tutorial del dettato con la prova, la voce (finta), pausa e
+    correzione, «Togli l'ultima», «Fatto», cambia una casella, aggiungi da un punto; il tutorial generale ha 15 pagine;
+  - in Edge, giorno e notte, telefono e computer, nessun errore.
+- File: `app/src/voce.js` (nuovo), `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `tools/tutorial.py`,
+  `tests/test_core.js`, `tests/test_pagina.js`, `Casellino.html`, `sito/`.
+
 ## v0.47.0 · 2026-11-26 · Il controllo anomalie trova anche i civici ripetuti
 
 Garadron (26 novembre 2026): «O anche se sono ripetuti, aggiungiamo.»

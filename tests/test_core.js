@@ -856,7 +856,7 @@ test('link symbols: written, changed, grouped, printed', function () {
   const Pdf = require('../app/src/pdf.js');
   const p = Core.newProject();
   p.subzones[0].modules = { alaA: false, casello: true, alaB: true };
-  p.subzones[0].route = 'VIA ROSSI: 1, 3, 5..9@1, 11 (2)*@2\nBAR CENTRALE (2)@1\nVIA VERDI: 2/4@2';
+  p.subzones[0].route = 'VIA ROSSI: 1, 3, 5..9@1, 11 (2)*@2\nBAR CENTRALE (2)@1\nVIA DEI PIOPPI: 2/4@2';
   const items = Core.parseRoute(p.subzones[0].route).items;
   assert.deepStrictEqual(items.map(function (i) { return i.link; }), [0, 0, 1, 1, 1, 2, 1, 2]);
   assert.strictEqual(items[5].other, true, 'collega e simbolino insieme');
@@ -914,6 +914,37 @@ test('anomaly check: streets and squares, nothing changed', function () {
   const ex = Core.textToProject(EXAMPLE);
   assert.ok(ex.subzones.some(function (sz) { return sz.route.trim(); }));
   ex.subzones.forEach(function (sz) { assert.deepStrictEqual(Core.orderAnomalies(sz.route, sz.town), [], sz.name); });
+});
+
+test('dictation: words to the route, stammers cleaned, put in its place', function () {
+  const Voce = require('../app/src/voce.js');
+  const tr = function (said, street) { return Voce.translate(said, { street: street, streets: ['VIA FRATELLI ROSSI', 'VIA DEI TIGLI'] }).lines.join(' | '); };
+  assert.strictEqual(tr('via dei Tigli 1 3 5 7'), 'VIA DEI TIGLI: 1, 3, 5, 7');
+  assert.strictEqual(tr('via Rossi 41 due caselle lo do al collega 43'), 'VIA FRATELLI ROSSI: 41 (2)*, 43', 'the known name, said in short');
+  assert.strictEqual(tr('via dei Pioppi dal 9 al 21 dal 2 al 10 tutti dal 20 al 2'), 'VIA DEI PIOPPI: 9..21, 2-10 tutti, 20..2');
+  assert.strictEqual(tr('via dei Pioppi 2 barra 4 35 A 35 b 12 bis'), 'VIA DEI PIOPPI: 2/4, 35A, 35B, 12BIS');
+  assert.strictEqual(tr('via dei Gelsi 37 via dei Pioppi 9 11'), 'VIA DEI GELSI: 37 | VIA DEI PIOPPI: 9, 11');
+  assert.strictEqual(tr('nome Bar del Ponte due caselle simbolino 1 via dei Pioppi 38 simbolino 1'), 'BAR DEL PONTE (2)@1 | VIA DEI PIOPPI: 38@1');
+  assert.strictEqual(tr('via dei Pioppi 1 vuota tre vuote fine fila 5'), 'VIA DEI PIOPPI: 1, vuota, vuota, vuota, vuota | FINE FILA | VIA DEI PIOPPI: 5');
+  assert.strictEqual(tr('via dei Pioppi 41 41 43 no 45 47 cancella 49 da controllare'), 'VIA DEI PIOPPI: 41, 45, 49?');
+  assert.strictEqual(tr('via dei Pioppi 3 5 7 via dei Pioppi 3 5 9'), 'VIA DEI PIOPPI: 3, 5, 7, 9', 'said again: once');
+  assert.strictEqual(tr('via 4 Novembre 9 11 e 13'), 'VIA 4 NOVEMBRE: 9, 11, 13', 'a number in the name');
+  assert.strictEqual(tr('quarantuno quarantatré centotto', 'VIA DEI PIOPPI'), 'VIA DEI PIOPPI: 41, 43, 108', 'numbers in words, the street before');
+  assert.strictEqual(tr('cascina Alta due caselle tre vuote'), 'CASCINA ALTA (2) | vuote 3');
+  const r = Voce.translate('via dei Pioppi 1 pippo 3', {});
+  assert.deepStrictEqual(r.unknown, ['pippo']);
+  // what the dictation writes, the route reads the same
+  const back = cellsOf(tr('via dei Pioppi 41 due caselle collega 5 da controllare simbolino 2'));
+  assert.deepStrictEqual(back.map(function (c) { return [c.top, c.span, !!c.other, c.link]; }), [['41', 2, true, 0], ['5?', 1, false, 2]]);
+  // put into the route: at the end, after a pigeonhole (a series written out), in its place
+  const route = 'VIA A: 1, 3, 5..11, 13\nCASCINA X\nVIA B: 2, 4';
+  assert.strictEqual(Voce.insertLines(route, null, ['VIA B: 6, 8']).text, 'VIA A: 1, 3, 5..11, 13\nCASCINA X\nVIA B: 2, 4, 6, 8');
+  assert.strictEqual(Voce.insertLines(route, { line: 0, tok: 2, top: '7', second: '' }, ['VIA A: 8', 'VIA C: 1']).text,
+    'VIA A: 1, 3, 5, 7, 8\nVIA C: 1\nVIA A: 9, 11, 13\nCASCINA X\nVIA B: 2, 4');
+  assert.strictEqual(Voce.insertLines(route, { line: 0, tok: 2, top: '7', second: '', replace: true }, ['VIA A: 7 (2)*']).text,
+    'VIA A: 1, 3, 5, 7 (2)*, 9, 11, 13\nCASCINA X\nVIA B: 2, 4');
+  assert.strictEqual(Voce.insertLines(route, { line: 1, tok: 0, top: '', second: '' }, ['VIA D: 1']).text,
+    'VIA A: 1, 3, 5..11, 13\nCASCINA X\nVIA D: 1\nVIA B: 2, 4');
 });
 
 asyncTests().then(function () {

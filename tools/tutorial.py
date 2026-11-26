@@ -342,6 +342,22 @@ def hold():
     return svg(226, "\n".join(out), "Tieni premuto un tasto: si apre la finestrina che lo spiega")
 
 
+def dictation():
+    out = [phone(20, 150, f"""<rect x="36" y="56" width="118" height="44" rx="8" fill="#fffaf0" stroke="{INK}" stroke-width="1.5"/>
+{label(95, 74, "«via Rossi 1 3 5,", 10, INK, weight=400)}
+{label(95, 90, "41 due caselle»", 10, INK, weight=400)}
+<rect x="52" y="112" width="86" height="30" rx="15" fill="{RED}"/>{label(95, 132, "🎤 Ascolta", 11, "#fff")}
+{label(95, 178, "🤫 in silenzio", 11, RED)}"""),
+           mini_strip(186, 40, "VIA ROSSI", (1, 3, 5), "#bfe6ff", w=36),
+           f'<rect x="294" y="40" width="72" height="56" fill="#bfe6ff" stroke="{INK}" stroke-width="3"/>',
+           f'<path d="M294 72H366" stroke="{INK}" stroke-width="2"/>',
+           label(330, 63, "41", 14, weight=900),
+           label(276, 128, "la striscia cresce mentre parli", 11, "#9a5200"),
+           label(276, 150, "«no», «anzi», «cancella»", 10.5, INK, weight=400),
+           label(276, 166, "sbrogliano le impappinature", 10.5, INK, weight=400)]
+    return svg(220, "\n".join(out), "Si detta il giro dal telefono: la striscia si costruisce mentre si parla")
+
+
 # ---------------------------------------------------------------- the pages: drawing + what the postman says
 PAGES = [
     (whole_mobile(), "1 · Tutto il mobile",
@@ -382,10 +398,15 @@ PAGES = [
      "Hai finito il giro? Premi <b>«🔎 Controllo anomalie»</b>: guarda l'ordine dei civici in ogni via e piazza e ti "
      "mostra <b>in giallo</b> quelli fuori posto, come il 9 in «1, 3, 5, 9, 7», e quelli <b>ripetuti</b>. <b>Non cambia niente</b>: se il "
      "disordine è voluto lo lasci, se no lo correggi tu."),
-    (hold(), "13 · Tieni premuto",
+    (dictation(), "13 · Il dettato",
+     "🤫 <b>Prima un patto: si detta in silenzio</b>, non tra colleghi che scherzano o discutono, se no Casellino scrive "
+     "anche le loro battute. Poi premi <b>«🎤 Detta il giro»</b> e dì la via e i civici: «via Rossi 1 3 5, 41 due caselle "
+     "collega». Se il giro c'è già, scegli se <b>continuare dalla fine</b>, <b>aggiungere da un punto</b> o <b>cambiare "
+     "una casella</b>. Niente cambia finché non premi «✔ Fatto». Tutte le frasi sono nel tutorial del dettato."),
+    (hold(), "14 · Tieni premuto",
      "Non sai a che serve un tasto o una casella? <b>Tienilo premuto</b>: si apre una finestrina che ti dice che cos'è, "
      "a che serve e come funziona."),
-    (the_end(), "14 · Fatto!",
+    (the_end(), "15 · Fatto!",
      "Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: "
      "ti spiega come scrivere il giro a mano."),
 ]
@@ -396,6 +417,8 @@ def dialog():
     for k, (pic, title, say) in enumerate(PAGES):
         extra = ('\n      <p class="tut-more"><button type="button" id="tut-help">📝 Come si scrive</button></p>'
                  if k == len(PAGES) - 1 else '')
+        if title.endswith("Il dettato"):
+            extra = '\n      <p class="tut-more"><button type="button" id="tut-voice">🎤 Il tutorial del dettato</button></p>'
         pages.append(f"""    <section class="tut-page"{' hidden' if k else ''}>
       {pic}
       <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>

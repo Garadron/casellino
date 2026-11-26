@@ -5,6 +5,10 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
+0. **Provare il dettato sul telefono** (v0.48.0) su una fila della sua zona, in silenzio: dire quali frasi capisce
+   male o quali parole preferisce, e le si aggiunge.
+0. **Un'idea da ricordare** (Garadron, 26 novembre 2026): «mi devo ricordare una cosa, mi sono dimenticato, che
+   potremmo magari pure aggiungere». Chiedergliela alla prossima sessione.
 0. **Prima di proporre Casellino all'azienda: un parere sul contratto** (Archivista per Garadron, 24 novembre 2026).
    Un programma fatto da un dipendente può essere del datore di lavoro (art. 12-bis legge 633/1941): le domande da
    fare a un avvocato o all'ufficio legale del sindacato sono nella cartella privata della proposta («Prima di
