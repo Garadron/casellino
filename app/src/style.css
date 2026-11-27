@@ -725,3 +725,9 @@ dialog.news { width: min(560px, calc(100vw - 32px)); }
 .news-version h3 { font-size: 15px; margin: 6px 0 4px; }
 .news-version ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
 #news-all[hidden] { display: none; }
+/* «Metti Casellino nella Home» (v0.50.0) */
+dialog.home { width: min(560px, calc(100vw - 32px)); }
+.home-steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }
+.home-install { background: var(--accent-soft); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.home-install[hidden], #home-note[hidden], .home-btn[hidden] { display: none; }
+.gate-card .home-btn { justify-content: center; }

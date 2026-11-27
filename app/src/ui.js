@@ -3035,10 +3035,95 @@
     }
   }
 
+  /*
+   * «Metti Casellino nella Home» (Garadron, 26 November 2026, said in the chat of the Ricettario, where the page was
+   * born: «vale anche per il casellino [...] da scrivere appunto nel tutorial o da qualche parte che sia visibile»).
+   * Until Casellino is in the stores: the steps for the device in use, chosen already, the others a tap away. On iPhone
+   * it goes through Safari (Brave, Chrome, Firefox often lack the entry): «Copia il link» carries the page there.
+   * The link #nella-home opens this window by itself, also before signing in.
+   */
+  const HOME_LINK = SITE_URL + '#nella-home';
+  const inHome = function () {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  };
+  const UA = navigator.userAgent || '';
+  const HOME_OS = /iPhone|iPad|iPod/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1)
+    ? 'ios' : (/Android/.test(UA) ? 'android' : 'computer');
+  const HOME_STEPS = {
+    ios: [
+      'Serve Safari, la bussola blu. Se stai usando un altro browser (Brave, Chrome, Firefox…), tocca qui sotto «Copia il link». Se sei già in Safari, vai al passo 3.',
+      'Apri Safari, tieni il dito sulla barra dell\'indirizzo e scegli «Incolla e vai».',
+      'Tocca «Condividi», il quadrato con la freccia in su. Se non lo vedi, tocca prima i tre puntini accanto all\'indirizzo.',
+      'Scorri e tocca «Aggiungi alla schermata Home». Se non c\'è, in fondo all\'elenco tocca «Modifica azioni» e aggiungila.',
+      'Lascia attivo «Apri come app web» e tocca «Aggiungi». L\'icona di Casellino è nella Home.'],
+    android: [
+      'Apri il menu del browser: i tre puntini in alto a destra. In Samsung Internet sono le tre righe in basso.',
+      'Tocca «Installa app» oppure «Aggiungi a schermata Home». In Samsung Internet: «Aggiungi pagina a», poi «Schermata Home».',
+      'Conferma con «Installa» o «Aggiungi». L\'icona di Casellino è nella Home.'],
+    computer: [
+      'Con Chrome o Edge: a destra nella barra dell\'indirizzo tocca l\'icona «Installa», uno schermo con la freccia.',
+      'Se non la vedi, apri il menu (i tre puntini): in Chrome «Trasmetti, salva e condividi», poi «Installa pagina come app»; in Edge «App», poi «Installa questo sito come app».',
+      'Con Safari sul Mac: menu «File», poi «Aggiungi al Dock».'],
+  };
+  const HOME_NOTES = {
+    ios: '',
+    android: 'Non trovi la voce? Copia il link e aprilo con Chrome.',
+    computer: 'Firefox sul computer non lo permette: copia il link e aprilo con Chrome o Edge.',
+  };
+  let installAsk = null;   // Chrome and Edge (Android and computer): the installation with one tap
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installAsk = e; });
+
+  function showHomeOs(os) {
+    Array.prototype.forEach.call(document.querySelectorAll('#home-os button'), function (b) {
+      b.setAttribute('aria-selected', b.dataset.os === os ? 'true' : 'false');
+    });
+    const ol = $('home-steps');
+    ol.textContent = '';
+    HOME_STEPS[os].forEach(function (s) { ol.append(h('li', null, s)); });
+    $('home-note').textContent = HOME_NOTES[os];
+    $('home-note').hidden = !HOME_NOTES[os];
+    $('home-install').hidden = !(installAsk && os !== 'ios' && !inHome());
+  }
+  function openHome() {
+    document.querySelectorAll('.menu').forEach(function (m) { m.open = false; });
+    $('home-already').hidden = !inHome();
+    $('home-file').hidden = location.protocol !== 'file:';
+    $('home-copy').textContent = '📋 Copia il link';
+    showHomeOs(HOME_OS);
+    if (!$('dlg-home').open) $('dlg-home').showModal();
+  }
+  function copyHomeLink() {
+    const done = function () { $('home-copy').textContent = '✓ Link copiato!'; };
+    const byHand = function () { window.prompt('Copia il link', HOME_LINK); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(HOME_LINK).then(done, byHand);
+    else byHand();
+  }
+  function wireHome() {
+    ['btn-home', 'gate-home', 'help-home'].forEach(function (id) {
+      $(id).addEventListener('click', function () { if ($('dlg-help').open) $('dlg-help').close(); openHome(); });
+    });
+    $('tut-home').addEventListener('click', function () { $('dlg-tutorial').close(); openHome(); });
+    Array.prototype.forEach.call(document.querySelectorAll('#home-os button'), function (b) {
+      b.addEventListener('click', function () { showHomeOs(b.dataset.os); });
+    });
+    $('home-copy').addEventListener('click', copyHomeLink);
+    $('home-install-btn').addEventListener('click', function () {
+      if (!installAsk) return;
+      installAsk.prompt();
+      installAsk = null;
+      $('home-install').hidden = true;
+    });
+    $('home-support').addEventListener('click', function () { $('dlg-home').close(); openSupport(); });
+    // already in the Home: the buttons that lead here are not needed
+    if (inHome()) Array.prototype.forEach.call(document.querySelectorAll('.home-btn'), function (el) { el.hidden = true; });
+  }
+
   // ------------------------------------------------------------ the news (Garadron, 26 November 2026)
   // Only the essentials of each version, newest first. Shown once by itself, on entering or signing in after an
   // update; always there from «🆕 Novità». A version with nothing new to see adds nothing here.
   const NEWS = [
+    { v: '0.50.0', data: '27 novembre 2026', cose: [
+      '📲 Metti Casellino nella Home: i passi per iPhone, Android e computer, e «Copia il link» per passare a Safari. È nella pagina d\'accesso, in «Altro» e nel tutorial.'] },
     { v: '0.49.0', data: '26 novembre 2026', cose: [
       'Si entra con il tuo account: senza accesso non si vede niente, così i tuoi giri li vedi solo tu.',
       'Le novità di ogni aggiornamento compaiono una volta sola appena entri. Le rileggi quando vuoi da «🆕 Novità», in alto.'] },
@@ -4171,6 +4256,7 @@
     [/^🎤 Detta da qui/, '🎤 Detta da qui', 'Aggiunge a voce delle caselle subito dopo questa.', 'Per inserire un pezzo dimenticato senza riscrivere il resto.', 'Le caselle dopo si spostano più avanti: l\'anteprima ti dice quante, prima di «✔ Fatto».'],
     [/^🎤 Cambiala a voce/, '🎤 Cambiala a voce', 'Riscrive a voce solo questa casella.', 'Per correggere una casella senza toccare le altre, anche su un giro bloccato.', 'Detta come deve essere, per esempio «41 due caselle collega», poi «✔ Fatto».'],
     ['#btn-theme', '☀️/🌙 Giorno e notte', 'L\'interruttore tra pagina chiara e pagina scura.', 'Di sera o al buio la pagina scura stanca meno gli occhi.', 'All\'inizio segue il telefono o il computer. Toccalo per scegliere tu: la scelta resta, anche quando riapri.'],
+    ['#btn-home, #gate-home', '📲 Metti Casellino nella Home', 'I passi per avere Casellino nella Home, con la sua icona.', 'Così si apre come un\'app, anche senza internet.', 'Il tuo telefono è già scelto: segui i passi. Su iPhone si passa da Safari: «Copia il link» ti porta lì.'],
     ['#btn-share, #btn-share-menu', '📤 Condividi', 'Il link di Casellino da mandare ai colleghi.', 'Così anche loro scrivono il giro e stampano le strisce, gratis.', 'Sul telefono si apre la condivisione (WhatsApp, email…). Sul computer il link si copia e compare il codice QR da inquadrare.'],
     ['#btn-tutorial', '📖 Tutorial', 'Il giro guidato di Casellino, a fumetti.', 'Per imparare a fare le foto del casello e a usare i tasti.', 'Si sfoglia con «Continua» e ◀; «Salta» lo chiude. Si riapre quando vuoi da qui.'],
     ['#btn-account', '👤 Il tuo account', 'Il tuo account di Casellino: i tuoi lavori, il nome, l\'email, Esci.', 'Per ritrovare il tuo giro su un altro telefono o computer.', 'Senza account Casellino non si apre: così i tuoi giri li vedi solo tu.'],
@@ -4419,6 +4505,7 @@
     $('btn-account').addEventListener('click', openAccount);
     $('gate-support').addEventListener('click', openSupport);
     wireNews();
+    wireHome();
     window.addEventListener('online', function () { if (account.token) cloudSave(false); });
     [['depot-town', 'comune'], ['depot-prov', 'provincia'], ['depot-street', 'via'], ['depot-number', 'civico']].forEach(function (f) {
       $(f[0]).addEventListener('input', function (e) {
@@ -4499,6 +4586,7 @@
     const v = $('version');
     if (v && window.CASELLINO_VERSION) v.textContent = 'Versione ' + window.CASELLINO_VERSION;
     registerOffline();
+    if (location.hash === '#nella-home') openHome();
   }
 
   start();

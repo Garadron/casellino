@@ -77,6 +77,7 @@
         <button type="button" id="btn-bug">🐞 Segnala un problema</button>
         <button type="button" id="btn-support">✉️ Supporto</button>
         <button type="button" id="btn-share-menu">📤 Condividi Casellino</button>
+        <button type="button" id="btn-home" class="home-btn">📲 Metti Casellino nella Home</button>
         <a class="menu-link" href="https://garadron.github.io/casellino/privacy.html" target="_blank" rel="noopener">🔒 Privacy</a>
         <p class="small muted version" id="version"></p>
         <p class="small muted version">© 2026 Emmanuel Surace · uso gratuito non commerciale</p>
@@ -93,6 +94,7 @@
       telefono o computer. È gratis.</p>
     <p class="small hint" id="gate-kept" hidden>Il lavoro che c'era su questo dispositivo non si perde: lo ritrovi appena entri.</p>
     <div id="gate-body"></div>
+    <p class="actions-inline home-btn"><button type="button" id="gate-home">📲 Metti Casellino nella Home</button></p>
     <p class="small muted gate-foot"><button type="button" class="link-btn" id="gate-support">✉️ Scrivi al supporto</button> ·
       <a href="https://garadron.github.io/casellino/privacy.html" target="_blank" rel="noopener">Informativa sulla privacy</a></p>
   </div>
@@ -236,8 +238,36 @@
     <p>Se una casella larga non entra alla fine di una striscia, passa intera alla striscia dopo. La stessa via ha sempre lo stesso colore; due vie vicine hanno colori diversi. Il colore si cambia nell'elenco delle vie. Nello stesso elenco, toccando un nome (o la matita ✏️) lo <b>correggi in tutto il giro</b>: cambia in ogni riga e in ogni sottozona dello stesso comune, i civici restano. Così, dopo la lettura delle foto, i nomi si sistemano da lì e nel giro si pensa solo ai numeri.</p>
     <p>Le linee tratteggiate nelle strisce segnano dove finisce un foglio A4: ogni foglio tiene 22 caselle.</p>
     <h3>Sul telefono</h3>
-    <p>Apri la pagina dal suo indirizzo internet. Su iPhone: Condividi → «Aggiungi alla schermata Home». Su Android: menu ⋮ → «Installa app». Poi si apre come un'app e funziona anche senza internet (la mappa no). Ogni tanto usa «Salva file»: è la copia sicura del tuo lavoro.</p>
+    <p>Mettilo nella Home: si apre come un'app, con la sua icona, e funziona anche senza internet (la mappa no). I passi per iPhone, Android e computer sono in <button type="button" class="link" id="help-home">📲 Metti Casellino nella Home</button>. Ogni tanto usa «Salva file»: è la copia sicura del tuo lavoro.</p>
     <menu><button value="ok" class="primary">Ho capito</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-home" class="home" aria-labelledby="home-title">
+  <form method="dialog" class="dlg">
+    <p class="small muted">finché non è negli store</p>
+    <h2 id="home-title">📲 Metti Casellino nella Home</h2>
+    <p>Casellino non si scarica dal Play Store o dall'App Store: si mette nella Home dal browser, e poi si apre come
+      un'app, con la sua icona. Funziona anche senza internet.</p>
+    <p class="done-note" id="home-already" hidden>🎉 Ce l'hai già nella Home: lo stai usando proprio adesso.</p>
+    <p class="small hint" id="home-file" hidden>Questa è la copia di Casellino salvata sul computer: nella Home si mette il
+      sito. Tocca «Copia il link» e aprilo nel browser, poi segui i passi.</p>
+    <div class="tabs" id="home-os" role="tablist" aria-label="Il tuo dispositivo">
+      <button type="button" role="tab" data-os="ios">iPhone e iPad</button>
+      <button type="button" role="tab" data-os="android">Android</button>
+      <button type="button" role="tab" data-os="computer">Computer</button>
+    </div>
+    <div class="home-install" id="home-install" hidden>
+      <p>Il tuo browser lo fa con un tocco:</p>
+      <p><button type="button" class="primary" id="home-install-btn">📲 Installa adesso</button></p>
+      <p class="small muted">Oppure segui i passi qui sotto.</p>
+    </div>
+    <ol class="home-steps" id="home-steps"></ol>
+    <p class="small muted" id="home-note"></p>
+    <p class="actions-inline"><button type="button" id="home-copy">📋 Copia il link</button></p>
+    <p class="small muted" id="home-again">Su iPhone e iPad, nell'app della Home si entra di nuovo una volta con il tuo account: è
+      normale, il telefono la tiene separata da Safari. Il tuo lavoro è nell'account e lo ritrovi.</p>
+    <menu><button type="button" id="home-support">Non ci riesci? Scrivi al supporto</button><button value="ok" class="primary">Ho capito</button></menu>
   </form>
 </dialog>
 
@@ -1034,8 +1064,8 @@
 <circle cx="160" cy="20" r="4" fill="#ff8a8a"/><circle cx="20" cy="40" r="5" fill="#8fd3ff"/><circle cx="150" cy="160" r="4" fill="#a6e28a"/><circle cx="345" cy="30" r="5" fill="#ffe37a"/>
 </svg>
       <div class="tut-say"><svg viewBox="0 0 100 130" aria-hidden="true"><use href="#tut-postino"/></svg>
-        <p class="tut-bubble"><b class="tut-title">15 · Fatto!</b>Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: ti spiega come scrivere il giro a mano. Dopo ogni aggiornamento, in alto, <b>«🆕 Novità»</b> ti dice che cosa c'è di nuovo.</p></div>
-      <p class="tut-more"><button type="button" id="tut-help">📝 Come si scrive</button></p>
+        <p class="tut-bubble"><b class="tut-title">15 · Fatto!</b>Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: ti spiega come scrivere il giro a mano. Dopo ogni aggiornamento, in alto, <b>«🆕 Novità»</b> ti dice che cosa c'è di nuovo. E <b>mettilo nella Home</b> del telefono: si apre come un'app, con la sua icona.</p></div>
+      <p class="tut-more"><button type="button" id="tut-help">📝 Come si scrive</button> <button type="button" id="tut-home" class="home-btn">📲 Metti Casellino nella Home</button></p>
     </section>
     </div>
     <div class="tut-foot">

@@ -13,9 +13,9 @@ const wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms)
 const calls = [];
 
 // One page, as a phone would open it; `store` is what the device already keeps.
-function open(store) {
+function open(store, hash) {
   const dom = new JSDOM(html, {
-    url: 'http://localhost/',
+    url: 'http://localhost/' + (hash || ''),
     runScripts: 'dangerously',
     pretendToBeVisual: true,
     beforeParse(win) {
@@ -25,6 +25,7 @@ function open(store) {
       win.HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new win.Event('close')); };
       win.HTMLElement.prototype.scrollIntoView = function () {};
       win.confirm = function () { return false; };   // «Esci»: keep the work on the device
+      win.prompt = function (q, v) { win.copied = v; return null; };   // no clipboard here: the link to copy by hand
       Object.keys(store).forEach(function (k) { win.localStorage.setItem(k, store[k]); });
       // the server: signs in whoever asks, keeps nothing
       win.fetch = function (url, o) {
@@ -63,14 +64,24 @@ async function signIn(win, user) {
   assert.ok(!doc.getElementById('gate-kept').hidden, 'dice che il lavoro sul dispositivo non si perde');
   assert.ok(!doc.getElementById('dlg-news').open, 'le novità dopo l\'accesso, non prima');
   assert.strictEqual(doc.querySelector('textarea.route-text').value, 'VIA DEI TIGLI: 1, 3, 5', 'il lavoro c\'è, nascosto');
-  // 2. signing in: the page, then the news not seen yet (two versions), once
+  // «Metti Casellino nella Home», also before signing in: the device chosen, the others a tap away, the link
+  doc.getElementById('gate-home').dispatchEvent(new win.Event('click'));
+  assert.ok(doc.getElementById('dlg-home').open, 'la finestra della Home dalla pagina d\'accesso');
+  assert.strictEqual(doc.querySelector('#home-os [aria-selected=true]').dataset.os, 'computer', 'il dispositivo in uso già scelto');
+  assert.strictEqual(doc.querySelectorAll('#home-steps li').length, 3, 'i passi del computer');
+  doc.querySelector('#home-os [data-os=ios]').dispatchEvent(new win.Event('click'));
+  assert.ok(doc.querySelectorAll('#home-steps li').length === 5 && /Safari/.test(doc.getElementById('home-steps').textContent), 'iPhone: passa da Safari');
+  doc.getElementById('home-copy').dispatchEvent(new win.Event('click'));
+  assert.strictEqual(win.copied, 'https://garadron.github.io/casellino/#nella-home', 'il link da copiare');
+  doc.getElementById('dlg-home').close();
+  // 2. signing in: the page, then the news not seen yet (the versions after 0.47.0), once
   await signIn(win, 'mario');
   assert.ok(!doc.body.classList.contains('gated') && doc.getElementById('gate').hidden, 'entrato');
   assert.ok(/mario/.test(doc.getElementById('btn-account').textContent), 'il nome in alto');
   assert.ok(calls.some(function (c) { return c[0] === 'PUT'; }), 'il lavoro che c\'era si salva nell\'account');
   assert.ok(doc.getElementById('dlg-news').open, 'le novità appena entrato');
   const versions = Array.prototype.map.call(doc.querySelectorAll('#news-body h3'), function (h3) { return h3.textContent; });
-  assert.strictEqual(versions.length, 2, versions.join(' / '));
+  assert.strictEqual(versions.length, 3, versions.join(' / '));
   assert.ok(versions[0].indexOf(win.CASELLINO_VERSION) >= 0, 'in cima le novità di questa versione: ' + versions[0]);
   doc.getElementById('dlg-news').close();
   doc.getElementById('btn-news').dispatchEvent(new win.Event('click'));
@@ -121,6 +132,10 @@ async function signIn(win, user) {
   doc.getElementById('btn-account').dispatchEvent(new win.Event('click'));   // the list of the works asks the server
   await wait(200);
   assert.ok(doc.body.classList.contains('gated') && /accedi di nuovo/.test(doc.getElementById('gate-body').textContent), 'accesso scaduto: di nuovo l\'accesso');
+  // 6. the copied link opens the window by itself
+  win = open({}, '#nella-home');
+  await wait(300);
+  assert.ok(win.document.getElementById('dlg-home').open && win.document.body.classList.contains('gated'), 'il link apre la finestra, anche senza accesso');
   console.log('Accesso: tutte le prove superate');
   process.exit(0);
 })().catch(function (e) { console.error(e); process.exit(1); });

@@ -1,5 +1,24 @@
 # Registro delle versioni
 
+## v0.50.0 · 2026-11-27 · Metti Casellino nella Home
+
+Sì di Garadron, detto nella chat del Ricettario (26 novembre 2026), dove la pagina è nata (Ricettario v0.54.0): «vale
+anche per il casellino, per il [casello] lì, e anche per il leggio, da scrivere appunto nel tutorial o da qualche
+parte che sia visibile».
+
+- **📲 Metti Casellino nella Home**: una finestra con i passi per **iPhone e iPad** (si passa da Safari: con Brave,
+  Chrome o Firefox spesso la voce non c'è, e «📋 Copia il link» porta la pagina lì), per **Android** (Chrome e
+  Samsung Internet) e per il **computer** (Chrome, Edge, Safari sul Mac). Il dispositivo in uso è già scelto, gli
+  altri si toccano. Dove il browser lo permette c'è «📲 Installa adesso». Avvisa che su iPhone nell'app della Home si
+  entra di nuovo una volta. Se Casellino è già nella Home lo dice, e i tasti che portano lì spariscono.
+- Si trova: nella pagina d'accesso (si apre anche senza account), in «Altro», all'ultima pagina del tutorial, in
+  «Come si scrive» al posto della spiegazione di prima. Il link copiato (`…/casellino/#nella-home`) apre la finestra
+  da solo. Dalla copia salvata sul computer dice di aprire il sito.
+- Nelle novità («🆕 Novità») e nel «tieni premuto».
+- Prove: `tests/test_accesso.js` (la finestra dalla pagina d'accesso, i tre dispositivi, il link copiato, il link
+  che la apre da solo); in Edge, giorno e notte, telefono e computer, nessun errore.
+- File: `app/index.src.html`, `app/src/ui.js`, `app/src/style.css`, `tools/tutorial.py`, `tests/test_accesso.js`.
+
 ## v0.49.0 · 2026-11-26 · Si entra con l'account, e le novità di ogni aggiornamento
 
 Garadron (26 novembre 2026): «Quando c'è [...] una feature nuova, vorrei che fosse lanciato il messaggio appena si

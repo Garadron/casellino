@@ -409,14 +409,15 @@ PAGES = [
     (the_end(), "15 · Fatto!",
      "Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: "
      "ti spiega come scrivere il giro a mano. Dopo ogni aggiornamento, in alto, <b>«🆕 Novità»</b> ti dice che cosa "
-     "c'è di nuovo."),
+     "c'è di nuovo. E <b>mettilo nella Home</b> del telefono: si apre come un'app, con la sua icona."),
 ]
 
 
 def dialog():
     pages = []
     for k, (pic, title, say) in enumerate(PAGES):
-        extra = ('\n      <p class="tut-more"><button type="button" id="tut-help">📝 Come si scrive</button></p>'
+        extra = ('\n      <p class="tut-more"><button type="button" id="tut-help">📝 Come si scrive</button>'
+                 ' <button type="button" id="tut-home" class="home-btn">📲 Metti Casellino nella Home</button></p>'
                  if k == len(PAGES) - 1 else '')
         if title.endswith("Il dettato"):
             extra = '\n      <p class="tut-more"><button type="button" id="tut-voice">🎤 Il tutorial del dettato</button></p>'
