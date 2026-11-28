@@ -62,6 +62,12 @@ tutti i postini, non solo alla zona di Garadron.
   l'azienda resta senza accesso.
 - **Le novità** (Garadron, 26 novembre 2026): ogni versione con qualcosa di nuovo da vedere aggiunge in cima a `NEWS`
   (`app/src/ui.js`) una o due righe essenziali; compaiono una volta sola appena si entra, e restano in «🆕 Novità».
+- **Le condizioni d'uso si accettano una volta** (Regola Mondiale del 28 novembre 2026), v0.51.0: **dai 18 anni**,
+  perché Casellino è un'app di lavoro. Le condizioni sono in `app/condizioni.html`; la versione è `TERMS` in
+  `app/src/ui.js` e in `server/src/worker.js` (vanno cambiate insieme, e solo per un cambiamento importante, con
+  `TERMS_CHANGES` che dice che cosa è cambiato). Le carte in regola: `docs/CARTE-IN-REGOLA.md`.
+- **Le icone** (v0.51.0, skill `unslop`): nell'interfaccia le emoji si scrivono come sempre, ma `app/src/icone.js` le
+  disegna come icone a linea (Lucide). Un'emoji nuova senza disegno resta emoji: va aggiunta lì.
 - **La proposta all'azienda** (Garadron, 12 novembre 2026): un'anteprima privata con i colori, il logo, le parole e
   il nome ufficiale del programma scelti per l'azienda (`python tools/build.py --anteprima`, tutto in
   nella cartella `Proposta per l'azienda/`, mai su GitHub). Il programma pubblico resta Casellino, senza nome né logo dell'azienda, finché

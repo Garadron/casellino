@@ -5,6 +5,9 @@ Ogni punto resta qui finché Garadron non l'ha fatto o non ha risposto. I punti 
 
 ## Da fare
 
+0. **Pubblicare il server per le condizioni** (v0.51.0): la migrazione `0005_condizioni.sql` e il Worker. Serve che
+   Garadron scriva in chat «sì, pubblica il server». Fino ad allora la spunta resta sul dispositivo e parte dopo.
+
 0. **Provare il dettato sul telefono** (v0.48.0) su una fila della sua zona, in silenzio: dire quali frasi capisce
    male o quali parole preferisce, e le si aggiunge.
 0. **Un'idea da ricordare** (Garadron, 26 novembre 2026): «mi devo ricordare una cosa, mi sono dimenticato, che

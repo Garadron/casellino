@@ -1,5 +1,47 @@
 # Registro delle versioni
 
+## v0.51.0 · 2026-11-28 · Icone a linea, e le condizioni d'uso accettate una volta
+
+Nuove Regole Mondiali del 28 novembre 2026, nate nella chat di Archivista, che le ha girate a questa chat con le parole
+di Garadron: «Ogni lavoro, task, bozza ecc... Deve essere lavorata con le ultime modifiche [...] Attivala per le APPs
+[...] bisogna accettare 1 tantum [...] le condizioni essenziali per quelle regole su privacy età maggiore dei 14 o dai 18
+in su». Sì di Garadron, detto nella chat di Archivista.
+
+- **Icone a linea al posto delle emoji** (skill `unslop`, applicata a tutte le schermate già fatte):
+  - ogni emoji usata come icona (tasti, menu, finestre, tutorial, strisce) ora è disegnata con un'icona a linea dello
+    stesso set (Lucide, licenza ISC, gratis): una misura, un tratto, il colore del testo, di giorno e di notte;
+  - il testo dei tasti non cambia (l'emoji resta nascosta nella pagina), così il tutorial, il «tieni premuto» e le prove
+    trovano gli stessi tasti;
+  - parole più calme: la pagina d'accesso si chiama «Entra in Casellino» e non saluta più; niente punti esclamativi nei
+    messaggi («Link copiato», «Account creato: ora sei dentro», «Sei dentro come …»).
+- **Le condizioni d'uso, una volta sola** (Regola Mondiale «Le condizioni si accettano una volta»):
+  - chi si registra vede prima le condizioni essenziali in quattro righe, con i collegamenti alle condizioni d'uso e
+    all'informativa, e mette lui la spunta «Ho almeno 18 anni, ho letto l'informativa e accetto le condizioni». Senza
+    spunta «Avanti» non va. Poi scrive i suoi dati;
+  - chi ha già l'account le vede al primo accesso dopo l'aggiornamento, prima del lavoro. «Non accetto: esco
+    dall'account» lo fa uscire, e il suo lavoro aspetta sul dispositivo. Se le ha già accettate su un altro telefono,
+    non gliele chiede;
+  - non si chiedono più, finché non cambiano in qualcosa di importante (allora la pagina dice che cosa è cambiato);
+  - l'età è 18 anni: Casellino è un'app di lavoro (prima l'informativa diceva 14).
+- **Il server** salva quale versione delle condizioni è stata accettata e quando, cioè la prova (`/api/condizioni`,
+  nuove colonne con `server/migrations/0005_condizioni.sql`). **Non è ancora pubblicato**: serve il sì di Garadron.
+  Fino ad allora la spunta resta sul dispositivo e parte da sola appena il server è aggiornato.
+- **Le pagine** `condizioni.html` (nuova) e `privacy.html` (aggiornata il 28 novembre 2026: età, condizioni accettate),
+  collegate dalla pagina d'accesso e da «Altro».
+- **Le carte in regola**: il controllo voce per voce è in `docs/CARTE-IN-REGOLA.md`.
+- Il tutorial, all'ultima pagina, dice dove sono le condizioni; «🆕 Novità» ha le righe di questa versione.
+- Prove:
+  - `tests/test_accesso.js`: registrazione con le condizioni prima dei dati, la spunta mai già messa, una volta sola
+    per account, «Non accetto» fa uscire, accettate su un altro dispositivo non si chiedono;
+  - `tests/test_server.js`: la versione accettata alla registrazione, dopo, all'accesso; niente versioni vecchie;
+  - `tests/test_account_pagina.js` rifatta per la pagina d'accesso della v0.49.0 (era rimasta indietro), con le
+    condizioni; provata con il server sul PC;
+  - in Edge, giorno e notte, telefono e computer, nessun errore.
+- File: `app/src/icone.js` (nuovo), `app/src/ui.js`, `app/src/style.css`, `app/index.src.html`, `app/condizioni.html`
+  (nuovo), `app/privacy.html`, `server/src/worker.js`, `server/migrations/0005_condizioni.sql` (nuovo),
+  `tools/build.py`, `tools/tutorial.py`, `tests/test_accesso.js`, `tests/test_pagina.js`, `tests/test_server.js`,
+  `tests/test_account_pagina.js`, `docs/CARTE-IN-REGOLA.md` (nuovo), `CLAUDE.md`, `PROMEMORIA.md`.
+
 ## v0.50.0 · 2026-11-27 · Metti Casellino nella Home
 
 Sì di Garadron, detto nella chat del Ricettario (26 novembre 2026), dove la pagina è nata (Ricettario v0.54.0): «vale

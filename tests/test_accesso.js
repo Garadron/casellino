@@ -36,6 +36,8 @@ function open(store, hash) {
         if (p === '/api/accedi') r = { token: 'gettone-' + body.utente, utente: body.utente };
         else if (p === '/api/lavori') r = { lavori: [] };
         else if (/^\/api\/lavori\//.test(p)) r = { versione: 1, aggiornato_il: Date.now() };
+        else if (p === '/api/condizioni') r = { condizioni: body.versione };
+        else if (p === '/api/io') r = { utente: 'mario', condizioni: win.localStorage.getItem('prova.server-condizioni') || '' };
         return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve(r); } });
       };
     },
@@ -52,6 +54,23 @@ async function signIn(win, user) {
   form.querySelector('input[type=password]').value = 'una password lunga';
   form.dispatchEvent(new win.Event('submit', { cancelable: true }));
   await wait(200);
+  return accept(win);
+}
+
+// The conditions, once per account: tick, then «Accetto e continuo». Says whether they were asked.
+async function accept(win) {
+  const tick = win.document.querySelector('#gate-body #terms-tick');
+  if (!tick) return false;
+  const ok = win.document.getElementById('terms-ok');
+  assert.ok(ok.disabled, 'senza spunta non si va avanti');
+  assert.ok(!tick.checked, 'la spunta non è già messa');
+  assert.ok(/18 anni/.test(win.document.getElementById('gate-body').textContent), "l'età");
+  assert.ok(win.document.querySelector('#gate-body a[href$="condizioni.html"]') && win.document.querySelector('#gate-body a[href$="privacy.html"]'), 'i collegamenti');
+  tick.checked = true;
+  tick.dispatchEvent(new win.Event('change'));
+  ok.dispatchEvent(new win.Event('click'));
+  await wait(200);
+  return true;
 }
 
 (async function () {
@@ -74,14 +93,23 @@ async function signIn(win, user) {
   doc.getElementById('home-copy').dispatchEvent(new win.Event('click'));
   assert.strictEqual(win.copied, 'https://garadron.github.io/casellino/#nella-home', 'il link da copiare');
   doc.getElementById('dlg-home').close();
+  // signing up: the conditions come first, before writing anything
+  Array.prototype.find.call(doc.querySelectorAll('#gate-body .tabs button'), function (b) { return b.textContent === 'Registrati'; }).dispatchEvent(new win.Event('click'));
+  assert.ok(doc.querySelector('#gate-body #terms-tick') && !doc.querySelector('#gate-body input[type=password]'), 'registrazione: prima le condizioni');
+  doc.getElementById('terms-tick').checked = true;
+  doc.getElementById('terms-tick').dispatchEvent(new win.Event('change'));
+  doc.getElementById('terms-ok').dispatchEvent(new win.Event('click'));
+  assert.ok(doc.querySelector('#gate-body input[type=password]') && doc.querySelector('#gate-body input[type=email]'), 'poi i dati');
+  Array.prototype.find.call(doc.querySelectorAll('#gate-body .tabs button'), function (b) { return b.textContent === 'Accedi'; }).dispatchEvent(new win.Event('click'));
   // 2. signing in: the page, then the news not seen yet (the versions after 0.47.0), once
-  await signIn(win, 'mario');
+  assert.ok(await signIn(win, 'mario'), 'un account di prima: le condizioni al primo accesso');
+  assert.ok(calls.some(function (c) { return c[0] === 'POST' && c[1] === '/api/condizioni' && c[2].versione === '2026-11-28'; }), 'il server sa che cosa e quando');
   assert.ok(!doc.body.classList.contains('gated') && doc.getElementById('gate').hidden, 'entrato');
   assert.ok(/mario/.test(doc.getElementById('btn-account').textContent), 'il nome in alto');
   assert.ok(calls.some(function (c) { return c[0] === 'PUT'; }), 'il lavoro che c\'era si salva nell\'account');
   assert.ok(doc.getElementById('dlg-news').open, 'le novità appena entrato');
   const versions = Array.prototype.map.call(doc.querySelectorAll('#news-body h3'), function (h3) { return h3.textContent; });
-  assert.strictEqual(versions.length, 3, versions.join(' / '));
+  assert.ok(versions.length >= 3 && /0\.48\.0/.test(versions[versions.length - 1]), 'solo le versioni dopo 0.47.0: ' + versions.join(' / '));
   assert.ok(versions[0].indexOf(win.CASELLINO_VERSION) >= 0, 'in cima le novità di questa versione: ' + versions[0]);
   doc.getElementById('dlg-news').close();
   doc.getElementById('btn-news').dispatchEvent(new win.Event('click'));
@@ -119,7 +147,7 @@ async function signIn(win, user) {
   })(), function (b) { return b.textContent === 'Esci'; }).dispatchEvent(new win.Event('click'));
   await wait(200);
   // mario again: his work is back
-  await signIn(win, 'mario');
+  assert.ok(!(await signIn(win, 'mario')), 'le condizioni una volta sola');
   assert.ok(/VIA DEI TIGLI: 1, 3, 5/.test(doc.querySelector('textarea.route-text').value), 'mario ritrova il suo lavoro');
 
   // 5. the server says the entry is no longer valid: back to the sign-in, with the reason
@@ -132,7 +160,19 @@ async function signIn(win, user) {
   doc.getElementById('btn-account').dispatchEvent(new win.Event('click'));   // the list of the works asks the server
   await wait(200);
   assert.ok(doc.body.classList.contains('gated') && /accedi di nuovo/.test(doc.getElementById('gate-body').textContent), 'accesso scaduto: di nuovo l\'accesso');
-  // 6. the copied link opens the window by itself
+  // 6. signed in before the conditions existed: they come first; «Non accetto» goes out, the work waits
+  win = open({ 'casellino.account': JSON.stringify({ token: 'gettone-lungo-abbastanza-1', utente: 'mario' }), 'casellino.novita': '99.0.0', 'casellino.progetto': work });
+  doc = win.document;
+  await wait(300);
+  assert.ok(doc.body.classList.contains('gated') && doc.getElementById('terms-tick') && doc.getElementById('gate-intro').hidden, 'già dentro: prima le condizioni');
+  Array.prototype.find.call(doc.querySelectorAll('#gate-body button'), function (b) { return /Non accetto/.test(b.textContent); }).dispatchEvent(new win.Event('click'));
+  await wait(200);
+  assert.ok(doc.body.classList.contains('gated') && doc.querySelector('#gate-body input[type=password]') && /condizioni/.test(doc.getElementById('gate-body').textContent), 'non accetta: fuori');
+  // accepted already on another device: not asked again
+  win = open({ 'casellino.account': JSON.stringify({ token: 'gettone-lungo-abbastanza-2', utente: 'mario' }), 'casellino.novita': '99.0.0', 'prova.server-condizioni': '2026-11-28' });
+  await wait(400);
+  assert.ok(!win.document.body.classList.contains('gated'), 'accettate su un altro dispositivo: si entra');
+  // 7. the copied link opens the window by itself
   win = open({}, '#nella-home');
   await wait(300);
   assert.ok(win.document.getElementById('dlg-home').open && win.document.body.classList.contains('gated'), 'il link apre la finestra, anche senza accesso');

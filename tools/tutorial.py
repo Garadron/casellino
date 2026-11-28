@@ -162,7 +162,7 @@ def signs():
            frame(9, 18, 163, 108, RED, 2),
            board(194, 40, 90, 66, "9A"), sheet(290, 28, 58, 90, "Itinerario 9A", streets),
            frame(189, 26, 100, 86, RED, 2), frame(286, 12, 66, 112, BLUE, 3),
-           label(90, 145, "in una foto", 13), label(270, 145, "in due foto: meglio!", 13, GREEN)]
+           label(90, 145, "in una foto", 13), label(270, 145, "in due foto: meglio", 13, GREEN)]
     return svg(160, "\n".join(out), "Il cartello e l'itinerario: in una foto, o meglio in due")
 
 
@@ -361,8 +361,8 @@ def dictation():
 # ---------------------------------------------------------------- the pages: drawing + what the postman says
 PAGES = [
     (whole_mobile(), "1 · Tutto il mobile",
-     "Ciao! Ti faccio vedere come Casellino scrive il casello dalle tue foto. <b>Prima foto: tutto il mobile</b>, da un po' "
-     "lontano: i caselli e le ali di tutte e due le sottozone. Non dimenticarla!"),
+     "Ti faccio vedere come Casellino scrive il casello dalle tue foto. <b>Prima foto: tutto il mobile</b>, da un po' "
+     "lontano: i caselli e le ali di tutte e due le sottozone. Non dimenticarla."),
     (signs(), "2 · Il cartello e l'itinerario",
      "Poi <b>una sottozona alla volta</b>. Per primi il <b>cartello</b> con il nome (qui la 9A) e l'<b>itinerario</b>, il "
      "foglio con l'elenco delle vie. Meglio in due foto: prima il cartello, poi l'itinerario."),
@@ -406,10 +406,11 @@ PAGES = [
     (hold(), "14 · Tieni premuto",
      "Non sai a che serve un tasto o una casella? <b>Tienilo premuto</b>: si apre una finestrina che ti dice che cos'è, "
      "a che serve e come funziona."),
-    (the_end(), "15 · Fatto!",
+    (the_end(), "15 · Fatto",
      "Ora hai il giro: controllalo e stampa le strisce. <b>Parti da zero, senza foto?</b> In «Altro» c'è <b>«Come si scrive»</b>: "
      "ti spiega come scrivere il giro a mano. Dopo ogni aggiornamento, in alto, <b>«🆕 Novità»</b> ti dice che cosa "
-     "c'è di nuovo. E <b>mettilo nella Home</b> del telefono: si apre come un'app, con la sua icona."),
+     "c'è di nuovo. E <b>mettilo nella Home</b> del telefono: si apre come un'app, con la sua icona. Le <b>condizioni "
+     "d'uso</b> e l'informativa sulla privacy sono in «Altro»: le accetti una volta sola, con la spunta."),
 ]
 
 

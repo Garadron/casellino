@@ -3093,7 +3093,7 @@
     if (!$('dlg-home').open) $('dlg-home').showModal();
   }
   function copyHomeLink() {
-    const done = function () { $('home-copy').textContent = '✓ Link copiato!'; };
+    const done = function () { $('home-copy').textContent = '✓ Link copiato'; };
     const byHand = function () { window.prompt('Copia il link', HOME_LINK); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(HOME_LINK).then(done, byHand);
     else byHand();
@@ -3122,13 +3122,16 @@
   // Only the essentials of each version, newest first. Shown once by itself, on entering or signing in after an
   // update; always there from «🆕 Novità». A version with nothing new to see adds nothing here.
   const NEWS = [
+    { v: '0.51.0', data: '28 novembre 2026', cose: [
+      'Icone nuove, a linea, tutte uguali: si leggono meglio, di giorno e di notte.',
+      'Le condizioni d\'uso in poche righe: si accettano una volta sola, con la spunta. Casellino è per chi ha almeno 18 anni.'] },
     { v: '0.50.0', data: '27 novembre 2026', cose: [
       '📲 Metti Casellino nella Home: i passi per iPhone, Android e computer, e «Copia il link» per passare a Safari. È nella pagina d\'accesso, in «Altro» e nel tutorial.'] },
     { v: '0.49.0', data: '26 novembre 2026', cose: [
       'Si entra con il tuo account: senza accesso non si vede niente, così i tuoi giri li vedi solo tu.',
       'Le novità di ogni aggiornamento compaiono una volta sola appena entri. Le rileggi quando vuoi da «🆕 Novità», in alto.'] },
     { v: '0.48.0', data: '26 novembre 2026', cose: [
-      '🎤 Detta il giro: dici la via e i civici, e Casellino scrive le caselle mentre parli. Si detta in silenzio!',
+      '🎤 Detta il giro: dici la via e i civici, e Casellino scrive le caselle mentre parli. Si detta in silenzio.',
       'Puoi continuare dalla fine, aggiungere da un punto o cambiare una casella a voce. Le frasi sono nel tutorial del dettato.'] },
     { v: '0.47.0', data: '26 novembre 2026', cose: ['🔎 Il controllo anomalie trova anche i civici scritti due volte.'] },
     { v: '0.46.0', data: '26 novembre 2026', cose: ['🔎 Controllo anomalie: guarda l\'ordine dei civici di ogni via e piazza, senza cambiare niente.'] },
@@ -3226,6 +3229,79 @@
     savedLine('Non ancora salvato');
     accountNote = note || '';
     setGate(true);
+  }
+
+  /*
+   * The conditions, accepted once (World Rule «Le condizioni si accettano una volta», Garadron, 28 November 2026:
+   * «bisogna accettare 1 tantum [...] le condizioni essenziali»). Who registers ticks them before writing anything;
+   * who already has an account sees them at the first entry after the update. They are asked again only when TERMS
+   * changes in something important, and TERMS_CHANGES says what. Casellino is a work app: from 18 years.
+   * The server keeps the version accepted and when (the proof); an older server does not know it yet, so the
+   * acceptance waits on the device and is sent later.
+   */
+  const TERMS = '2026-11-28';
+  const TERMS_CHANGES = '';
+  const TERMS_KEY = 'casellino.condizioni';   // {utente: version accepted, '!utente': version still to send}
+  let termsForNew = false;   // the sign-up: conditions ticked at its first step
+  function termsLocal() {
+    try { return JSON.parse(localStorage.getItem(TERMS_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function termsAccepted() { return termsLocal()[account.utente.toLowerCase()] === TERMS; }
+  function termsMark(toSend) {
+    const t = termsLocal(), k = account.utente.toLowerCase();
+    t[k] = TERMS;
+    if (toSend) t['!' + k] = TERMS; else delete t['!' + k];
+    try { localStorage.setItem(TERMS_KEY, JSON.stringify(t)); } catch (e) { /* private window: asked again next time */ }
+  }
+  async function termsSend() {
+    if (!account.token || termsLocal()['!' + account.utente.toLowerCase()] !== TERMS) return;
+    try { await api('POST', '/api/condizioni', { versione: TERMS }); termsMark(false); } catch (e) { /* tried again next time */ }
+  }
+  // What the server says this account accepted (in the sign-in answer and in /api/io; an older server says nothing).
+  function termsFromServer(r) {
+    if (!r || r.condizioni === undefined) return;
+    if (r.condizioni === TERMS) termsMark(false);
+    else if (termsAccepted()) { termsMark(true); termsSend(); }   // accepted on this device without internet
+  }
+  function termsBox(box, onOk, forNew) {
+    const tick = h('input', { type: 'checkbox', id: 'terms-tick' });
+    const go = h('button', { type: 'button', class: 'primary', id: 'terms-ok', disabled: '' }, forNew ? 'Avanti' : 'Accetto e continuo');
+    tick.addEventListener('change', function () { go.disabled = !tick.checked; });
+    go.addEventListener('click', function () { if (tick.checked) onOk(); });
+    const link = function (page, text) { return h('a', { href: SITE_URL + page, target: '_blank', rel: 'noopener' }, text); };
+    box.append(h('div', { class: 'terms' },
+      h('h3', null, forNew ? 'Prima di creare l\'account' : 'Le condizioni di Casellino'),
+      forNew ? null : h('p', { class: 'small hint' }, TERMS_CHANGES ? 'Che cosa è cambiato: ' + TERMS_CHANGES
+        : 'Una volta sola: le accetti e Casellino non te le chiede più.'),
+      h('ul', { class: 'terms-list' },
+        h('li', null, 'Casellino è gratis e per uso non commerciale. È un aiuto per il lavoro: serve avere almeno 18 anni.'),
+        h('li', null, 'Nell\'account si salvano il nome utente, l\'email (nascosta) e i tuoi lavori. Niente pubblicità e niente tracciamento.'),
+        h('li', null, 'Il giro lo controlli tu prima di stamparlo: Casellino aiuta, ma la responsabilità del lavoro resta tua.'),
+        h('li', null, 'Puoi eliminare l\'account e i tuoi dati quando vuoi, dall\'app.')),
+      h('p', { class: 'small' }, 'Per intero: le ', link('condizioni.html', 'condizioni d\'uso'), ' e l\'',
+        link('privacy.html', 'informativa sulla privacy'), '.'),
+      h('label', { class: 'terms-tick' }, tick, h('span', null, 'Ho almeno 18 anni, ho letto l\'informativa e accetto le condizioni')),
+      h('p', { class: 'actions-inline' }, go)));
+  }
+  // Signed in, conditions not accepted yet: the page stays closed until they are, or the person goes out.
+  function termsGate(then) {
+    document.body.classList.add('gated');
+    $('gate').hidden = false;
+    $('gate-intro').hidden = true;
+    $('gate-kept').hidden = true;
+    const box = $('gate-body');
+    box.textContent = '';
+    termsBox(box, function () {
+      termsMark(true);
+      termsSend();
+      $('gate-intro').hidden = false;
+      then();
+    }, false);
+    box.append(h('p', { class: 'small' }, h('button', { type: 'button', class: 'link-btn', onclick: function () {
+      api('POST', '/api/esci', {}).catch(function () { /* out on this device anyway */ });
+      $('gate-intro').hidden = false;
+      lockOut('Senza accettare le condizioni non si può usare l\'account. Il tuo lavoro non si perde.');
+    } }, 'Non accetto: esco dall\'account')));
   }
 
   // ------------------------------------------------------------ account: works saved online (free, Cloudflare)
@@ -3411,6 +3487,11 @@
     accountNote = '';
     const fresh = accountMode === 'registrati';
     const recovering = accountMode === 'recupera';
+    if (fresh && !termsForNew) {   // first step of the sign-up: the conditions, before writing anything
+      box.append(tabs);
+      termsBox(box, function () { termsForNew = true; renderAccountDialog(); }, true);
+      return;
+    }
     const asking = recovering && !mailSent;   // first step: the e-mail of the account, then the code goes there
     if (recovering && mailSent) mailCode.value = mailSent.prova || '';
     const go = h('button', { type: 'submit', class: 'primary' },
@@ -3424,9 +3505,7 @@
         '. Se non lo vedi, guarda nella posta indesiderata.') : null,
       recovering && mailSent ? h('label', null, 'Codice dall\'email (6 cifre)', mailCode) : null,
       asking ? null : h('label', null, recovering ? 'Password nuova (almeno 8 caratteri)' : 'Password' + (fresh ? ' (almeno 8 caratteri)' : ''), pass),
-      fresh ? h('p', { class: 'small hint' }, 'Creando l\'account accetti l\'',
-        h('a', { href: 'https://garadron.github.io/casellino/privacy.html', target: '_blank', rel: 'noopener' }, 'informativa sulla privacy'),
-        '. L\'account è per chi ha almeno 14 anni.') : null,
+      fresh ? h('p', { class: 'small hint' }, 'Hai accettato le condizioni d\'uso e l\'informativa sulla privacy.') : null,
       msg, h('p', { class: 'actions-inline' }, go),
       recovering ? h('p', { class: 'small' },
         mailSent ? switchTo('Mandami un altro codice', function () { mailSent = null; renderAccountDialog(); }) : null,
@@ -3445,11 +3524,14 @@
         const path = accountMode === 'accedi' ? '/api/accedi' : (fresh ? '/api/registrati' : '/api/recupera');
         const data = { utente: recovering ? mailSent.addr : user.value, password: pass.value, email: email.value };
         if (recovering) data.codice = mailCode.value;
+        if (fresh) data.condizioni = TERMS;
         const r = await api('POST', path, data);
         mailSent = null; typedUser = '';
         account.token = r.token; account.utente = r.utente;
         accountStore();
         renderAccountButton();
+        if (fresh) termsMark(r.condizioni !== TERMS);   // ticked at the first step; an older server gets it later
+        else termsFromServer(r);
         afterSignIn(accountMode);
       } catch (err) {
         msg.textContent = err.data && err.data.motivo === 'posta_spenta'
@@ -3465,7 +3547,7 @@
     // on the sign-in page of a phone the keyboard does not jump out by itself
     if (!(gated() && isTouch)) setTimeout(function () { (mailSent ? mailCode : (recovering ? email : user)).focus(); }, 30);
   }
-  const USER_TIP = 'Usa pure il tuo stesso nome utente che usi nel palmare se ti viene più facile da ricordare. Ma non la stessa password!';
+  const USER_TIP = 'Usa pure il tuo stesso nome utente che usi nel palmare se ti viene più facile da ricordare. Ma non la stessa password.';
 
   // Name and e-mail of the account, each with «Cambia»: a small form that asks the password again.
   async function accountDetails(box) {
@@ -3536,6 +3618,12 @@
 
   // After signing in: the code to keep (new account or new password), then the works.
   async function afterSignIn(mode) {
+    if (!window.CASELLINO_ANTEPRIMA && !termsAccepted()) {   // the conditions first, once
+      if ($('dlg-account').open) $('dlg-account').close();
+      termsGate(function () { afterSignIn(mode); });
+      return;
+    }
+    termsSend();
     const fromGate = gated();
     if (fromGate) setGate(false);
     unparkWork();
@@ -3550,12 +3638,12 @@
     }
     if (mode === 'registrati') {   // someone new: the tutorial, and the news are already in it
       newsMarkSeen();
-      toast('Account creato. Benvenuto in Casellino!');
+      toast('Account creato: ora sei dentro');
       openTutorial();
       return;
     }
     if (mode === 'recupera') toast('Password cambiata: gli altri dispositivi sono usciti.');
-    else toast('Ciao ' + account.utente + '!');
+    else toast('Sei dentro come ' + account.utente);
     const empty = isEmptyProject();   // a new device: the works saved in the account
     if (showNews(false)) worksAfterNews = empty;
     else if (empty) openAccount();
@@ -4141,7 +4229,7 @@
     ['8 · Pausa e correzioni', 'In basso c\'è sempre quello che hai detto. <b>«⏸ Pausa»</b> ferma l\'ascolto: tocca il testo, si apre la tastiera e correggi. Premi <b>«🎤 Ascolta»</b>: la tastiera si chiude e si riparte. <b>«↶ Togli l\'ultima»</b> toglie l\'ultima casella detta. Sotto vedi l\'anteprima della striscia, con le caselle nuove contornate.', null],
     ['9 · Da dove partire', 'Se il giro ha già qualcosa, Casellino chiede da dove: <b>«▶ Continua dalla fine»</b> (il solito), <b>«➕ Aggiungi da un punto»</b> (tocchi una casella: quello che detti va subito dopo) o <b>«✏️ Cambia una casella»</b> (la detti come deve essere: cambia solo quella). Anche dalla casella toccata: «🎤 Detta da qui» e «🎤 Cambiala a voce». <b>Il dettato non cancella mai niente</b>, e finché non premi «✔ Fatto» il giro resta com\'era. Su un giro bloccato 🔒 si può solo cambiare una casella.', null],
     ['10 · Guarda una prova', 'Ecco un pezzo di giro dettato, parola per parola, con la striscia che cresce.', 'demo'],
-    ['Fatto!', 'Premi <b>«✔ Fatto»</b>: tutto va nel giro. Poi un giro di <b>«🔎 Controllo anomalie»</b>. Le frasi le ritrovi sempre nella finestra del dettato, sopra, e questo tutorial in «❔ Come si detta» e in «Altro».', null],
+    ['Fatto', 'Premi <b>«✔ Fatto»</b>: tutto va nel giro. Poi un giro di <b>«🔎 Controllo anomalie»</b>. Le frasi le ritrovi sempre nella finestra del dettato, sopra, e questo tutorial in «❔ Come si detta» e in «Altro».', null],
   ];
   function stopVoiceDemo() { clearInterval(vtDemo && vtDemo.timer); vtDemo = null; }
   function voiceDemo(box) {
@@ -4569,6 +4657,7 @@
   }
 
   function start() {
+    if (window.CasellinoIcone) window.CasellinoIcone.start(document);   // the emoji drawn as line icons
     accountLoad();
     renderAccountButton();
     wire();
@@ -4578,10 +4667,21 @@
     C.assignColors(state.project);
     renderAll();
     if (stored && p === stored) $('saved').textContent = 'Ripreso da questo dispositivo';
-    if (!account.token && !window.CASELLINO_ANTEPRIMA) setGate(true);   // first the sign-in, then the work
-    else {
+    const enter = function () {
+      if (gated()) setGate(false);
       if (stored && p === stored) syncFromAccount();   // the account may have a newer copy (saved on another device)
       if (!window.CASELLINO_ANTEPRIMA) showNews(false);
+    };
+    if (!account.token && !window.CASELLINO_ANTEPRIMA) setGate(true);   // first the sign-in, then the work
+    else if (!window.CASELLINO_ANTEPRIMA && !termsAccepted()) {
+      termsGate(enter);   // signed in before the conditions existed: they come first, once
+      api('GET', '/api/io').then(function (r) {   // already accepted on another device: no need to ask
+        termsFromServer(r);
+        if (termsAccepted() && gated() && account.token) { $('gate-intro').hidden = false; enter(); }
+      }).catch(function () { /* no internet: the conditions stay on screen */ });
+    } else {
+      termsSend();
+      enter();
     }
     const v = $('version');
     if (v && window.CASELLINO_VERSION) v.textContent = 'Versione ' + window.CASELLINO_VERSION;

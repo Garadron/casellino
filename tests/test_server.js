@@ -33,8 +33,9 @@ async function call(method, path, body, token) {
   assert.strictEqual(r.status, 400, "serve l'email");
   r = await call('POST', '/api/registrati', { utente: user, password: pass, email: 'senza-chiocciola.it' });
   assert.strictEqual(r.status, 400, 'email non valida');
-  r = await call('POST', '/api/registrati', { utente: user.toUpperCase(), password: pass, email: ' ' + mail.toUpperCase() + ' ' });
+  r = await call('POST', '/api/registrati', { utente: user.toUpperCase(), password: pass, email: ' ' + mail.toUpperCase() + ' ', condizioni: '2026-11-28' });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(r.data.condizioni, '2026-11-28', 'le condizioni spuntate alla registrazione');
   assert.strictEqual(r.cors, ORIGIN, 'permesso per la pagina');
   assert.strictEqual(r.data.utente, user);
   assert.ok(!('recupero' in r.data), 'niente codice di recupero da conservare');
@@ -49,6 +50,7 @@ async function call(method, path, body, token) {
   assert.strictEqual(r.data.utente, user);
   assert.strictEqual(r.data.email, 'p***@esempio.it', "l'email si vede solo nascosta");
   assert.strictEqual(r.data.prossimoCambioNome, 0);
+  assert.strictEqual(r.data.condizioni, '2026-11-28', 'il server ricorda che cosa è stato accettato');
   r = await call('GET', '/api/lavori');
   assert.strictEqual(r.status, 401, 'senza accesso niente lavori');
 
@@ -71,6 +73,16 @@ async function call(method, path, body, token) {
 
   // another account cannot see or overwrite it
   const other = await call('POST', '/api/registrati', { utente: user + 'x', password: pass, email: 'x' + mail });
+  assert.strictEqual(other.data.condizioni, '', 'senza spunta (una pagina vecchia): non accettate');
+  // the conditions accepted after: only the version of now, then they are known at every entry
+  r = await call('POST', '/api/condizioni', { versione: '2020-01-01' }, other.data.token);
+  assert.strictEqual(r.status, 400, 'non una versione vecchia');
+  r = await call('POST', '/api/condizioni', { versione: '2026-11-28' });
+  assert.strictEqual(r.status, 401, "serve l'account");
+  r = await call('POST', '/api/condizioni', { versione: '2026-11-28' }, other.data.token);
+  assert.strictEqual(r.status, 200);
+  r = await call('POST', '/api/accedi', { utente: user + 'x', password: pass });
+  assert.strictEqual(r.data.condizioni, '2026-11-28', "all'accesso il server dice che sono accettate");
   r = await call('GET', '/api/lavori/' + id, undefined, other.data.token);
   assert.strictEqual(r.status, 404);
   r = await call('PUT', '/api/lavori/' + id, { nome: 'x', dati: {}, versione: 3 }, other.data.token);

@@ -25,6 +25,7 @@ function device(answers) {
       win.HTMLDialogElement.prototype.close = function () { this.open = false; };
       win.HTMLElement.prototype.scrollIntoView = function () {};
       win.confirm = function () { return answers.confirm; };
+      win.localStorage.setItem('casellino.novita', '99.0.0');   // no news window in the way
     },
   });
   return dom;
@@ -52,24 +53,29 @@ async function until(fn, ms, label) {
   ta.dispatchEvent(new w1.Event('input'));
   d1.getElementById('zone').value = '9';
   d1.getElementById('zone').dispatchEvent(new w1.Event('input'));
-  d1.getElementById('btn-account').dispatchEvent(new w1.Event('click'));
-  [...d1.querySelectorAll('#account-body .tabs button')].find(function (b) { return b.textContent === 'Registrati'; }).dispatchEvent(new w1.Event('click'));
-  assert.ok(/palmare/.test(d1.getElementById('account-body').textContent), 'il consiglio sul nome utente');
-  assert.ok(d1.querySelector('#account-body a[href*="privacy"]') && /14 anni/.test(d1.getElementById('account-body').textContent), 'informativa e età nella registrazione');
-  const inputs = d1.querySelectorAll('#account-body input');
+  assert.ok(d1.body.classList.contains('gated'), 'senza account solo la pagina d\'accesso');
+  [...d1.querySelectorAll('#gate-body .tabs button')].find(function (b) { return b.textContent === 'Registrati'; }).dispatchEvent(new w1.Event('click'));
+  // first the conditions, with the age and the links, the tick not already there
+  const tick = d1.getElementById('terms-tick');
+  assert.ok(tick && !tick.checked && d1.getElementById('terms-ok').disabled && /18 anni/.test(d1.getElementById('gate-body').textContent), 'prima le condizioni');
+  assert.ok(d1.querySelector('#gate-body a[href$="privacy.html"]') && d1.querySelector('#gate-body a[href$="condizioni.html"]'), 'informativa e condizioni');
+  tick.checked = true;
+  tick.dispatchEvent(new w1.Event('change'));
+  d1.getElementById('terms-ok').dispatchEvent(new w1.Event('click'));
+  assert.ok(/palmare/.test(d1.getElementById('gate-body').textContent), 'il consiglio sul nome utente');
+  const inputs = d1.querySelectorAll('#gate-body input');
   inputs[0].value = user; inputs[1].value = mail.toUpperCase(); inputs[2].value = pass;
   assert.strictEqual(inputs[1].type, 'email');
-  d1.querySelector('#account-body form').dispatchEvent(new w1.Event('submit', { cancelable: true }));
-  await until(function () { const c = d1.querySelector('.done-note'); return c && /Account creato/.test(c.textContent); }, 8000, 'account creato');
-  assert.ok(!/codice di recupero/i.test(d1.getElementById('account-body').textContent), 'niente codice di recupero da conservare');
-  assert.strictEqual(d1.getElementById('btn-account').textContent, '👤 ' + user);
-  await until(function () { return /Zona 9/.test(d1.querySelector('.works').textContent); });
-  await until(function () { return /p\*\*\*@esempio\.it/.test(d1.querySelector('.account-details').textContent); }, 8000, 'email nascosta');
-  // a new account: closing its window, the tutorial opens
-  d1.getElementById('dlg-account').open = false;
-  d1.getElementById('dlg-account').dispatchEvent(new w1.Event('close'));
+  d1.querySelector('#gate-body form').dispatchEvent(new w1.Event('submit', { cancelable: true }));
+  await until(function () { return d1.getElementById('btn-account').textContent === '👤 ' + user; }, 8000, 'account creato');
+  assert.ok(!d1.body.classList.contains('gated'), 'dentro, senza chiedere di nuovo le condizioni');
   assert.ok(d1.getElementById('dlg-tutorial').open, 'il tutorial dopo l\'iscrizione');
   d1.getElementById('dlg-tutorial').open = false;
+  d1.getElementById('btn-account').dispatchEvent(new w1.Event('click'));
+  assert.ok(!/codice di recupero/i.test(d1.getElementById('account-body').textContent), 'niente codice di recupero da conservare');
+  await until(function () { return /Zona 9/.test(d1.querySelector('.works').textContent); });
+  await until(function () { return /p\*\*\*@esempio\.it/.test(d1.querySelector('.account-details').textContent); }, 8000, 'email nascosta');
+  d1.getElementById('dlg-account').open = false;
 
   // a change is saved by itself
   ta.value = 'VIA DEI TIGLI: 1..9\nVIA DELLE ROSE: 2, 4';
@@ -85,13 +91,13 @@ async function until(fn, ms, label) {
   const two = device({ confirm: true });
   const w2 = two.window, d2 = w2.document;
   await wait(300);
-  d2.getElementById('btn-account').dispatchEvent(new w2.Event('click'));
-  const in2 = d2.querySelectorAll('#account-body input');
+  const in2 = d2.querySelectorAll('#gate-body input');
   in2[0].value = mail.toUpperCase(); in2[1].value = pass;  // with the e-mail instead of the name, capitals or not
-  d2.querySelector('#account-body form').dispatchEvent(new w2.Event('submit', { cancelable: true }));
+  d2.querySelector('#gate-body form').dispatchEvent(new w2.Event('submit', { cancelable: true }));
   const openBtn = await until(function () {
     return [...d2.querySelectorAll('.works button')].find(function (b) { return b.textContent === 'Apri'; });
   });
+  assert.ok(!d2.getElementById('terms-tick'), 'condizioni accettate alla registrazione: non si chiedono sul secondo dispositivo');
   openBtn.dispatchEvent(new w2.Event('click'));
   await until(function () { return /VIA DELLE ROSE/.test(d2.querySelector('textarea.route-text').value); });
   assert.strictEqual(d2.getElementById('zone').value, '9');
@@ -144,20 +150,19 @@ async function until(fn, ms, label) {
   assert.ok(/Messaggio mandato/.test(d2.querySelector('.toast').textContent));
 
   // forgotten password on the office computer: a code by e-mail (on the PC the server gives it back and the page writes it)
-  d2.getElementById('btn-account').dispatchEvent(new w2.Event('click'));
-  [...d2.querySelectorAll('#account-body .tabs button')].find(function (b) { return b.textContent === 'Password dimenticata'; }).dispatchEvent(new w2.Event('click'));
-  let form2 = d2.querySelector('#account-body form');
+  [...d2.querySelectorAll('#gate-body .tabs button')].find(function (b) { return b.textContent === 'Password dimenticata'; }).dispatchEvent(new w2.Event('click'));
+  let form2 = d2.querySelector('#gate-body form');
   assert.strictEqual(form2.querySelector('button[type=submit]').textContent, 'Mandami il codice');
   fields = form2.querySelectorAll('input');
   assert.strictEqual(fields.length, 1, "basta l'email dell'account");
   fields[0].value = mail;
   form2.dispatchEvent(new w2.Event('submit', { cancelable: true }));
-  await until(function () { return /Ti ho mandato un codice di 6 cifre a p\*\*\*@esempio\.it/.test(d2.getElementById('account-body').textContent); }, 8000, 'codice mandato');
-  form2 = d2.querySelector('#account-body form');
+  await until(function () { return /Ti ho mandato un codice di 6 cifre a p\*\*\*@esempio\.it/.test(d2.getElementById('gate-body').textContent); }, 8000, 'codice mandato');
+  form2 = d2.querySelector('#gate-body form');
   assert.ok(/^\d{6}$/.test(form2.querySelector('input[autocomplete=one-time-code]').value), 'il codice di prova è scritto');
   form2.querySelector('input[type=password]').value = pass;
   form2.dispatchEvent(new w2.Event('submit', { cancelable: true }));
-  await until(function () { const c = d2.querySelector('.done-note'); return c && /Password cambiata/.test(c.textContent); }, 8000, 'password cambiata');
+  await until(function () { const t = d2.querySelector('.toast'); return t && /Password cambiata/.test(t.textContent); }, 8000, 'password cambiata');
   assert.strictEqual(d2.getElementById('btn-account').textContent, '👤 ' + renamed);
 
   // clean up: delete the test account

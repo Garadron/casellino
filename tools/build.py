@@ -73,6 +73,7 @@ def build():
     (SITE / "index.html").write_text(html, encoding="utf-8", newline="\n")
     (SITE / "manifest.webmanifest").write_text(read("manifest.webmanifest"), encoding="utf-8", newline="\n")
     (SITE / "privacy.html").write_text(read("privacy.html"), encoding="utf-8", newline="\n")   # opens also without the app
+    (SITE / "condizioni.html").write_text(read("condizioni.html"), encoding="utf-8", newline="\n")
     (SITE / "sw.js").write_text(read("sw.js").replace("__VERSIONE__", ver), encoding="utf-8", newline="\n")
     for icon in list((APP / "icons").glob("*.png")) + list((APP / "icons").glob("*.ico")):
         shutil.copy(icon, SITE / icon.name)

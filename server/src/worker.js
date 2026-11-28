@@ -20,6 +20,8 @@
  */
 
 const ENC = new TextEncoder();
+// The conditions of use, accepted once (v0.51.0): the version the page shows. Only this one is stored as accepted.
+const TERMS = '2026-11-28';
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 const LIMITS = {
@@ -203,14 +205,16 @@ async function register(request, env) {
   if (exists) throw new UserError(409, 'Questo nome utente è già preso: scegline un altro.');
   await emailFree(env, email, '');
   const id = randomId(12);
+  const terms = b.condizioni === TERMS ? TERMS : '';   // ticked at the first step of the sign-up
   const code = newRecoveryCode();   // never shown (Garadron, 16 November 2026: no recovery code to keep): fills the old column
   await env.DB.prepare(
     `INSERT INTO account (id, utente, password_impronta, recupero_impronta, errori, bloccato_fino, creato_il, email_impronta, email_vista)
      VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?)`,
   ).bind(id, user, await fingerprint(env, passwordText(id, password)), await fingerprint(env, recoveryText(id, code)), Date.now(),
     await fingerprint(env, emailText(email)), emailShown(email)).run();
+  if (terms) await env.DB.prepare('UPDATE account SET condizioni_versione = ?, condizioni_il = ? WHERE id = ?').bind(terms, Date.now(), id).run();
   await countAttempt(env, ip, DAY);
-  return json(request, { token: await newSession(env, id), utente: user });
+  return json(request, { token: await newSession(env, id), utente: user, condizioni: terms });
 }
 
 // The account from what the person wrote: the user name, or the e-mail of the account (with an "@").
@@ -245,7 +249,7 @@ async function login(request, env) {
   }
   if (row.errori) await env.DB.prepare('UPDATE account SET errori = 0, bloccato_fino = 0 WHERE id = ?').bind(row.id).run();
   await clearAttempts(env, ip);
-  return json(request, { token: await newSession(env, row.id), utente: row.utente });
+  return json(request, { token: await newSession(env, row.id), utente: row.utente, condizioni: row.condizioni_versione || '' });
 }
 
 // Forgotten password: user name + recovery code + new password. All the other devices are signed out
@@ -265,7 +269,7 @@ async function recover(request, env) {
     env.DB.prepare('DELETE FROM sessioni WHERE account_id = ?').bind(row.id),
   ]);
   await clearAttempts(env, ip);
-  return json(request, { token: await newSession(env, row.id), utente: row.utente });
+  return json(request, { token: await newSession(env, row.id), utente: row.utente, condizioni: row.condizioni_versione || '' });
 }
 
 // The code from the e-mail: right, not expired, at most LIMITS.codeTries wrong tries.
@@ -353,9 +357,19 @@ async function checkMine(request, env, me, password) {
 }
 
 async function aboutMe(request, env, me) {
-  const row = await env.DB.prepare('SELECT email_vista, nome_cambiato_il FROM account WHERE id = ?').bind(me.id).first();
+  const row = await env.DB.prepare('SELECT email_vista, nome_cambiato_il, condizioni_versione FROM account WHERE id = ?').bind(me.id).first();
   const next = row.nome_cambiato_il ? row.nome_cambiato_il + LIMITS.renameDays * DAY : 0;
-  return json(request, { utente: me.utente, email: row.email_vista, prossimoCambioNome: next > Date.now() ? next : 0 });
+  return json(request, { utente: me.utente, email: row.email_vista, prossimoCambioNome: next > Date.now() ? next : 0,
+    condizioni: row.condizioni_versione || '' });
+}
+
+// The conditions accepted by who was already signed in (or accepted on the device without internet): version and when.
+async function acceptTerms(request, env, me) {
+  const b = await body(request);
+  if (b.versione !== TERMS) throw new UserError(400, 'Queste condizioni non sono più quelle di adesso: ricarica la pagina.');
+  await env.DB.prepare('UPDATE account SET condizioni_versione = ?, condizioni_il = ? WHERE id = ? AND condizioni_versione <> ?')
+    .bind(TERMS, Date.now(), me.id, TERMS).run();
+  return json(request, { condizioni: TERMS });
 }
 
 // A new user name, at most once every 7 days (the first change can be done at once).
@@ -544,6 +558,7 @@ async function route(request, env) {
   const me = await signedIn(request, env);
   if (path === '/api/segnala' && m === 'POST') return report(request, env, me);
   if (path === '/api/io' && m === 'GET') return aboutMe(request, env, me);
+  if (path === '/api/condizioni' && m === 'POST') return acceptTerms(request, env, me);
   if (path === '/api/cambia-nome' && m === 'POST') return rename(request, env, me);
   if (path === '/api/cambia-email' && m === 'POST') return changeEmail(request, env, me);
   if (path === '/api/esci' && m === 'POST') return logout(request, env, me);

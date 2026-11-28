@@ -28,6 +28,7 @@ const dom = new JSDOM(html, {
     // already signed in, the news already seen (entering is tried in test_accesso.js)
     win.localStorage.setItem('casellino.account', JSON.stringify({ token: 'prova', utente: 'prova' }));
     win.localStorage.setItem('casellino.novita', '99.0.0');
+    win.localStorage.setItem('casellino.condizioni', JSON.stringify({ prova: '2026-11-28' }));
     // the voice recognition of the phone, pretended: the test says the words
     win.webkitSpeechRecognition = function () {
       fakeRec.last = this;
